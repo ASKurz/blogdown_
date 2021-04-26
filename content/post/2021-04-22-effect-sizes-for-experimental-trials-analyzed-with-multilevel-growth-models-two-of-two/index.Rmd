@@ -120,7 +120,7 @@ Though participants tend to increase in both groups, those in the treatment cond
 
 ### We need a framework.
 
-Traditional analytic strategies, such as ordinary least squares (OLS) regression and the analysis of variance (ANOVA) framework, can work okay with data collected on one or two time points. In his [-@feingoldEffectSizeForGMA2009; -@feingoldARegressionFramework2013] work, which is the inspiration for this blog series, Feingold recommended what he called growth-modeling analysis (GMA) for data collected on $3+$. If you're not familiar with the term GMA, this is a longitudinal version of what others have called hierarchical linear models, mixed-effects models, random-effects models, or what I prefer to call *multilevel models*. For longitudinal data, I'm fond of the term *multilevel growth model*, but you can use whatever term you like. If you're interested, Raudenbush and Bryk touched on the historic origins of several of these terms in the first chapter of their [-@raudenbushHLM2002] text.
+Traditional analytic strategies, such as ordinary least squares (OLS) regression and the analysis of variance (ANOVA) framework, can work okay with data collected on one or two time points. In his [-@feingoldEffectSizeForGMA2009; -@feingoldARegressionFramework2013] work, which is the inspiration for this blog series, Feingold recommended what he called growth-modeling analysis (GMA) for data collected on $3+$ time points. If you're not familiar with the term GMA, this is a longitudinal version of what others have called hierarchical linear models, mixed-effects models, random-effects models, or what I prefer to call *multilevel models*. For longitudinal data, I'm fond of the term *multilevel growth model*, but you can use whatever term you like. If you're interested, Raudenbush and Bryk touched on the historic origins of several of these terms in the first chapter of their [-@raudenbushHLM2002] text.
 
 Though multilevel growth models have become commonplace in many applied areas, it's not immediately obvious how to compute standardized effect sizes when one uses them. In his Discussion section, Feingold [-@feingoldEffectSizeForGMA2009, p. 49] pointed out this topic is missing from many text books and software user's guides. For example, though I took five statistics courses in graduate school, one of which even focused on the longitudinal growth model, none of my courses covered how to compute an effect size in a longitudinal growth model and none of my text books covered the topic, either. It's hard to expect researchers to use strategies we don't bother to teach, which is the reason for this blog series.
 
@@ -141,7 +141,7 @@ $$
   
   where the $\tau$ terms on the diagonal are the variances and the off-diagonal $\tau_{01}$ is their covariance. We'll be fitting this model with Bayesian software, which means all parameters will be given prior distributions. But since our goal is to emphasize the effect size and the multilevel framework, I'm just going to use the **brms** default settings for the priors and will avoid expressing them in formal statistical notation[^1].
 
-In this model, the four $\beta$ parameters are often called the "fixed effects," or the population parameters. Our focal parameter will be $\color{darkred}{\beta_{11}}$, which is why we marked off in red. This parameter is the interaction between time and treatment condition. Put another way, $\color{darkred}{\beta_{11}}$ is the difference in the average rate of change, by treatment. Once we fit our multilevel growth model, we will explore how one might transform the $\color{darkred}{\beta_{11}}$ parameter into our desired effect size.
+In this model, the four $\beta$ parameters are often called the "fixed effects," or the population parameters. Our focal parameter will be $\color{darkred}{\beta_{11}}$, which is why we marked it off in red. This parameter is the interaction between time and treatment condition. Put another way, $\color{darkred}{\beta_{11}}$ is the difference in the average rate of change, by treatment. Once we fit our multilevel growth model, we will explore how one might transform the $\color{darkred}{\beta_{11}}$ parameter into our desired effect size.
 
 ### Fit the model.
 
@@ -203,7 +203,7 @@ Regardless on whether you focus on the output from **brms** or **lme4**, our coe
 
 ### Unstandardized effect size.
 
-Our interest lies in the `time0:tx` interaction, which is the unstandardized effect size for the "difference between the means of the slopes of the treatment and the control group" (p. 47). You might also describe this as a difference in differences. Here's a focused summary of that coefficient, what Feingold called $\beta_{11}$.
+Our interest lies in the `time0:tx` interaction, which is the unstandardized effect size for the "difference between the means of the slopes of the treatment and the control group" (p. 47). You might also describe this as a difference in differences. Here's a focused summary of that coefficient, which Feingold called $\beta_{11}$.
 
 ```{r}
 fixef(fit1)["time0:tx", ]
@@ -250,7 +250,7 @@ $$
 d_\text{GMA-raw} = \beta_{11}(\text{time}) / SD_\text{raw}.
 $$
 
-The $\beta_{11}$ in Feingold's equation is the multilevel interaction term between time and experimental condition--what we just visualized in a coefficient plot. The $(\text{time})$ part in the equation is a stand-in for the quantity of time units from the beginning of the study to the end point. Since our multilevel model used the `time` variable, which was `1` at baseline and `4` at the final time point, we would enter a 3 into the equation (i.e., $4 - 1 = 3$). The part of Feingold's equation that's left somewhat vague is what he meant by the denominator, $SD_\text{raw}$. On page 47, he used the value of 1.15 in his example. Without any reference to experimental condition in the subscript, one might assume that value is the standard deviation for the criterion across all time points or, perhaps, just at baseline. It turns out that's not the case.
+The $\beta_{11}$ in Feingold's equation is the multilevel interaction term between time and experimental condition--what we just visualized in a coefficient plot. The $(\text{time})$ part in the equation is a stand-in for the quantity of time units from the beginning of the study to the end point. Since our multilevel model used the `time0` variable, which was `0` at baseline and `3` at the final time point, we would enter a 3 into the equation (i.e., $3 - 0 = 3$). The part of Feingold's equation that's left somewhat vague is what he meant by the denominator, $SD_\text{raw}$. On page 47, he used the value of 1.15 in his example. Without any reference to experimental condition in the subscript, one might assume that value is the standard deviation for the criterion across all time points or, perhaps, just at baseline. It turns out that's not the case.
 
 ```{r, message = F}
 # standard deviation for the criterion across all time points
@@ -284,7 +284,7 @@ sd_raw_pre_p <- sqrt((sd_raw_pre_c^2 + sd_raw_pre_t^2) / 2)
 sd_raw_pre_p
 ```
 
-Since Feingold's synthetic data are special case where $SD_\text{raw(pre-T)} = SD_\text{raw(pre-C)} = SD_\text{pooled}$, these distinctions might all seem dull and pedantic. Yet if your real-world data look anything like mine, this won't be the case and you'll need to understand how distinguish between and choose from among these options.
+Since Feingold's synthetic data are a special case where $SD_\text{raw(pre-T)} = SD_\text{raw(pre-C)} = SD_\text{pooled}$, these distinctions might all seem dull and pedantic. Yet if your real-world data look anything like mine, this won't be the case and you'll need to understand how distinguish between and choose from among these options.
 
 Another thing to consider is that whereas Feingold's synthetic data have the desirable quality where the sample sizes are the same across the experimental conditions ($n_\text{T} = n_\text{C} = 10$), this won't always be the case. If you end up with unbalanced experimental data, you might consider the sample-size weighted pooled standard deviation, $SD_\text{pooled}^*$, which I believe has its origins in Hedges' work [-@hedgesDistributionTheoryforGlass1981, p. 110]. It follows the formula
 
@@ -311,7 +311,7 @@ Therefore, if we use $SD_\text{raw(pre-C)}$ (`sd_raw_pre_c`) as our working valu
 fixef(fit1)["time0:tx", 1] * 3 / sd_raw_pre_c
 ```
 
-Within the Bayesian framework, we can get a full posterior distribution for that effect by working directly with all the posterior draws.
+Within the Bayesian framework, we can get a full posterior distribution for the standardized version of $\beta_{11}$, $d_\text{GMA-raw}$, by working directly with all the posterior draws.
 
 ```{r fig3, fig.width = 4, fig.height = 2.25}
 posterior_samples(fit1) %>% 
@@ -324,7 +324,7 @@ posterior_samples(fit1) %>%
   xlab(expression(italic(d)[GMA-raw]~("standardized difference in change scores")))
 ```
 
-The population average could be anywhere from 2 to 3.25, but the best guess is it's about 2.5. Here are the numeric values for the posterior median and percentile-based 95% interval.
+The population average could be anywhere from 2 to 3.25, but the best guess is it's about 2.5. In my field (clinical psychology), this would be considered a very large effect size. Anyway, here are the numeric values for the posterior median and percentile-based 95% interval.
 
 ```{r}
 posterior_samples(fit1) %>% 
@@ -358,11 +358,11 @@ posterior_samples(fit1) %>%
   mutate_if(is.double, round, digits = 2)
 ```
 
-I don't know that I'd use this approach for an applied purpose, but it's a good exercise to perform to make sure you understand your model.
+Notice how the summary values in the rows for `beta_11` and `d_GAM_raw` match up with those we computed, above.
 
 ### You may want options.
 
-Turns out there's an other way to compute the standardized mean difference for experimental longitudinal data. You can just fit the model to the standardized data. As with our approach, above, the trick is to make sure you standardized the data with a defensible standardizer. I recommend you default to the pooled standard deviation at baseline. First, we compute the weighted mean at baseline.
+Turns out there's an other way to compute the standardized mean difference for experimental longitudinal data. You can just fit the model to the standardized data. As with our approach, above, the trick is to make sure you standardized the data with a defensible standardizer. I recommend you default to the pooled standard deviation at baseline ($SD_\text{pooled}$). To do so, we first compute the weighted mean at baseline.
 
 ```{r}
 # group-level baseline means
@@ -375,7 +375,7 @@ m_raw_pre_p <- (m_raw_pre_t * n_t + m_raw_pre_c * n_c) / (n_t + n_c)
 m_raw_pre_p
 ```
 
-Now use the weighted baseline mean and the pooled baseline standard deviation to standardize the data, saving the results as `z`.
+Next use the weighted baseline mean and the pooled baseline standard deviation to standardize the data, saving the results as `z`.
 
 ```{r}
 d_long <-
@@ -436,7 +436,7 @@ Yes, one can compute a standardized mean difference effect size for experimental
 
 As an alternative workflow, you can also fit the model on data that were standardized using the pooled standard deviation at baseline. This will automatically put the $\beta_{11}$ in the effect-size metric. But as with the other method, you still might have to correct for how you scaled the time variable.
 
-Though we're not covering it, here, @feingoldARegressionFramework2013 extended this framework to other contexts. For example, he discussed how to apply it to data with nonlinear trends and to models with other covariates. But the foundation is right here:
+Though we're not covering it, here, @feingoldARegressionFramework2013 extended this framework to other contexts. For example, he discussed how to apply it to data with nonlinear trends and to models with other covariates. Just know the foundation is right here:
   
 $$
 d_\text{GMA-raw} = \beta_{11}(\text{time}) / SD_\text{raw}.
