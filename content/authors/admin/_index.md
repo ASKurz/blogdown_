@@ -38,9 +38,9 @@ organizations:
 role: Clinical Research Psychologist
 
 social:
-- icon: envelope
-  icon_pack: fas
-  link: /#contact
+# - icon: envelope
+#   icon_pack: fas
+#   link: /#contact
 
 - icon: twitter
   icon_pack: fab
