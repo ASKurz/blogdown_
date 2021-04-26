@@ -58,6 +58,28 @@ if (window.hljs) {
 
 
 
+<style type="text/css">
+/* for pandoc --citeproc since 2.11 */
+div.csl-bib-body { }
+div.csl-entry {
+  clear: both;
+}
+.hanging div.csl-entry {
+  margin-left:2em;
+  text-indent:-2em;
+}
+div.csl-left-margin {
+  min-width:2em;
+  float:left;
+}
+div.csl-right-inline {
+  margin-left:2em;
+  padding-left:1em;
+}
+div.csl-indent {
+  margin-left: 2em;
+}
+</style>
 
 
 
@@ -174,11 +196,11 @@ pre code {
 
 <div id="orientation" class="section level2">
 <h2>Orientation</h2>
-<p>This post is the second and final installment of a two-part series. Our goal is to show how to compute a Cohen’s-<span class="math inline">\(d\)</span> type effect size when you have longitudinal data on <span class="math inline">\(3+\)</span> time points for two experimental groups. In the <a href="https://solomonkurz.netlify.app/post/2021-01-26-effect-sizes-for-experimental-trials-analyzed-with-multilevel-growth-models-one-of-two/">first post</a>, we explored how one might compute an effect size for two-group data with only <span class="math inline">\(2\)</span> time points. In this post, we show how to generalize this framework to data recorded over <span class="math inline">\(3+\)</span> time points. The data and overall framework come from <span class="citation">@feingoldEffectSizeForGMA2009</span>.</p>
+<p>This post is the second and final installment of a two-part series. Our goal is to show how to compute a Cohen’s-<span class="math inline">\(d\)</span> type effect size when you have longitudinal data on <span class="math inline">\(3+\)</span> time points for two experimental groups. In the <a href="https://solomonkurz.netlify.app/post/2021-01-26-effect-sizes-for-experimental-trials-analyzed-with-multilevel-growth-models-one-of-two/">first post</a>, we explored how one might compute an effect size for two-group data with only <span class="math inline">\(2\)</span> time points. In this post, we show how to generalize this framework to data recorded over <span class="math inline">\(3+\)</span> time points. The data and overall framework come from <span class="citation"><a href="#ref-feingoldEffectSizeForGMA2009" role="doc-biblioref">Feingold</a> (<a href="#ref-feingoldEffectSizeForGMA2009" role="doc-biblioref">2009</a>)</span>.</p>
 <div id="i-still-make-assumptions." class="section level3">
 <h3>I still make assumptions.</h3>
-<p>As with the <a href="https://solomonkurz.netlify.app/post/2021-01-26-effect-sizes-for-experimental-trials-analyzed-with-multilevel-growth-models-one-of-two/#i-make-assumptions.">first post</a>, I make a handful of assumptions about your background knowledge. Though I won’t spell them out again, here, I should stress that familiarity with multilevel models will particularly important for this post. To brush up, I recommend <span class="citation">@raudenbushHLM2002</span>, <span class="citation">@singerAppliedLongitudinalData2003</span>, or <span class="citation">@hoffmanLongitudinalAnalysisModeling2015</span>.</p>
-<p>As before, all code is in <strong>R</strong> <span class="citation">[@R-base]</span>. Here we load our primary <strong>R</strong> packages–<a href="https://github.com/paul-buerkner/brms"><strong>brms</strong></a> <span class="citation">[@R-brms; @burknerBrmsPackageBayesian2017; @burknerAdvancedBayesianMultilevel2018]</span>, <a href="https://mjskay.github.io/tidybayes/"><strong>tidybayes</strong></a> <span class="citation">[@R-tidybayes]</span>, and the <a href="http://style.tidyverse.org"><strong>tidyverse</strong></a> <span class="citation">[@R-tidyverse; @wickhamWelcomeTidyverse2019]</span>–and adjust the global plotting theme defaults.</p>
+<p>As with the <a href="https://solomonkurz.netlify.app/post/2021-01-26-effect-sizes-for-experimental-trials-analyzed-with-multilevel-growth-models-one-of-two/#i-make-assumptions.">first post</a>, I make a handful of assumptions about your background knowledge. Though I won’t spell them out again, here, I should stress that familiarity with multilevel models will particularly important for this post. To brush up, I recommend <span class="citation"><a href="#ref-raudenbushHLM2002" role="doc-biblioref">Raudenbush &amp; Bryk</a> (<a href="#ref-raudenbushHLM2002" role="doc-biblioref">2002</a>)</span>, <span class="citation"><a href="#ref-singerAppliedLongitudinalData2003" role="doc-biblioref">Singer &amp; Willett</a> (<a href="#ref-singerAppliedLongitudinalData2003" role="doc-biblioref">2003</a>)</span>, or <span class="citation"><a href="#ref-hoffmanLongitudinalAnalysisModeling2015" role="doc-biblioref">Hoffman</a> (<a href="#ref-hoffmanLongitudinalAnalysisModeling2015" role="doc-biblioref">2015</a>)</span>.</p>
+<p>As before, all code is in <strong>R</strong> <span class="citation">(<a href="#ref-R-base" role="doc-biblioref">R Core Team, 2020</a>)</span>. Here we load our primary <strong>R</strong> packages–<a href="https://github.com/paul-buerkner/brms"><strong>brms</strong></a> <span class="citation">(<a href="#ref-burknerBrmsPackageBayesian2017" role="doc-biblioref">Bürkner, 2017</a>, <a href="#ref-burknerAdvancedBayesianMultilevel2018" role="doc-biblioref">2018</a>, <a href="#ref-R-brms" role="doc-biblioref">2020</a>)</span>, <a href="https://mjskay.github.io/tidybayes/"><strong>tidybayes</strong></a> <span class="citation">(<a href="#ref-R-tidybayes" role="doc-biblioref">Kay, 2020</a>)</span>, and the <a href="http://style.tidyverse.org"><strong>tidyverse</strong></a> <span class="citation">(<a href="#ref-R-tidyverse" role="doc-biblioref">Wickham, 2019</a>; <a href="#ref-wickhamWelcomeTidyverse2019" role="doc-biblioref">Wickham et al., 2019</a>)</span>–and adjust the global plotting theme defaults.</p>
 <pre class="r"><code>library(brms)
 library(tidybayes)
 library(tidyverse)
@@ -254,8 +276,8 @@ head(d)</code></pre>
 <h2>Model</h2>
 <div id="we-need-a-framework." class="section level3">
 <h3>We need a framework.</h3>
-<p>Traditional analytic strategies, such as ordinary least squares (OLS) regression and the analysis of variance (ANOVA) framework, can work okay with data collected on one or two time points. In his <span class="citation">[-@feingoldEffectSizeForGMA2009; -@feingoldARegressionFramework2013]</span> work, which is the inspiration for this blog series, Feingold recommended what he called growth-modeling analysis (GMA) for data collected on <span class="math inline">\(3+\)</span>. If you’re not familiar with the term GMA, this is a longitudinal version of what others have called hierarchical linear models, mixed-effects models, random-effects models, or what I prefer to call <em>multilevel models</em>. For longitudinal data, I’m fond of the term <em>multilevel growth model</em>, but you can use whatever term you like. If you’re interested, Raudenbush and Bryk touched on the historic origins of several of these terms in the first chapter of their <span class="citation">[-@raudenbushHLM2002]</span> text.</p>
-<p>Though multilevel growth models have become commonplace in many applied areas, it’s not immediately obvious how to compute standardized effect sizes when one uses them. In his Discussion section, Feingold <span class="citation">[-@feingoldEffectSizeForGMA2009, p. 49]</span> pointed out this topic is missing from many text books and software user’s guides. For example, though I took five statistics courses in graduate school, one of which even focused on the longitudinal growth model, none of my courses covered how to compute an effect size in a longitudinal growth model and none of my text books covered the topic, either. It’s hard to expect researchers to use strategies we don’t bother to teach, which is the reason for this blog series.</p>
+<p>Traditional analytic strategies, such as ordinary least squares (OLS) regression and the analysis of variance (ANOVA) framework, can work okay with data collected on one or two time points. In his <span class="citation">(<a href="#ref-feingoldEffectSizeForGMA2009" role="doc-biblioref">2009</a>, <a href="#ref-feingoldARegressionFramework2013" role="doc-biblioref">2013</a>)</span> work, which is the inspiration for this blog series, Feingold recommended what he called growth-modeling analysis (GMA) for data collected on <span class="math inline">\(3+\)</span>. If you’re not familiar with the term GMA, this is a longitudinal version of what others have called hierarchical linear models, mixed-effects models, random-effects models, or what I prefer to call <em>multilevel models</em>. For longitudinal data, I’m fond of the term <em>multilevel growth model</em>, but you can use whatever term you like. If you’re interested, Raudenbush and Bryk touched on the historic origins of several of these terms in the first chapter of their <span class="citation">(<a href="#ref-raudenbushHLM2002" role="doc-biblioref">2002</a>)</span> text.</p>
+<p>Though multilevel growth models have become commonplace in many applied areas, it’s not immediately obvious how to compute standardized effect sizes when one uses them. In his Discussion section, Feingold <span class="citation">(<a href="#ref-feingoldEffectSizeForGMA2009" role="doc-biblioref">2009, p. 49</a>)</span> pointed out this topic is missing from many text books and software user’s guides. For example, though I took five statistics courses in graduate school, one of which even focused on the longitudinal growth model, none of my courses covered how to compute an effect size in a longitudinal growth model and none of my text books covered the topic, either. It’s hard to expect researchers to use strategies we don’t bother to teach, which is the reason for this blog series.</p>
 <p>Anyway, to help fill this knowledge gap, we might slip into pedagogical mode. If we say our outcome variable <span class="math inline">\(y\)</span> varies across <span class="math inline">\(i\)</span> participants and <span class="math inline">\(t\)</span> time points, we might use Feingold’s Raudenbusch-&amp;-Bryk-type notation to express our upcoming statistical model as</p>
 <p><span class="math display">\[
   \begin{align*}
@@ -294,7 +316,7 @@ head(d_long)</code></pre>
 ## 4   101  -0.5       4 control   t4        7     4      3    1.5     3  1    
 ## 5   102  -0.5       2 control   t1        4     1     -3   -1.5     0  0    
 ## 6   102  -0.5       2 control   t2        4     2     -1   -0.5     1  0.333</code></pre>
-<p>In the <span class="citation">[-@feingoldEffectSizeForGMA2009]</span> paper, Feingold mentioned he coded time as a factor which</p>
+<p>In the <span class="citation">(<a href="#ref-feingoldEffectSizeForGMA2009" role="doc-biblioref">2009</a>)</span> paper, Feingold mentioned he coded time as a factor which</p>
 <blockquote>
 <p>was mean centered by using linear weights (-3, -1, 1, and 3 for T1 through T4, respectively) for a four-level design obtained from a table of orthogonal polynomials (Snedecor &amp; Cochran, 1967) for the within-subjects (Level 1 in HLM terminology) facet of the analysis. (p. 47)</p>
 </blockquote>
@@ -375,7 +397,7 @@ m_change_t - m_change_c</code></pre>
 </div>
 <div id="we-need-to-define-the-standardized-mean-difference-for-the-multilevel-growth-model." class="section level3">
 <h3>We need to define the standardized mean difference for the multilevel growth model.</h3>
-<p>Based on <span class="citation">@raudenbushEffectsOfStudyDuration2001</span>, Feingold presented two effect-size formulas for our multilevel growth model. The first, which he called <span class="math inline">\(d_\text{GMA-change}\)</span>, is on a completely different scale from any of the effect sizes mentioned in the first post (e.g., <span class="math inline">\(d_\text{IGPP-change}\)</span> and <span class="math inline">\(d_\text{IGPP-raw}\)</span>). Importantly, it turns out Raudenbush and Liu recommended their <span class="math inline">\(d_\text{GMA-change}\)</span> formula should be used for power calculations, but not necessarily to convey the magnitude of an effect. Thus we will not consider it further<a href="#fn3" class="footnote-ref" id="fnref3"><sup>3</sup></a>. Feingold reported the formula for their other effect size was</p>
+<p>Based on <span class="citation"><a href="#ref-raudenbushEffectsOfStudyDuration2001" role="doc-biblioref">Raudenbush &amp; Liu</a> (<a href="#ref-raudenbushEffectsOfStudyDuration2001" role="doc-biblioref">2001</a>)</span>, Feingold presented two effect-size formulas for our multilevel growth model. The first, which he called <span class="math inline">\(d_\text{GMA-change}\)</span>, is on a completely different scale from any of the effect sizes mentioned in the first post (e.g., <span class="math inline">\(d_\text{IGPP-change}\)</span> and <span class="math inline">\(d_\text{IGPP-raw}\)</span>). Importantly, it turns out Raudenbush and Liu recommended their <span class="math inline">\(d_\text{GMA-change}\)</span> formula should be used for power calculations, but not necessarily to convey the magnitude of an effect. Thus we will not consider it further<a href="#fn3" class="footnote-ref" id="fnref3"><sup>3</sup></a>. Feingold reported the formula for their other effect size was</p>
 <p><span class="math display">\[
 d_\text{GMA-raw} = \beta_{11}(\text{time}) / SD_\text{raw}.
 \]</span></p>
@@ -405,12 +427,12 @@ sd_raw_pre_c</code></pre>
 <pre><code>## [1] 1.154701</code></pre>
 <p>But since he didn’t use a subscript, I suspect Feingold meant to convey a pooled standard deviation, following the equation</p>
 <p><span class="math display">\[SD_\text{pooled} = \sqrt{\frac{SD_\text{raw(pre-T)}^2 + SD_\text{raw(pre-C)}^2}{2}},\]</span></p>
-<p>which is a sample version of Cohen’s original equation 2.3.2 <span class="citation">[-@cohenStatisticalPowerAnalysis1988a, p. 44]</span>. Here’s how to compute the pooled standard deviation by hand, which we’ll save as <code>sd_raw_pre_p</code>.</p>
+<p>which is a sample version of Cohen’s original equation 2.3.2 <span class="citation">(<a href="#ref-cohenStatisticalPowerAnalysis1988a" role="doc-biblioref">1988, p. 44</a>)</span>. Here’s how to compute the pooled standard deviation by hand, which we’ll save as <code>sd_raw_pre_p</code>.</p>
 <pre class="r"><code>sd_raw_pre_p &lt;- sqrt((sd_raw_pre_c^2 + sd_raw_pre_t^2) / 2)
 sd_raw_pre_p</code></pre>
 <pre><code>## [1] 1.154701</code></pre>
 <p>Since Feingold’s synthetic data are special case where <span class="math inline">\(SD_\text{raw(pre-T)} = SD_\text{raw(pre-C)} = SD_\text{pooled}\)</span>, these distinctions might all seem dull and pedantic. Yet if your real-world data look anything like mine, this won’t be the case and you’ll need to understand how distinguish between and choose from among these options.</p>
-<p>Another thing to consider is that whereas Feingold’s synthetic data have the desirable quality where the sample sizes are the same across the experimental conditions (<span class="math inline">\(n_\text{T} = n_\text{C} = 10\)</span>), this won’t always be the case. If you end up with unbalanced experimental data, you might consider the sample-size weighted pooled standard deviation, <span class="math inline">\(SD_\text{pooled}^*\)</span>, which I believe has its origins in Hedges’ work <span class="citation">[-@hedgesDistributionTheoryforGlass1981, p. 110]</span>. It follows the formula</p>
+<p>Another thing to consider is that whereas Feingold’s synthetic data have the desirable quality where the sample sizes are the same across the experimental conditions (<span class="math inline">\(n_\text{T} = n_\text{C} = 10\)</span>), this won’t always be the case. If you end up with unbalanced experimental data, you might consider the sample-size weighted pooled standard deviation, <span class="math inline">\(SD_\text{pooled}^*\)</span>, which I believe has its origins in Hedges’ work <span class="citation">(<a href="#ref-hedgesDistributionTheoryforGlass1981" role="doc-biblioref">1981, p. 110</a>)</span>. It follows the formula</p>
 <p><span class="math display">\[SD_\text{pooled}^* = \sqrt{\frac{(n_\text{T} - 1)SD_\text{raw(pre-T)}^2 + (n_\text{C} - 1)SD_\text{raw(pre-C)}^2}{n_\text{T} + n_\text{C} - 2}}.\]</span></p>
 <p>Here it is for Feingold’s data.</p>
 <pre class="r"><code># define the sample sizes
@@ -421,7 +443,7 @@ n_c &lt;- 10
 sqrt(((n_t - 1) * sd_raw_pre_c^2 + (n_c - 1) * sd_raw_pre_t^2) / (n_t + n_c - 2))</code></pre>
 <pre><code>## [1] 1.154701</code></pre>
 <p>Again, in the special case of these synthetic data, <span class="math inline">\(SD_\text{pooled}^*\)</span> happens to be the same value as <span class="math inline">\(SD_\text{pooled}^*\)</span>, which is also the same value as <span class="math inline">\(SD_\text{raw(pre-T)}\)</span> and <span class="math inline">\(SD_\text{raw(pre-C)}\)</span>. This will not always the case with your real-world data. Choose your <span class="math inline">\(SD\)</span> with care and make sure to report which ever formula you use. Don’t be coy with your effect-size calculations.</p>
-<p>You may be wondering, though, whether you can use the standard deviations for one of the treatment conditions rather than a variant of the pooled standard deviation. <em>Yes</em>, you can. I think Cumming <span class="citation">[-@cummingUnderstandingTheNewStatistics2012, Chapter 11]</span> did a nice job walking through this issue. For example, if we thought of our control condition as a true benchmark for what we’d expect at baseline, we could just use <span class="math inline">\(SD_\text{raw(pre-C)}\)</span> as our standardizer. This is sometimes referred to as a Glass’ <span class="math inline">\(d\)</span> or Glass’ <span class="math inline">\(\Delta\)</span>. Whatever you choose and whatever you call it, just make sure to clearly define your standardizing formula for your audience.</p>
+<p>You may be wondering, though, whether you can use the standard deviations for one of the treatment conditions rather than a variant of the pooled standard deviation. <em>Yes</em>, you can. I think Cumming <span class="citation">(<a href="#ref-cummingUnderstandingTheNewStatistics2012" role="doc-biblioref">2012</a>, Chapter 11)</span> did a nice job walking through this issue. For example, if we thought of our control condition as a true benchmark for what we’d expect at baseline, we could just use <span class="math inline">\(SD_\text{raw(pre-C)}\)</span> as our standardizer. This is sometimes referred to as a Glass’ <span class="math inline">\(d\)</span> or Glass’ <span class="math inline">\(\Delta\)</span>. Whatever you choose and whatever you call it, just make sure to clearly define your standardizing formula for your audience.</p>
 <p>Therefore, if we use <span class="math inline">\(SD_\text{raw(pre-C)}\)</span> (<code>sd_raw_pre_c</code>) as our working value, we can compute <span class="math inline">\(d_\text{GMA-raw}\)</span> as follows.</p>
 <pre class="r"><code>fixef(fit1)[&quot;time0:tx&quot;, 1] * 3 / sd_raw_pre_c</code></pre>
 <pre><code>## [1] 2.598259</code></pre>
@@ -557,7 +579,7 @@ m_raw_pre_p</code></pre>
 <h2>Sum up</h2>
 <p>Yes, one can compute a standardized mean difference effect size for experimental data analyzed with a multilevel growth model. The focal parameter is the treatment-time interaction, what we called <span class="math inline">\(\beta_{11}\)</span>. The trick is to divide that parameter by the pooled standard deviation at baseline. This will put the effect size, what Feingold called <span class="math inline">\(d_\text{GMA-raw}\)</span>, into a conventional Cohen’s <span class="math inline">\(d\)</span> type metric. But be mindful that this method may require you to multiply the effect by a number that corrects for how you have scaled the time variable. In the example we worked through, we multiplied by 3.</p>
 <p>As an alternative workflow, you can also fit the model on data that were standardized using the pooled standard deviation at baseline. This will automatically put the <span class="math inline">\(\beta_{11}\)</span> in the effect-size metric. But as with the other method, you still might have to correct for how you scaled the time variable.</p>
-<p>Though we’re not covering it, here, <span class="citation">@feingoldARegressionFramework2013</span> extended this framework to other contexts. For example, he discussed how to apply it to data with nonlinear trends and to models with other covariates. But the foundation is right here:</p>
+<p>Though we’re not covering it, here, <span class="citation"><a href="#ref-feingoldARegressionFramework2013" role="doc-biblioref">Feingold</a> (<a href="#ref-feingoldARegressionFramework2013" role="doc-biblioref">2013</a>)</span> extended this framework to other contexts. For example, he discussed how to apply it to data with nonlinear trends and to models with other covariates. But the foundation is right here:</p>
 <p><span class="math display">\[
 d_\text{GMA-raw} = \beta_{11}(\text{time}) / SD_\text{raw}.
 \]</span></p>
@@ -611,13 +633,66 @@ d_\text{GMA-raw} = \beta_{11}(\text{time}) / SD_\text{raw}.
 ## [121] coda_0.19-4          minqa_1.2.4          rmarkdown_2.7        shiny_1.5.0          lubridate_1.7.9.2   
 ## [126] base64enc_0.1-3      dygraphs_1.1.1.6</code></pre>
 </div>
-<div id="references" class="section level2">
-<h2>References</h2>
+<div id="references" class="section level2 unnumbered">
+<h2 class="unnumbered">References</h2>
+<div id="refs" class="references csl-bib-body hanging-indent" line-spacing="2">
+<div id="ref-burknerBrmsPackageBayesian2017" class="csl-entry">
+Bürkner, P.-C. (2017). <span class="nocase">brms</span>: <span>An R</span> package for <span>Bayesian</span> multilevel models using <span>Stan</span>. <em>Journal of Statistical Software</em>, <em>80</em>(1), 1–28. <a href="https://doi.org/10.18637/jss.v080.i01">https://doi.org/10.18637/jss.v080.i01</a>
+</div>
+<div id="ref-burknerAdvancedBayesianMultilevel2018" class="csl-entry">
+Bürkner, P.-C. (2018). Advanced <span>Bayesian</span> multilevel modeling with the <span>R</span> package brms. <em>The R Journal</em>, <em>10</em>(1), 395–411. <a href="https://doi.org/10.32614/RJ-2018-017">https://doi.org/10.32614/RJ-2018-017</a>
+</div>
+<div id="ref-R-brms" class="csl-entry">
+Bürkner, P.-C. (2020). <em><span class="nocase">brms</span>: <span>Bayesian</span> regression models using ’<span>Stan</span>’</em>. <a href="https://CRAN.R-project.org/package=brms">https://CRAN.R-project.org/package=brms</a>
+</div>
+<div id="ref-brms2021RM" class="csl-entry">
+Bürkner, P.-C. (2021). <em><span class="nocase">brms</span> reference manual, <span>Version</span> 2.15.0</em>. <a href="https://CRAN.R-project.org/package=brms/brms.pdf">https://CRAN.R-project.org/package=brms/brms.pdf</a>
+</div>
+<div id="ref-cohenStatisticalPowerAnalysis1988a" class="csl-entry">
+Cohen, J. (1988). <em>Statistical power analysis for the behavioral sciences</em>. <span>L. Erlbaum Associates</span>. <a href="https://www.worldcat.org/title/statistical-power-analysis-for-the-behavioral-sciences/oclc/17877467">https://www.worldcat.org/title/statistical-power-analysis-for-the-behavioral-sciences/oclc/17877467</a>
+</div>
+<div id="ref-cummingUnderstandingTheNewStatistics2012" class="csl-entry">
+Cumming, G. (2012). <em>Understanding the new statistics: <span>Effect</span> sizes, confidence intervals, and meta-analysis</em>. <span>Routledge</span>. <a href="https://www.routledge.com/Understanding-The-New-Statistics-Effect-Sizes-Confidence-Intervals-and/Cumming/p/book/9780415879682">https://www.routledge.com/Understanding-The-New-Statistics-Effect-Sizes-Confidence-Intervals-and/Cumming/p/book/9780415879682</a>
+</div>
+<div id="ref-feingoldEffectSizeForGMA2009" class="csl-entry">
+Feingold, A. (2009). Effect sizes for growth-modeling analysis for controlled clinical trials in the same metric as for classical analysis. <em>Psychological Methods</em>, <em>14</em>(1), 43. <a href="https://doi.org/10.1037/a0014699">https://doi.org/10.1037/a0014699</a>
+</div>
+<div id="ref-feingoldARegressionFramework2013" class="csl-entry">
+Feingold, A. (2013). A regression framework for effect size assessments in longitudinal modeling of group differences. <em>Review of General Psychology</em>, <em>17</em>(1), 111–121. <a href="https://doi.org/10.1037/a0030048">https://doi.org/10.1037/a0030048</a>
+</div>
+<div id="ref-hedgesDistributionTheoryforGlass1981" class="csl-entry">
+Hedges, L. V. (1981). Distribution theory for <span>Glass</span>’s estimator of effect size and related estimators. <em>Journal of Educational Statistics</em>, <em>6</em>(2), 107–128. <a href="https://doi.org/10.3102/10769986006002107">https://doi.org/10.3102/10769986006002107</a>
+</div>
+<div id="ref-hoffmanLongitudinalAnalysisModeling2015" class="csl-entry">
+Hoffman, L. (2015). <em>Longitudinal analysis: <span>Modeling</span> within-person fluctuation and change</em> (1 edition). <span>Routledge</span>. <a href="https://www.routledge.com/Longitudinal-Analysis-Modeling-Within-Person-Fluctuation-and-Change/Hoffman/p/book/9780415876025">https://www.routledge.com/Longitudinal-Analysis-Modeling-Within-Person-Fluctuation-and-Change/Hoffman/p/book/9780415876025</a>
+</div>
+<div id="ref-R-tidybayes" class="csl-entry">
+Kay, M. (2020). <em><span class="nocase">tidybayes</span>: <span>Tidy</span> data and ’geoms’ for <span>Bayesian</span> models</em>. <a href="https://mjskay.github.io/tidybayes/">https://mjskay.github.io/tidybayes/</a>
+</div>
+<div id="ref-R-base" class="csl-entry">
+R Core Team. (2020). <em>R: <span>A</span> language and environment for statistical computing</em>. <span>R Foundation for Statistical Computing</span>. <a href="https://www.R-project.org/">https://www.R-project.org/</a>
+</div>
+<div id="ref-raudenbushHLM2002" class="csl-entry">
+Raudenbush, S. W., &amp; Bryk, A. S. (2002). <em>Hierarchical linear models: <span>Applications</span> and data analysis methods</em> (Second Edition). <span>SAGE Publications, Inc</span>. <a href="https://us.sagepub.com/en-us/nam/hierarchical-linear-models/book9230">https://us.sagepub.com/en-us/nam/hierarchical-linear-models/book9230</a>
+</div>
+<div id="ref-raudenbushEffectsOfStudyDuration2001" class="csl-entry">
+Raudenbush, S. W., &amp; Liu, X.-F. (2001). Effects of study duration, frequency of observation, and sample size on power in studies of group differences in polynomial change. <em>Psychological Methods</em>, <em>6</em>(4), 387. <a href="https://doi.org/10.1037/1082-989X.6.4.387">https://doi.org/10.1037/1082-989X.6.4.387</a>
+</div>
+<div id="ref-singerAppliedLongitudinalData2003" class="csl-entry">
+Singer, J. D., &amp; Willett, J. B. (2003). <em>Applied longitudinal data analysis: <span>Modeling</span> change and event occurrence</em>. <span>Oxford University Press, USA</span>. <a href="https://oxford.universitypressscholarship.com/view/10.1093/acprof:oso/9780195152968.001.0001/acprof-9780195152968">https://oxford.universitypressscholarship.com/view/10.1093/acprof:oso/9780195152968.001.0001/acprof-9780195152968</a>
+</div>
+<div id="ref-R-tidyverse" class="csl-entry">
+Wickham, H. (2019). <em><span class="nocase">tidyverse</span>: <span>Easily</span> install and load the ’tidyverse’</em>. <a href="https://CRAN.R-project.org/package=tidyverse">https://CRAN.R-project.org/package=tidyverse</a>
+</div>
+<div id="ref-wickhamWelcomeTidyverse2019" class="csl-entry">
+Wickham, H., Averick, M., Bryan, J., Chang, W., McGowan, L. D., François, R., Grolemund, G., Hayes, A., Henry, L., Hester, J., Kuhn, M., Pedersen, T. L., Miller, E., Bache, S. M., Müller, K., Ooms, J., Robinson, D., Seidel, D. P., Spinu, V., … Yutani, H. (2019). Welcome to the tidyverse. <em>Journal of Open Source Software</em>, <em>4</em>(43), 1686. <a href="https://doi.org/10.21105/joss.01686">https://doi.org/10.21105/joss.01686</a>
+</div>
+</div>
 </div>
 <div class="footnotes">
 <hr />
 <ol>
-<li id="fn1"><p>If you’re curious about our priors, fit the models on your computer and then execute <code>fit1$prior</code>. To learn more about <strong>brms</strong> default priors, spend some time with the <a href="https://CRAN.R-project.org/package=brms/brms.pdf"><strong>brms</strong> reference manual</a> <span class="citation">[@brms2021RM]</span>.<a href="#fnref1" class="footnote-back">↩︎</a></p></li>
+<li id="fn1"><p>If you’re curious about our priors, fit the models on your computer and then execute <code>fit1$prior</code>. To learn more about <strong>brms</strong> default priors, spend some time with the <a href="https://CRAN.R-project.org/package=brms/brms.pdf"><strong>brms</strong> reference manual</a> <span class="citation">(<a href="#ref-brms2021RM" role="doc-biblioref">Bürkner, 2021</a>)</span>.<a href="#fnref1" class="footnote-back">↩︎</a></p></li>
 <li id="fn2"><p>If you’re not into the whole Bayesian framework I’m using, you can just ignore the part about trace plots and chains. If you’re into it, execute <code>plot(fit1)</code>.<a href="#fnref2" class="footnote-back">↩︎</a></p></li>
 <li id="fn3"><p>Really. If you are interested in communicating your research results to others, do not mess with the <span class="math inline">\(d_\text{GMA-change}\)</span>. It’s on a totally different metric from the conventional Cohen’s <span class="math inline">\(d\)</span> and you’ll just end up confusing people.<a href="#fnref3" class="footnote-back">↩︎</a></p></li>
 </ol>
