@@ -2,7 +2,7 @@
 # Display name
 name: A. Solomon Kurz
 
-# bio: 
+bio:
 
 education:
   courses:
@@ -31,16 +31,16 @@ interests:
 - Applied Statistics
 - Methodology
 - Science Reform
-
+    
 organizations:
 - name: VISN 17 Center of Excellence
   url: https://www.mirecc.va.gov/visn17/
 role: Clinical Research Psychologist
 
 social:
-# - icon: envelope
-#   icon_pack: fas
-#   link: /#contact
+- icon: envelope
+  icon_pack: fas
+  link: /#contact
 
 - icon: twitter
   icon_pack: fab
@@ -65,4 +65,3 @@ title: A. Solomon Kurz
 I am a clinical psychology researcher, currently working to improve the lives of post-deployment veterans. My primary therapeutic orientations are ACT and mindfulness-based interventions. I also make online resources for data analysis.
 
 {{< icon name="download" pack="fas" >}} Download my {{< staticref "media/A Solomon Kurz CV.pdf" "newtab" >}}CV{{< /staticref >}}.
-

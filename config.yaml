@@ -5,8 +5,8 @@ theme: "starter-academic"
 # This file is formatted using YAML syntax - learn more at https://learnxinyminutes.com/docs/yaml/
 
 title: A. Solomon Kurz # Website name
-baseurl: 'https://solomonkurz.netlify.app/'
-copyright: '© A. Solomon Kurz (2021)'
+baseurl: 'https://solomonkurz-temp2.netlify.app/'
+copyright: '© A. Solomon Kurz (2021)' 
 
 ############################
 ## LANGUAGE
