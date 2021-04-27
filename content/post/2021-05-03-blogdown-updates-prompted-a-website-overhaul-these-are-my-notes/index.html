@@ -1,0 +1,311 @@
+---
+title: 'blogdown updates prompted a website overhaul: These are my notes'
+author: A. Solomon Kurz
+date: '2021-05-03'
+slug: ''
+categories: []
+tags:
+  - blogdown
+  - hugo
+  - Netlify
+  - R
+  - tutorial
+subtitle: ''
+summary: ''
+authors: []
+lastmod: '2021-04-26T11:27:11-07:00'
+featured: no
+image:
+  caption: ''
+  focal_point: ''
+  preview_only: no
+projects: []
+bibliography: /Users/solomonkurz/Dropbox/blogdown/content/post/my_blog.bib
+biblio-style: apalike
+csl: /Users/solomonkurz/Dropbox/blogdown/content/post/apa.csl  
+link-citations: yes
+---
+
+<script src="{{< blogdown/postref >}}index_files/header-attrs/header-attrs.js"></script>
+
+
+<div id="purpose" class="section level2">
+<h2>Purpose</h2>
+<p>A few weeks ago, I was preparing to release the second blog post in a two-part series (you can find that post <a href="https://solomonkurz.netlify.app/post/2021-04-22-effect-sizes-for-experimental-trials-analyzed-with-multilevel-growth-models-two-of-two/">here</a>). During the editing process, I had rendered the files into HTML and tried posting the draft to my website. Everything looked fine except that the figures wouldn’t render. I hadn’t seen this behavior before and I figured it had to do with some software update. When I checked, the <a href="https://CRAN.R-project.org/package=blogdown"><strong>blogdown</strong> package</a> <span class="citation">(<a href="#ref-xieBlogdown2017" role="doc-biblioref">Xie et al., 2017</a>, <a href="#ref-R-blogdown" role="doc-biblioref">2021</a>)</span> had indeed recently updated. I’d also noticed the great <a href="https://alison.rbind.io">Alison Hill</a> had recently posted a few blogs on <strong>blogdown</strong>-related topics, so I figured it was time for a refresh.</p>
+<p>The purpose of this post is to highlight some of the steps I took to refresh my website and recover my figure-rendering game. At a minimum, I’m hoping this post will help me better understand how to set up my website the next time it needs an overhaul. Perhaps it will be of some help to you, too.</p>
+<div id="i-dont-cover-everything." class="section level3">
+<h3>I don’t cover everything.</h3>
+<p>This post is not an exhaustive introduction to <strong>blogdown</strong>. For that, you have the ebook by Xie, Hill, and Thomas <span class="citation">(<a href="#ref-xieBlogdown2017" role="doc-biblioref">2017</a>)</span>, <a href="https://bookdown.org/yihui/blogdown/"><em>blogdown: Creating websites with R markdown</em></a>. A difficulty with their fine book is they designed it to cover a broad range of applications. A further difficulty is <strong>blogdown</strong> is something of a high-level interface for an array of more-specific software solutions (e.g., <a href="https://www.netlify.com/">Netlify</a>, <a href="https://gohugo.io/">Hugo</a>), each of which has its own quirks. I am not going to introduce these in any great detail, either. For those purposes, you have the relevant reference manuals and other documentations available on the web.</p>
+</div>
+<div id="this-isnt-the-only-way." class="section level3">
+<h3>This isn’t the only way.</h3>
+<p>There are any number of ways one could make an academic website via <strong>blogdown</strong>. Hill provided one workflow in her post, <a href="https://alison.rbind.io/post/new-year-new-blogdown/"><em>Up &amp; running with blogdown in 2021</em></a>, upon which I’ll be drawing heavily throughout this post. Some of my steps will follow a different order from hers, based on what seemed right, for me.</p>
+</div>
+</div>
+<div id="foundations" class="section level2">
+<h2>Foundations</h2>
+<p>Hill organized her aforementioned blog post, <a href="https://alison.rbind.io/post/new-year-new-blogdown/"><em>Up &amp; running with blogdown in 2021</em></a>, as if one were building their <strong>blogdown</strong> website from scratch. After futzing around with different strategies, I recommend this approach even if you’ve had a <strong>blogdown</strong> website up and running for a while. If you haven’t updated your website recently, archive your old files and build the new one from the ground up. Here’s the first step:</p>
+<div id="step-1.-github." class="section level3">
+<h3>Step 1. GitHub.</h3>
+<p>Log on to your GitHub account and start a fresh repo. Name it something website-y. I named mine “blogdown,” which you can find at <a href="https://github.com/ASKurz/blogdown/">https://github.com/ASKurz/blogdown/</a>. If you need a refresher on GitHub, let the great Jenny Bryan lead you, <a href="http://happygitwithr.com/">here</a> <span class="citation">(<a href="#ref-bryanHappyGitGitHub2020" role="doc-biblioref">Bryan et al., 2020</a>)</span>.</p>
+</div>
+<div id="step-2.-rstudio-projects." class="section level3">
+<h3>Step 2. RStudio projects.</h3>
+<p>Make a fresh RStudio project<a href="#fn1" class="footnote-ref" id="fnref1"><sup>1</sup></a> to go along with your fresh GitHub repo. Within RStudio, you can do this by clicking through <code>File &gt; New Project &gt; Version Control &gt; Git</code>. Next, you’ll want to paste in the URL from your GitHub repo. If you haven’t done something like this, before, go back online to your repo and click the green button near the top that’s labeled “Clone or download.” A URL will appear in there. That’s what you’ll be pasting into your new RStudio project, which will connect it to your GitHub repo. Hill discussed this <a href="https://alison.rbind.io/post/new-year-new-blogdown/#step-1-create-repo">here</a>.</p>
+</div>
+</div>
+<div id="blogdown-mini-launch" class="section level2">
+<h2><strong>blogdown</strong> mini launch</h2>
+<div id="step-3.-make-a-default-blogdown-site." class="section level3">
+<h3>Step 3. Make a default <strong>blogdown</strong> site.</h3>
+<p>If you haven’t already, install the current version of <strong>blogdown</strong> by executing <code>install.packages("blogdown")</code>. Restart <strong>R</strong>, if necessary. Now within a fresh session within your RStudio project, execute <code>blogdown::new_site(theme = "wowchemy/starter-academic")</code><a href="#fn2" class="footnote-ref" id="fnref2"><sup>2</sup></a>. Over the next minute or two, you’ll see a handful of new files pop up in your project folder. In your console, you’ll probably notice the prompt: “Want to serve and preview the site now? (y/n).” I recommend executing <code>y</code>, which will return a preview of your default <strong>blogdown</strong> website in the RStudio Viewer panel.</p>
+</div>
+<div id="step-4.-.gitignore." class="section level3">
+<h3>Step 4. <code>.gitignore</code>.</h3>
+<p>I don’t know that you have to do this right now, but a good early setp is to make a <code>.gitignore</code> file. Following Hill (<a href="https://alison.rbind.io/post/new-year-new-blogdown/#using-github">here</a>), you can do this by executing <code>file.edit(".gitignore")</code>. Then go ahead and enter this content to the file:</p>
+<pre class="r"><code>.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+.DS_Store
+Thumbs.db 
+/public/
+/resources/</code></pre>
+<p>Once you save the changes, you might execute <code>blogdown::check_gitignore()</code> to confirm you’re okay.</p>
+<p>If you haven’t done so, yet, this would be a good time to commit your changes and push them to GitHub. Again, if this is new to you, let <span class="citation"><a href="#ref-bryanHappyGitGitHub2020" role="doc-biblioref">Bryan et al.</a> (<a href="#ref-bryanHappyGitGitHub2020" role="doc-biblioref">2020</a>)</span> lead you.</p>
+</div>
+</div>
+<div id="netlify" class="section level2">
+<h2>Netlify</h2>
+<div id="step-5.-sign-up-and-deploy." class="section level3">
+<h3>Step 5. Sign up and deploy.</h3>
+<p>Hill recommended you both build and host your <strong>blogdown</strong> website on Neflify (see <a href="https://alison.rbind.io/post/new-year-new-blogdown/#step-1-create-repo">here</a>). I’m not going to argue. Go to <a href="https://www.netlify.com/">https://www.netlify.com/</a> and either log in or sign up using your GitHub account. Even if you already have a Netlify account, I recommend making a new Netlify site with <code>New site from Git &gt; Continuous Deployment: GitHub</code>. You’ll then need to select your fresh GitHub repo, from above, to connect it to Netlify. This may require you to follow the prompts to actually navigate to GitHub, enable the connection, there, and then follow back to Netlify. Once you’re back in Netlify, leave settings at their defaults and select <code>Deploy Site</code>. You should be directed to a page with a header called <em>Production deploys</em> somewhere in the middle of the screen. After a minute of two, Netlify will finish deploying your site.</p>
+</div>
+<div id="step-6.-customize-your-netlify-subdomain." class="section level3">
+<h3>Step 6. Customize your Netlify subdomain.</h3>
+<p>When you create your new site, Netlify will have automatically generated a subdomain name following the form <code>random-word-12345</code>. You should be able to see this at the top of your screen. This subdomain name will be part of your web address. You’re at liberty to keep the default name, if you want. But you can customize your subdomain name by navigating to <code>Site settings &gt; General &gt; Site details</code>. Then click the gray button named <code>Change site name</code>. In the field, I renamed my subdomain to <code>solomonkurz</code>. As a result, my website is deployed at <a href="https://solomonkurz.netlify.app/">https://solomonkurz.netlify.app/</a>. Once you save this change, your website should be available at your customized address almost instantly.</p>
+</div>
+</div>
+<div id="start-customizing" class="section level2">
+<h2>Start customizing</h2>
+<div id="step-7.-config.yaml." class="section level3">
+<h3>Step 7. <code>config.yaml</code>.</h3>
+<p>You should see a <code>config.yaml</code> file in the root directory of your RStudio project folder. Open it and update the info at the top. Here’s what I changed:</p>
+<pre class="r"><code>title: A. Solomon Kurz # Website name
+baseurl: &#39;https://solomonkurz.netlify.app/&#39;
+copyright: &#39;© A. Solomon Kurz (2021)&#39; </code></pre>
+</div>
+<div id="step-8.-netlify.toml." class="section level3">
+<h3>Step 8. <code>netlify.toml</code>.</h3>
+<p>Next, check for a <code>netlify.toml</code> file in your root directory. You can also open or create it by executing <code>blogdown::config_netlify()</code>. Once the file’s open, make sure Hugo is installed and matched up by executing <code>blogdown::check_hugo()</code>. I needed to update my <code>netlify.toml</code> file to include the following:</p>
+<pre class="r"><code>[build.environment]
+  HUGO_VERSION = &quot;0.82.0&quot;</code></pre>
+<p>If this seems scary, Hill discussed it in greater detail <a href="https://alison.rbind.io/post/new-year-new-blogdown/#step-5-publish-site">here</a>.</p>
+</div>
+<div id="step-9.-.rprofile." class="section level3">
+<h3>Step 9. <code>.Rprofile</code>.</h3>
+<p>Still following Hill (<a href="https://alison.rbind.io/post/new-year-new-blogdown/#step-4-create-content">here</a>), make an <code>.Rprofile</code> file by executing <code>blogdown::config_Rprofile()</code>. Then customize some of the settings within <code>options()</code>, as desired. Mine now read:</p>
+<pre class="r"><code>options(
+  # to automatically serve the site on RStudio startup, set this option to TRUE
+  blogdown.serve_site.startup = FALSE,
+  # to disable knitting Rmd files on save, set this option to FALSE
+  blogdown.knit.on_save = TRUE,
+  # build .Rmd to .html (via Pandoc); to build to Markdown, set this option to &#39;markdown&#39;
+  blogdown.method = &#39;html&#39;,
+  # fix Hugo version
+  blogdown.hugo.version = &quot;0.82.0&quot;,
+  # These changes are based on Alison Hill&#39;s posts:
+  # https://alison.rbind.io/post/2019-02-21-hugo-page-bundles/#project-specific-rprofile
+  # and 
+  # https://alison.rbind.io/post/new-year-new-blogdown/#step-4-create-content
+  blogdown.author = &quot;A. Solomon Kurz&quot;,
+  blogdown.ext = &quot;.Rmd&quot;,
+  blogdown.subdir = &quot;post&quot;,
+  blogdown.yaml.empty = TRUE,
+  blogdown.new_bundle = TRUE
+)</code></pre>
+<p>In her post, Hill stressed it’s important to restart your RStudio session after you save any changes to <code>.Rprofile</code>. If you haven’t done so, in a while, this is probably a good time to commit and push your files to GitHub.</p>
+</div>
+</div>
+<div id="content" class="section level2">
+<h2>Content</h2>
+<div id="step-10.-contentauthorsadmin." class="section level3">
+<h3>Step 10. <code>content/authors/admin/</code>.</h3>
+<p>Open the <code>content/authors/admin/_index.md</code> file and edit the default information to match yours, as needed. You can find Hill’s at <a href="https://raw.githubusercontent.com/rbind/apreshill/master/content/authors/alison/_index.md">https://raw.githubusercontent.com/rbind/apreshill/master/content/authors/alison/_index.md</a>.</p>
+<p>Within the <code>content/authors/admin/</code> folder, switch out the <code>avatar.jpg</code> with the pic you’d like to use for your profile. As part of that process, you’ll rename your pic as <code>avatar.jpg</code>.</p>
+<p>I ended up commenting out the <code>icon: envelope</code> sub section within the <code>social</code> section, which removed the envelope icon from the array below my profile pic.</p>
+<div id="step-10.a.-config_default-folder." class="section level4">
+<h4>Step 10.a. <code>config/_default/</code> folder.</h4>
+<p>I wanted to enable the Google-Scholar icon. To do so, you may have to make and adjust the <code>params.yaml</code> file within the <code>config/_default/</code> folder. First, execute <code>rstudioapi::navigateToFile("config/_default/params.toml")</code> to make the folder. Second, navigate to <code>config/_default/params.toml</code> and open the file. Third, set:</p>
+<pre class="r"><code>icon:
+  pack:
+    ai: true</code></pre>
+<p>For me, this section was at the bottom.</p>
+<p>While in the <code>params.yaml</code> file, add your email to make the contact widget work. Edit contact info, as desired. For example, I commented out the phone number and address.</p>
+<p>I like to use a lot of <span class="math inline">\(\LaTeX\)</span> formulas in my blog posts. If you would like to use <span class="math inline">\(\LaTeX\)</span> in your website, too, make sure to set <code>math: true</code> within the <code>params.toml</code> file.</p>
+</div>
+<div id="step-10.b.-include-your-cv." class="section level4">
+<h4>Step 10.b. Include your CV.</h4>
+<p>If you look at the bottom of the <code>content/authors/admin/_index.md</code> file, you’ll see the code for a nice widget which will make it easy for people to download a copy of your résumé or CV. I changed that code to read:</p>
+<pre class="r"><code>{{&lt; icon name=&quot;download&quot; pack=&quot;fas&quot; &gt;}} Download my {{&lt; staticref &quot;media/A Solomon Kurz CV.pdf&quot; &quot;newtab&quot; &gt;}}CV{{&lt; /staticref &gt;}}.</code></pre>
+<p>The next step is to save an actual copy of your CV in the <code>static/media</code> folder. While you’re in there, you might delete the <code>demo_resume.pdf</code> and <code>boards.jpg</code> files.</p>
+</div>
+<div id="step-10.c.-delete-the-mysterious-other-guy." class="section level4">
+<h4>Step 10.c. Delete the mysterious other guy.</h4>
+<p>There was a second subfolder within the <code>content/authors</code> folder, which was named with what looked like Chinese characters. I deleted that subfolder.</p>
+</div>
+</div>
+<div id="step-11.-contenthome." class="section level3">
+<h3>Step 11. <code>content/home</code>.</h3>
+<p>The <code>.md</code> files in the <code>content/home</code> folder control the contents of the website home page. Each <code>.md</code> file is for a widget. To turn them off, insert the following somewhere in the file (I chose to put these in the top, to make them more visible):</p>
+<pre class="r"><code># Activate this widget? true/false
+active: false</code></pre>
+<p>The <strong>blogdown</strong> default settings are way to busy for my taste. To de-clutter my home page, I set <code>active: false</code> to the following files:</p>
+<ul>
+<li><code>accomplishments.md</code>,</li>
+<li><code>demo.md</code>,</li>
+<li><code>experience.md</code>,</li>
+<li><code>featured.md</code>,</li>
+<li><code>hero.md</code>,</li>
+<li><code>posts.md</code>,</li>
+<li><code>projects.md</code>,</li>
+<li><code>publications.md</code>,</li>
+<li><code>skills.md</code>,</li>
+<li><code>tags.md</code>,</li>
+<li><code>talks.md</code>, and</li>
+<li><code>/gallery/index.md</code>.</li>
+</ul>
+</div>
+<div id="step-12.-add-custom-content-folders." class="section level3">
+<h3>Step 12. Add custom <code>content/</code> folders.</h3>
+<p>I wanted to add a few <code>content/</code> sections that were not a part of the <strong>blogdown</strong> defaults. The new additions were:</p>
+<ul>
+<li><code>content/bookdown</code>, which included a listing of my ebooks;</li>
+<li><code>content/conflicts</code>, which included a brief discussion of my conflicts of interest; and</li>
+<li><code>content/support</code>, which listed a few ways others might support my work.</li>
+</ul>
+<p>Since these sections were all quite simple, each subfolder included a single <code>_index.md</code> file. Each of those files contained a brief YAML<a href="#fn3" class="footnote-ref" id="fnref3"><sup>3</sup></a> metadata header and some <a href="https://rmarkdown.rstudio.com">Markdown</a> prose.</p>
+</div>
+<div id="step-13.-delete-unwanted-content-folders." class="section level3">
+<h3>Step 13. Delete unwanted <code>content/</code> folders.</h3>
+<p>Though one wouldn’t need to do this, I cleaned out the <code>content/</code> folder, a bit, by deleting the</p>
+<ul>
+<li><code>content/event/</code>,</li>
+<li><code>content/project/</code>, and</li>
+<li><code>content/slides/</code> folders.</li>
+</ul>
+</div>
+<div id="step-14.-personalize-contentcourses." class="section level3">
+<h3>Step 14. Personalize <code>content/courses</code>.</h3>
+<p>I streamlined this section by deleting the <code>content/courses/example</code> subfolder and listing my prior courses in Markdown-based paragraph form within the <code>content/courses/_index.md</code> file.</p>
+</div>
+<div id="step-15-config_defaultmenus.yaml." class="section level3">
+<h3>Step 15: <code>config/_default/menus.yaml</code>.</h3>
+<p>This will break up the current workflow, a bit. But at this point it made sense to me to adjust the menu settings for the navigation bar link, which appears at the top of the website. Just to keep them for reference, I commented out the default settings. My custom settings were as follows:</p>
+<pre class="r"><code>main:
+  - name: Home
+    url: &#39;#about&#39;
+    weight: 1
+  - name: Blog posts
+    url: post/
+    weight: 2
+  - name: Books
+    url: bookdown/
+    weight: 3
+  - name: Publications
+    url: publication/
+    weight: 4
+  - name: Courses
+    url: courses/
+    weight: 5
+  - name: Conflicts of interest
+    url: /conflicts
+    weight: 6
+  - name: Support
+    url: support/
+    weight: 7</code></pre>
+<p>If you follow this workflow, I recommend committing these changes, pushing them to GitHub, and inspecting the current website appearance after deployed by Netlify. We’re not done yet, but this will give you a sense of where the website is headed.</p>
+<p>Your millage may vary, but be warned: The changes in the next two sections ate up several hours, each.</p>
+</div>
+<div id="step-16-contentpublication." class="section level3">
+<h3>Step 16: <code>content/publication/</code>.</h3>
+<p>I’m not sure when it was added, but the publications widget was new, to me. You can get some pointers for this section in Gina Reynolds blog post, <a href="https://evamaerey.github.io/what_how_guides/academic_website_w_blogdown#step-14-add-your-publications-in-the-contentpublication-folder"><em>Creating an ‘Academic Themed’ website with blogdown and Hugo</em></a>, which is itself a supplement to Dan Quintana’s tweetorial:</p>
+<p>{{% tweet "1139846569623281664" %}}</p>
+<p>If it’s new to you, too, I <strong>strongly recommend</strong> you follow Quintana’s <a href="https://twitter.com/dsquintana/status/1139846908065669120">advice</a> and begin by opening the <code>index.md</code> file in one of the example subfolders (e.g., <code>content/publication/journal-article/</code>) and slowly switch out the default information to match up with one of your publications. I was overly ambitious and tried to learn by building a personal subfolder by scratch. It’s easy to lose track of your mistakes, this way, and I recommend you save yourself the unnecessary aggravation by following Quintana’s advice, instead.</p>
+<p>Although the publications widget allows one to include a featured picture for each publication, I wasn’t interested. Thus, I deleted the <code>featured.jpg</code> files from the subfolders.</p>
+<p>For my purposes, most of the work, in this section, was concentrated in the YAML metadata within the <code>index.md</code> files. Here are a few pointers:</p>
+<ul>
+<li>Make sure to use the <code>publication_types</code> parameter. For journal articles, you set <code>- 2</code>. To learn more, go to <a href="https://wowchemy.com/docs/content/publications/#command-line">https://wowchemy.com/docs/content/publications/#command-line</a>.</li>
+<li>Default to wrapping your titles and abstracts within <code>''</code> or <code>""</code> marks. Sometimes, you’ll get away without them. You’ll run into trouble if, say, you leave them out and your title includes a <code>:</code> mark.</li>
+<li>Within the <code>authors</code> section, list yourself as <code>admin</code>. It’ll be okay if you don’t, but you’ll lose out on functionality. Try it both ways to see what I mean.</li>
+<li>It’s fine to list dates in a simple <code>'2020-12-01'</code> format.</li>
+<li>For the <code>publication</code> section, I preferred to simply list the name of the relevant journal. If desired, you can use Markdown syntax to italicize and so on.</li>
+<li>Treat the <code>tags</code> like keywords.</li>
+<li>If your article has a freely-available PDF that is not locked behind a paywall, you might include that link in the <code>url_pdf</code> section. If your article is not freely available, but you’d like it to be, you can still host it on your website and include a link <code>url_pdf</code> section. What I did was first make a <code>pdf</code> subfolder within the static folder (i.e., <code>static/pdf/</code>). Second, I saved PDFs of my paywalled papers in that <code>static/pdf/</code> folder, with each file named by author, year, and title (your naming system might vary<a href="#fn4" class="footnote-ref" id="fnref4"><sup>4</sup></a>). Third, I linked to the relevant file within the relevant project subfolder. For example, one of my first papers was published with Sarah Bowen in 2012. That paper is listed in my <code>content/publication/Bowen &amp; Kurz (2012a)/</code> subfolder. Here’s how I linked to the PDF:</li>
+</ul>
+<pre class="r"><code>url_pdf: &quot;pdf/Bowen &amp; Kurz (2012) Between-session practice and therapeutic alliance as predictors of mindfulness after mindfulness-based relapse prevention.pdf&quot;</code></pre>
+<ul>
+<li>If you’d like to link to a site that is not part of those obviously included in the examples (e.g., the <a href="https://osf.io/">Open Science Framework</a>), you can insert a custom-named link, like this:</li>
+</ul>
+<pre class="r"><code>links:
+  - name: OSF
+    url: &#39;https://osf.io/fdywh/&#39;</code></pre>
+<ul>
+<li>It can be helpful to see how more-experienced users set up their <code>project</code> folders. You can find Hill’s <a href="https://github.com/rbind/apreshill/tree/master/content/publication">here</a> and Quintana’s <a href="https://github.com/dsquintana/website/tree/master/content/publication">here</a>.</li>
+</ul>
+</div>
+<div id="step-17-contentpost." class="section level3">
+<h3>Step 17: <code>content/post/</code>.</h3>
+<p>Another of the bigger changes to <strong>blogdown</strong> is the support for Hugo Page Bundles. To get the low-down, read through Hill’s blog post, <a href="https://alison.rbind.io/post/2019-02-21-hugo-page-bundles/"><em>A spoonful of Hugo: Page bundles</em></a>. In short, this system now has users arrange each blog post within its own <code>content/post/</code> subfolder.</p>
+<p>A lot of the existing <strong>blogdown</strong> material (e.g., <a href="https://alison.rbind.io/post/2019-02-19-hugo-archetypes/#tldr-a-teaspoon-of-archetypes">here</a>) includes recommendations to use the RStudio “New Post” addin to make new blog posts. Since I was importing/reformatting a bunch of older blog posts, I ended up liking the <code>blogdown::new_post()</code> function, instead. If you’ve been following along linearly, we already customized a few of the <code>new_post()</code> settings in the <code>.Rprofile</code> file, above.</p>
+<p>To give a sense of what this workflow looks like, here’s how I made the new page-bundle-style subfolder for my first ever <strong>blogdown</strong> blog post from back in 2018.</p>
+<pre class="r"><code>blogdown::new_post(
+  title = &quot;bookdown, My Process&quot;,
+  date = &#39;2018-10-04&#39;,
+  slug = &#39;how-bookdown&#39;,
+  tags = c(&quot;Bayesian&quot;, &quot;bookdown&quot;, &quot;brms&quot;, &quot;Git&quot;, &quot;GitHub&quot;, &quot;Markdown&quot;, &quot;R&quot;,
+           &quot;Statistical Rethinking&quot;, &quot;tidyverse&quot;, &quot;tutorial&quot;)
+)</code></pre>
+<p>Then when the <code>.Rmd</code> file popped up, I just copy/pasted the prose from the original Markdown file.</p>
+<p>The only other noteworthy part of my workflow, here, is that some of my blog posts include references managed by <a href="https://www.zotero.org/">Zotero</a>. One way to do this would be to make reference libraries specific to each blog post, which would be saved separately in their respective page-bundle folders. However, I’d rather just have one Zotero library for all the blog posts on my website. To make that work, I saved my <code>my_blog.bib</code> file within the <code>content/post/</code> folder, along with the <code>apa.csl</code> file, which helps me format the references in <a href="https://owl.purdue.edu/owl/research_and_citation/apa_style/apa_style_introduction.html">APA style</a>. Then when I want to include Zotero references within a blog post, I include the relevant information in the post’s YAML metadata. For example, the YAML metadata for this very blog post contains the following:</p>
+<pre class="r"><code>bibliography: /Users/solomonkurz/Dropbox/blogdown/content/post/my_blog.bib
+biblio-style: apalike
+csl: /Users/solomonkurz/Dropbox/blogdown/content/post/apa.csl  
+link-citations: yes</code></pre>
+</div>
+<div id="step-18-the-contact-widget-and-possible-next-steps." class="section level3">
+<h3>Step 18: The contact widget and possible next steps.</h3>
+<p>You might have missed it, but the changes I made to the <code>config/_default/menus.yaml</code> file included removing the section calling the contact widget. Here’s what that section looked like before I removed it:</p>
+<pre class="r"><code>  - name: Contact
+    url: &#39;#contact&#39;
+    weight: 70</code></pre>
+<p>As a consequence, I don’t have an email contact form on my home page or as one of the other pages you might navigate from my navigation bar menu. This is, in part, because I’m not crazy about making it easy for randos to send me their emails. But also, it’s partly because I had trouble getting the widget up and running properly. Some of the blog content discussing the contact widget (e.g., <a href="https://alison.rbind.io/post/2017-06-12-up-and-running-with-blogdown/#formspree">here</a>) appears to be either a little out of date or is not accessible enough for me to feel comfortable using. I did get as far as opening an account with <a href="https://formspree.io/">formspree</a>, but even that solution ended up with my test emails going to Netlify, rather than to my email. I have no doubt there are ways for skilled people to get the contact widget up and running smoothly. But to my eye, there’s a black hole of accessible pedagogical material on the topic for non-technical <strong>blogdown</strong> users, like me. If you’ve had success using the <strong>blogdown</strong> contact widget, consider putting together a nice tutorial blog post. When you announce your nice post on <a href="https://twitter.com/">Twitter</a>, feel free to tag me or slip a link into my DMs.</p>
+<p>There’s a similar point for the email envelope icon for the home page. Presumably the link is supposed to connect to ones email, somehow. I have no idea how that works. When you’re writing your nice pedagogical blog post, consider walking that one out, too.</p>
+</div>
+</div>
+<div id="references" class="section level2 unnumbered">
+<h2>References</h2>
+<div id="refs" class="references csl-bib-body hanging-indent" line-spacing="2">
+<div id="ref-bryanHappyGitGitHub2020" class="csl-entry">
+Bryan, J., the STAT 545 TAs, &amp; Hester, J. (2020). <em>Happy <span>Git</span> and <span>GitHub</span> for the <span class="nocase">useR</span></em>. <a href="https://happygitwithr.com">https://happygitwithr.com</a>
+</div>
+<div id="ref-grolemundDataScience2017" class="csl-entry">
+Grolemund, G., &amp; Wickham, H. (2017). <em>R for data science</em>. <span>O’Reilly</span>. <a href="https://r4ds.had.co.nz">https://r4ds.had.co.nz</a>
+</div>
+<div id="ref-R-blogdown" class="csl-entry">
+Xie, Y., Dervieux, C., &amp; Presmanes Hill, A. (2021). <em><span class="nocase">blogdown</span>: <span>Create</span> blogs and websites with <span>R Markdown</span></em> [Manual]. <a href="https://CRAN.R-project.org/package=blogdown">https://CRAN.R-project.org/package=blogdown</a>
+</div>
+<div id="ref-xieBlogdown2017" class="csl-entry">
+Xie, Y., Hill, A. P., &amp; Thomas, A. (2017). <em><span class="nocase">blogdown</span>: <span>Creating</span> websites with <span>R</span> markdown</em>. <span>Chapman and Hall/CRC</span>. <a href="https://bookdown.org/yihui/blogdown/">https://bookdown.org/yihui/blogdown/</a>
+</div>
+</div>
+</div>
+<div class="footnotes">
+<hr />
+<ol>
+<li id="fn1"><p>You can learn about R Studio projects in <a href="https://r4ds.had.co.nz/workflow-projects.html">Chapter 8</a> in <span class="citation"><a href="#ref-grolemundDataScience2017" role="doc-biblioref">Grolemund &amp; Wickham</a> (<a href="#ref-grolemundDataScience2017" role="doc-biblioref">2017</a>)</span>. But the real reason to use them is to keep Jenny Bryan from <a href="https://www.tidyverse.org/blog/2017/12/workflow-vs-script/">setting your computer on :fire: fire :fire:</a>.<a href="#fnref1" class="footnote-back">↩︎</a></p></li>
+<li id="fn2"><p>For all the deets on the <a href="https://wowchemy.com/">wowchemy</a> Hugo Academic Resumé Template, go to their GitHub repo at <a href="https://github.com/wowchemy/starter-academic">https://github.com/wowchemy/starter-academic</a>.<a href="#fnref2" class="footnote-back">↩︎</a></p></li>
+<li id="fn3"><p>To learn about how YAML metadata works for <strong>blogdown</strong> websites, your best bet is probably to start <a href="https://bookdown.org/yihui/blogdown/content.html#yaml-metadata">here</a>. If you’re brave, you can also just go to the source, <a href="https://yaml.org/">https://yaml.org/</a>.<a href="#fnref3" class="footnote-back">↩︎</a></p></li>
+<li id="fn4"><p>I know there are some strong opinions about naming conventions for files and folders, one of which is you should avoid white spaces. This has never been a problem, in my experience. You do you.<a href="#fnref4" class="footnote-back">↩︎</a></p></li>
+</ol>
+</div>
