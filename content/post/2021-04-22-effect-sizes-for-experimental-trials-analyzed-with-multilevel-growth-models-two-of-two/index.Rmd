@@ -301,7 +301,7 @@ n_c <- 10
 sqrt(((n_t - 1) * sd_raw_pre_c^2 + (n_c - 1) * sd_raw_pre_t^2) / (n_t + n_c - 2))
 ```
 
-Again, in the special case of these synthetic data, $SD_\text{pooled}^*$ happens to be the same value as $SD_\text{pooled}^*$, which is also the same value as $SD_\text{raw(pre-T)}$ and $SD_\text{raw(pre-C)}$. This will not always the case with your real-world data. Choose your $SD$ with care and make sure to report which ever formula you use. Don't be coy with your effect-size calculations.
+Again, in the special case of these synthetic data, $SD_\text{pooled}^*$ happens to be the same value as $SD_\text{pooled}$, which is also the same value as $SD_\text{raw(pre-T)}$ and $SD_\text{raw(pre-C)}$. This will not always the case with your real-world data. Choose your $SD$ with care and make sure to report which ever formula you use. Don't be coy with your effect-size calculations.
 
 You may be wondering, though, whether you can use the standard deviations for one of the treatment conditions rather than a variant of the pooled standard deviation. *Yes*, you can. I think Cumming [-@cummingUnderstandingTheNewStatistics2012, Chapter 11] did a nice job walking through this issue. For example, if we thought of our control condition as a true benchmark for what we'd expect at baseline, we could just use $SD_\text{raw(pre-C)}$ as our standardizer. This is sometimes referred to as a Glass' $d$ or Glass' $\Delta$. Whatever you choose and whatever you call it, just make sure to clearly define your standardizing formula for your audience.
 
