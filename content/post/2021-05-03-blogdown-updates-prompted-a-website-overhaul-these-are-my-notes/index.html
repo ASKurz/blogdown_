@@ -180,15 +180,15 @@ active: false</code></pre>
 <h3>Step 12. Add custom <code>content/</code> folders.</h3>
 <p>I wanted to add a few <code>content/</code> sections that were not a part of the <strong>blogdown</strong> defaults. The new additions were:</p>
 <ul>
-<li><code>content/bookdown</code>, which included a listing of my ebooks;</li>
-<li><code>content/conflicts</code>, which included a brief discussion of my conflicts of interest; and</li>
-<li><code>content/support</code>, which listed a few ways others might support my work.</li>
+<li><code>content/bookdown/</code>, which included a listing of my ebooks;</li>
+<li><code>content/conflicts/</code>, which included a brief discussion of my conflicts of interest; and</li>
+<li><code>content/support/</code>, which listed a few ways others might support my work.</li>
 </ul>
-<p>Since these sections were all quite simple, each subfolder included a single <code>_index.md</code> file. Each of those files contained a brief YAML<a href="#fn4" class="footnote-ref" id="fnref4"><sup>4</sup></a> metadata header and some <a href="https://rmarkdown.rstudio.com">Markdown</a> prose.</p>
+<p>Since these sections were all quite simple, each subfolder only included an <code>_index.md</code> file. Each of those files contained a brief YAML<a href="#fn4" class="footnote-ref" id="fnref4"><sup>4</sup></a> metadata header and some <a href="https://rmarkdown.rstudio.com">Markdown</a> prose.</p>
 </div>
 <div id="step-13.-delete-unwanted-content-folders." class="section level3">
 <h3>Step 13. Delete unwanted <code>content/</code> folders.</h3>
-<p>Though one wouldn’t need to do this, I cleaned out the <code>content/</code> folder, a bit, by deleting the</p>
+<p>Though one doesn’t need to do this, I cleaned out the <code>content/</code> folder, a bit, by deleting the</p>
 <ul>
 <li><code>content/event/</code>,</li>
 <li><code>content/project/</code>, and</li>
@@ -241,7 +241,7 @@ active: false</code></pre>
 <li>It’s fine to list dates in a simple <code>'2020-12-01'</code> format.</li>
 <li>For the <code>publication</code> section, I preferred to simply list the name of the relevant journal. If desired, you can use Markdown syntax to italicize and so on.</li>
 <li>Treat the <code>tags</code> like keywords.</li>
-<li>If your article has a freely-available PDF that is not locked behind a paywall, you might include that link in the <code>url_pdf</code> section. If your article is not freely available, but you’d like it to be, you can still host it on your website and include a link <code>url_pdf</code> section. What I did was first make a <code>pdf</code> subfolder within the static folder (i.e., <code>static/pdf/</code>). Second, I saved PDFs of my paywalled papers in that <code>static/pdf/</code> folder, with each file named by author, year, and title (your naming system might vary<a href="#fn5" class="footnote-ref" id="fnref5"><sup>5</sup></a>). Third, I linked to the relevant file within the relevant project subfolder. For example, one of my first papers was published with Sarah Bowen in 2012. That paper is listed in my <code>content/publication/Bowen &amp; Kurz (2012a)/</code> subfolder. Here’s how I linked to the PDF:</li>
+<li>If your article has a freely-available PDF that is not locked behind a paywall, you might include that link in the <code>url_pdf</code> section. If your article is not freely available, but you’d like it to be, you can still host it on your website and include a link in the <code>url_pdf</code> section. What I did was first make a <code>pdf</code> subfolder within the static folder (i.e., <code>static/pdf/</code>). Second, I saved PDFs of my paywalled papers in that <code>static/pdf/</code> folder, with each file named by author, year, and title (your naming system might vary<a href="#fn5" class="footnote-ref" id="fnref5"><sup>5</sup></a>). Third, I linked to the relevant file within the relevant project subfolder. For example, one of my first papers was published with Sarah Bowen in 2012. That paper is listed in my <code>content/publication/Bowen &amp; Kurz (2012a)/</code> subfolder. Here’s how I linked to the PDF:</li>
 </ul>
 <pre class="r"><code>url_pdf: &quot;pdf/Bowen &amp; Kurz (2012) Between-session practice and therapeutic alliance as predictors of mindfulness after mindfulness-based relapse prevention.pdf&quot;</code></pre>
 <ul>

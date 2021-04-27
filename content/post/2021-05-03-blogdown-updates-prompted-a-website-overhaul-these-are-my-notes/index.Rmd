@@ -210,15 +210,15 @@ The **blogdown** default settings are way to busy for my taste. To de-clutter my
 
 I wanted to add a few `content/` sections that were not a part of the **blogdown** defaults. The new additions were:
 
-* `content/bookdown`, which included a listing of my ebooks;
-* `content/conflicts`, which included a brief discussion of my conflicts of interest; and
-* `content/support`, which listed a few ways others might support my work.
+* `content/bookdown/`, which included a listing of my ebooks;
+* `content/conflicts/`, which included a brief discussion of my conflicts of interest; and
+* `content/support/`, which listed a few ways others might support my work.
 
-Since these sections were all quite simple, each subfolder included a single `_index.md` file. Each of those files contained a brief YAML[^4] metadata header and some [Markdown](https://rmarkdown.rstudio.com) prose.
+Since these sections were all quite simple, each subfolder only included an `_index.md` file. Each of those files contained a brief YAML[^4] metadata header and some [Markdown](https://rmarkdown.rstudio.com) prose.
 
 ### Step 13. Delete unwanted `content/` folders.
 
-Though one wouldn't need to do this, I cleaned out the `content/` folder, a bit, by deleting the
+Though one doesn't need to do this, I cleaned out the `content/` folder, a bit, by deleting the
 
 * `content/event/`,
 * `content/project/`, and
@@ -281,7 +281,7 @@ For my purposes, most of the work, in this section, was concentrated in the YAML
 * It's fine to list dates in a simple `'2020-12-01'` format.
 * For the `publication` section, I preferred to simply list the name of the relevant journal. If desired, you can use Markdown syntax to italicize and so on.
 * Treat the `tags` like keywords.
-* If your article has a freely-available PDF that is not locked behind a paywall, you might include that link in the `url_pdf` section. If your article is not freely available, but you'd like it to be, you can still host it on your website and include a link `url_pdf` section. What I did was first make a `pdf` subfolder within the static folder (i.e., `static/pdf/`). Second, I saved PDFs of my paywalled papers in that `static/pdf/` folder, with each file named by author, year, and title (your naming system might vary[^5]). Third, I linked to the relevant file within the relevant project subfolder. For example, one of my first papers was published with Sarah Bowen in 2012. That paper is listed in my `content/publication/Bowen & Kurz (2012a)/` subfolder. Here's how I linked to the PDF:
+* If your article has a freely-available PDF that is not locked behind a paywall, you might include that link in the `url_pdf` section. If your article is not freely available, but you'd like it to be, you can still host it on your website and include a link in the `url_pdf` section. What I did was first make a `pdf` subfolder within the static folder (i.e., `static/pdf/`). Second, I saved PDFs of my paywalled papers in that `static/pdf/` folder, with each file named by author, year, and title (your naming system might vary[^5]). Third, I linked to the relevant file within the relevant project subfolder. For example, one of my first papers was published with Sarah Bowen in 2012. That paper is listed in my `content/publication/Bowen & Kurz (2012a)/` subfolder. Here's how I linked to the PDF:
 
 ```{r, eval = F}
 url_pdf: "pdf/Bowen & Kurz (2012) Between-session practice and therapeutic alliance as predictors of mindfulness after mindfulness-based relapse prevention.pdf"
