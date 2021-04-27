@@ -38,7 +38,7 @@ The purpose of this post is to highlight some of the steps I took to rebuild my 
 
 ### I don't cover everything.
 
-This post is not an exhaustive introduction to **blogdown**. For that, you have the ebook by Xie, Hill, and Thomas [-@xieBlogdown2017], [*blogdown: Creating websites with R markdown*](https://bookdown.org/yihui/blogdown/). A difficulty with that book is the authors designed it to cover a broad range of applications[^1]. A further difficulty is **blogdown** is something of a high-level interface for an array of more-specific software solutions (e.g., [Netlify](https://www.netlify.com/), [Hugo](https://gohugo.io/)), each of which has its own quirks. I am not going to introduce these in any great detail, either. For those purposes, you have the relevant reference manuals and other documentations available on the web.
+This post is not an exhaustive introduction to **blogdown**. For that, you have the ebook by Xie, Hill, and Thomas [-@xieBlogdown2017], [*blogdown: Creating websites with R markdown*](https://bookdown.org/yihui/blogdown/). A difficulty with that book is the authors designed it to cover a broad range of applications[^1], which means there isn't enough room to cover every special case. A further difficulty is **blogdown** is something of a high-level interface for an array of more-specific software solutions (e.g., [Netlify](https://www.netlify.com/), [Hugo](https://gohugo.io/)), each of which has its own quirks. I am not going to introduce these in any great detail, either. For those purposes, you have the relevant reference manuals and other documentations available on the web.
 
 ### This isn't the only way.
 
