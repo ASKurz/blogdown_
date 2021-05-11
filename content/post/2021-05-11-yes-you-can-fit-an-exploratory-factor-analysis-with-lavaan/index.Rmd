@@ -43,7 +43,7 @@ library(tidyverse)
 library(lavaan)
 ```
 
-The data are a subset of the data from @arrudaPsychometricProperties2020. You can find various supporting materials for their paper on the [OSF](https://osf.io) at [https://osf.io/kx2ym/](https://osf.io/kx2ym/). We will load a subset of the data saved in their `Base R - EFICA (manuscript and book chapter).RData` file (available at [https://osf.io/p3fs6/](https://osf.io/p3fs6/)) called `ds`.
+The data are a subset of the data from @arrudaPsychometricProperties2020. You can find various supporting materials for their paper on the [OSF](https://osf.io) at [https://osf.io/kx2ym/](https://osf.io/kx2ym/). We will load[^1] a subset of the data saved in their `Base R - EFICA (manuscript and book chapter).RData` file (available at [https://osf.io/p3fs6/](https://osf.io/p3fs6/)) called `ds`.
 
 ```{r, echo = F, eval = F}
 # save(ds, file = "data/ds.rda")
@@ -265,7 +265,7 @@ To reduce visual complexity, $\lambda$'s less than the conventional 0.4 threshol
 
 ## How about ESEM?
 
-If one can fit EFAs in **lavaan**, how about exploratory structural equation models [ESEM, @asparouhovESEM2009]. Yes, I believe one can. To get a sense, check out my search results at [https://github.com/yrosseel/lavaan/search?q=esem](https://github.com/yrosseel/lavaan/search?q=esem). I haven't had a reason to explore this for any of my projects, but it looks promising. If you master the **lavaan** ESEM method, maybe you could write a blot post of your own. Also, check out the blog post by [Mateus Silvestrin](https://twitter.com/MateusPsi), [*Exploratory Structural Equation Modeling in R*](https://msilvestrin.me/post/esem/#ref-asparouhov_exploratory_2009).
+If one can fit EFAs in **lavaan**, how about exploratory structural equation models [ESEM, @asparouhovESEM2009]? Yes, I believe one can. To get a sense, check out my search results at [https://github.com/yrosseel/lavaan/search?q=esem](https://github.com/yrosseel/lavaan/search?q=esem). I haven't had a reason to explore this for any of my projects, but it looks promising. If you master the **lavaan** ESEM method, maybe you could write a blot post of your own. Also, check out the blog post by [Mateus Silvestrin](https://twitter.com/MateusPsi), [*Exploratory Structural Equation Modeling in R*](https://msilvestrin.me/post/esem/#ref-asparouhov_exploratory_2009).
 
 ## Session information
 
@@ -274,3 +274,5 @@ sessionInfo()
 ```
 
 ## References
+
+[^1]: You can download the `ds.rda` file from my GitHub, [here](https://github.com/ASKurz/blogdown/blob/main/content/post/2021-05-11-yes-you-can-fit-an-exploratory-factor-analysis-with-lavaan/data/ds.rda).
