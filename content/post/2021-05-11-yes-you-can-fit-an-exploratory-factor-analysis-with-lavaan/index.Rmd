@@ -36,7 +36,7 @@ Just this past week, I learned that, *Yes*, you can fit an exploratory factor an
 
 ## Set up
 
-First, load our focal package, **lavaan**, along with the **tidyverse**.
+First, load our focal package, **lavaan**, along with the **tidyverse** [@R-tidyverse; @wickhamWelcomeTidyverse2019].
 
 ```{r, warning = F, message = F}
 library(tidyverse)
