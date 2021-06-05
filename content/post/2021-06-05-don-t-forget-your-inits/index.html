@@ -1,0 +1,459 @@
+---
+title: "Don't forget your inits"
+author: "A. Solomon Kurz"
+date: '2021-06-05'
+slug: ''
+categories: []
+tags:
+- Bayesian
+- brms
+- multilevel
+- R
+- starting values
+- tidyverse
+- tutorial
+subtitle: ''
+summary: ''
+authors: []
+lastmod: '2021-06-05T10:04:58-05:00'
+featured: no
+image:
+  caption: ''
+  focal_point: ''
+  preview_only: no
+projects: []
+bibliography: /Users/solomonkurz/Dropbox/blogdown/content/post/my_blog.bib
+biblio-style: apalike
+csl: /Users/solomonkurz/Dropbox/blogdown/content/post/apa.csl
+link-citations: yes
+---
+
+<script src="{{< blogdown/postref >}}index_files/header-attrs/header-attrs.js"></script>
+
+
+<div id="tldr" class="section level2">
+<h2>tl;dr</h2>
+<p>When your MCMC chains look a mess, you might have to manually set your initial values. If you’re a fancy pants, you can use a custom function.</p>
+</div>
+<div id="context" class="section level2">
+<h2>Context</h2>
+<p>A collaborator asked me to help model some reaction-time data. One of the first steps was to decide on a reasonable likelihood function. You can see a productive Twitter thread on that process <a href="https://twitter.com/SolomonKurz/status/1398000353875005444">here</a>. Although I’ve settled on the shifted-lognormal function, I also considered the exponentially modified Gaussian function (a.k.a. exGaussian). As it turns out, the exGaussian can be fussy to work with! After several frustrating attempts, I solved the problem by fiddling with my initial values. The purpose of this post is to highlight the issue and give you some options.</p>
+<div id="i-make-assumptions." class="section level3">
+<h3>I make assumptions.</h3>
+<ul>
+<li>This post is for Bayesians. For thorough introductions to contemporary Bayesian regression, I recommend either edition of McElreath’s text <span class="citation">(<a href="#ref-mcelreathStatisticalRethinkingBayesian2020" role="doc-biblioref">2020</a>, <a href="#ref-mcelreathStatisticalRethinkingBayesian2015" role="doc-biblioref">2015</a>)</span>; Kruschke’s <span class="citation">(<a href="#ref-kruschkeDoingBayesianData2015" role="doc-biblioref">2015</a>)</span> text; or Gelman, Hill, and Vehtari’s <span class="citation">(<a href="#ref-gelmanRegressionOtherStories2020" role="doc-biblioref">2020</a>)</span> text.</li>
+<li>Though not necessary, it will help if you’re familiar with multilevel regression. The texts by McElreath and Kruschke, from above, can both help with that.</li>
+<li>All code is in <strong>R</strong> <span class="citation">(<a href="#ref-R-base" role="doc-biblioref">R Core Team, 2020</a>)</span>, with an emphasis on the <a href="https://github.com/paul-buerkner/brms"><strong>brms</strong> package</a> <span class="citation">(<a href="#ref-burknerBrmsPackageBayesian2017" role="doc-biblioref">Bürkner, 2017</a>, <a href="#ref-burknerAdvancedBayesianMultilevel2018" role="doc-biblioref">2018</a>, <a href="#ref-R-brms" role="doc-biblioref">2020</a>)</span>. We will also make good use of the <strong>tidyverse</strong> <span class="citation">(<a href="#ref-R-tidyverse" role="doc-biblioref">Wickham, 2019</a>; <a href="#ref-wickhamWelcomeTidyverse2019" role="doc-biblioref">Wickham et al., 2019</a>)</span>, the <strong>patchwork</strong> package <span class="citation">(<a href="#ref-R-patchwork" role="doc-biblioref">Pedersen, 2019</a>)</span>, and <strong>ggmcmc</strong> <span class="citation">(<a href="#ref-marinGgmcmcAnalysisMCMC2016" role="doc-biblioref">Fernández i Marín, 2016</a>, <a href="#ref-R-ggmcmc" role="doc-biblioref">2020</a>)</span>. We will also use the <strong>lisa</strong> package <span class="citation">(<a href="#ref-R-lisa" role="doc-biblioref">Littlefield, 2020</a>)</span> to select the color palette for our figures.</li>
+</ul>
+<p>Load the primary <strong>R</strong> packages and adjust the global plotting theme defaults.</p>
+<pre class="r"><code># load
+library(tidyverse)
+library(brms)
+library(patchwork)
+library(ggmcmc)
+library(lisa)
+
+# define the color palette
+fk &lt;- lisa_palette(&quot;FridaKahlo&quot;, n = 31, type = &quot;continuous&quot;)
+
+# adjust the global plotting theme
+theme_set(
+  theme_gray(base_size = 13) +
+    theme(
+      text = element_text(family = &quot;Times&quot;, color = fk[1]),
+      axis.text = element_text(family = &quot;Times&quot;, color = fk[1]),
+      axis.ticks = element_line(color = fk[1]),
+      legend.background = element_blank(),
+      legend.box.background = element_blank(),
+      legend.key = element_blank(),
+      panel.background = element_rect(fill = alpha(fk[16], 1/4), color = &quot;transparent&quot;),
+      panel.grid = element_blank(),
+      plot.background = element_rect(fill = alpha(fk[16], 1/4), color = &quot;transparent&quot;)
+    )
+)</code></pre>
+<p>The color palette in this post is inspired by <a href="https://en.wikipedia.org/wiki/Frida_Kahlo">Frida Kahlo</a>’s <a href="https://en.wikipedia.org/wiki/Self-Portrait_with_Thorn_Necklace_and_Hummingbird"><em>Self-Portrait with Thorn Necklace and Hummingbird</em></a>.</p>
+</div>
+</div>
+<div id="we-need-data" class="section level2">
+<h2>We need data</h2>
+<p>I’m not at liberty to share the original data. However, I have simulated a new data set that has the essential features of the original and I have saved the file on GitHub. You can load it like this.</p>
+<pre class="r"><code>load(&quot;data/dat.rda&quot;)
+
+# what is this?
+glimpse(dat)</code></pre>
+<pre><code>## Rows: 29,281
+## Columns: 2
+## $ id &lt;chr&gt; &quot;a&quot;, &quot;a&quot;, &quot;a&quot;, &quot;a&quot;, &quot;a&quot;, &quot;a&quot;, &quot;a&quot;, &quot;a&quot;, &quot;a&quot;, &quot;a&quot;, &quot;a&quot;, &quot;a&quot;, &quot;a&quot;, &quot;a&quot;, &quot;a&quot;, &quot;a&quot;, &quot;a&quot;, &quot;a&quot;, &quot;a&quot;, &quot;a…
+## $ rt &lt;dbl&gt; 689.0489, 552.8998, 901.0891, 992.2104, 1218.2256, 1356.5888, 679.0385, 663.7340, 771.3938, 996.2…</code></pre>
+<p>Our primary variable of interest is <code>rt</code>, which is simulated reaction times in milliseconds. The reaction times are nested within 26 participants, who are denoted by the <code>id</code> column. The data are not balanced.</p>
+<pre class="r"><code>dat %&gt;% 
+  count(id, name = &quot;trials&quot;) %&gt;% 
+  count(trials)</code></pre>
+<pre><code>## # A tibble: 7 x 2
+##   trials     n
+##    &lt;int&gt; &lt;int&gt;
+## 1    320     2
+## 2    640     4
+## 3    960     3
+## 4   1121     1
+## 5   1280    14
+## 6   1600     1
+## 7   2560     1</code></pre>
+<p>Whereas most participants have 1,280 trials, their numbers range from 320 to 2,560, which means we’ll want a multilevel model.</p>
+</div>
+<div id="we-can-describe-the-data-with-the-exgaussian-function" class="section level2">
+<h2>We can describe the data with the exGaussian function</h2>
+<p>To start getting a sense of the <code>rt</code> data, we’ll make a density plot of the overall distribution.</p>
+<pre class="r"><code>dat %&gt;% 
+  ggplot(aes(x = rt)) +
+  geom_density(fill = fk[3], color = fk[3])</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-6-1.png" width="576" /></p>
+<p>As is typical of reaction times, the data are continuous, non-negative, and strongly skewed to the right. There are any number of likelihood functions one can use to model data of this kind. One popular choice is the exGaussian. The exGaussian distribution has three parameters: <span class="math inline">\(\mu\)</span>, <span class="math inline">\(\sigma\)</span>, and <span class="math inline">\(\beta\)</span><a href="#fn1" class="footnote-ref" id="fnref1"><sup>1</sup></a>. The <span class="math inline">\(\mu\)</span> and <span class="math inline">\(\sigma\)</span> parameters govern the mean and standard deviation for the central Gaussian portion of the distribution. The <span class="math inline">\(\beta\)</span> parameter governs the rate of the exponential distribution, which is tacked on to the right-hand side of the distribution. Within <strong>R</strong>, you can compute the density of various exGaussian distributions using the <code>brms::dexgaussian()</code> function. If you fool around with the parameter settings, a bit, you can make an exGaussian curve that fits pretty closely to the shape of our <code>rt</code> data. For example, here’s what it looks like when we set <code>mu = 1300</code>, <code>sigma = 150</code>, and <code>beta = 520</code>.</p>
+<pre class="r"><code>tibble(rt = seq(from = 0, to = 5500, length.out = 300),
+       d = dexgaussian(rt, mu = 1300, sigma = 150, beta = 520)) %&gt;% 
+  
+  ggplot(aes(x = rt)) +
+  geom_density(data = dat,
+               fill = fk[3], color = fk[3]) +
+  geom_line(aes(y = d), 
+            color = fk[31], size = 5/4) +
+  # zoom in on the bulk of the values
+  coord_cartesian(xlim = c(0, 5000))</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-7-1.png" width="576" /></p>
+<p>The fit isn’t perfect, but it gives a sense of where things are headed. It’s time to talk about modeling.</p>
+</div>
+<div id="models" class="section level2">
+<h2>Models</h2>
+<p>In this post, we will explore three options for modeling the reaction-time data. The first will use default options. The second option will employ manually-set starting points. For the third option, we will use pseudorandom number generators to define the starting points, all within a custom function.</p>
+<div id="model-1-use-the-exgaussian-with-default-settings." class="section level3">
+<h3>Model 1: Use the exGaussian with default settings.</h3>
+<p>When using <strong>brms</strong>, you can fit an exGaussian model by setting <code>family = exgaussian()</code>. Here we’ll allow the <span class="math inline">\(\mu\)</span> parameters to vary by participant, but keep the <span class="math inline">\(\sigma\)</span> and <span class="math inline">\(\beta\)</span> parameters fixed.</p>
+<pre class="r"><code>fit1 &lt;- brm(
+  data = dat,
+  family = exgaussian(),
+  formula = rt ~ 1 + (1 | id),
+  cores = 4, seed = 1
+)</code></pre>
+<p>I’m not going to show them all, here, for the sake of space, but this model returned warnings about 604 transitions, 1 chain for which the estimated Bayesian Fraction of Missing Information was low, a large R-hat value of 2.85, and low bulk and tail effective sample sizes. In other words, this was a disaster. To help bring these all into focus, we’ll want to take a look at the chains in a trace plot. Since we’ll be doing this a few times, let’s go ahead and make a custom trace plot geom to suit our purposes. We’ll call it <code>geom_trace()</code>.</p>
+<pre class="r"><code>geom_trace &lt;- function(subtitle = NULL, 
+                       xlab = &quot;iteration&quot;, 
+                       xbreaks = 0:4 * 500) {
+  
+  list(
+    annotate(geom = &quot;rect&quot;, 
+             xmin = 0, xmax = 1000, ymin = -Inf, ymax = Inf,
+             fill = fk[16], alpha = 1/2, size = 0),
+    geom_line(size = 1/3),
+    scale_color_manual(values = fk[c(3, 8, 27, 31)]),
+    scale_x_continuous(xlab, breaks = xbreaks, expand = c(0, 0)),
+    labs(subtitle = subtitle),
+    theme(panel.grid = element_blank())
+  )
+  
+}</code></pre>
+<p>For your real-world models, it’s good to look at the tract plots for all major model parameters. Here we’ll just focus on the <span class="math inline">\(\mu\)</span> intercept.</p>
+<pre class="r"><code>p1 &lt;- ggs(fit1, burnin = TRUE) %&gt;%
+  filter(Parameter == &quot;b_Intercept&quot;) %&gt;% 
+  mutate(chain = factor(Chain),
+         intercept = value) %&gt;% 
+  
+  ggplot(aes(x = Iteration, y = intercept, color = chain)) +
+  geom_trace(subtitle = &quot;fit1 (default settings)&quot;) +
+  scale_y_continuous(breaks = c(0, 650, 1300), limits = c(NA, 1430))
+
+p1</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-11-1.png" width="576" /></p>
+<p>Since we pulled the chains using the <code>ggmcmc::ggs()</code> function, we were able to plot the warmup iterations (darker beige background on the left) along with the post-warmup iterations (lighter beige background on the right). Although one of our chains eventually made its way to the posterior, three out of the four stagnated near their starting values. This brings us to a major point in this post: <em>Starting points can be a big deal</em>.</p>
+</div>
+<div id="starting-points-can-be-a-big-deal." class="section level3">
+<h3>Starting points can be a big deal.</h3>
+<p>I’m not going to go into the theory underlying Markov chain Monte Carlo (MCMC) methods in any detail. For that, check out some of the latter chapters in <span class="citation"><a href="#ref-gillBayesianMethods2015" role="doc-biblioref">Gill</a> (<a href="#ref-gillBayesianMethods2015" role="doc-biblioref">2015</a>)</span> or <span class="citation"><a href="#ref-gelman2013bayesian" role="doc-biblioref">Gelman et al.</a> (<a href="#ref-gelman2013bayesian" role="doc-biblioref">2013</a>)</span>. In brief, if you run a Markov chain for an infinite number of iterations, it will converge on the correct posterior distribution. The problem is we can’t run our chains for that long, which means we have to be careful about whether our finite-length chains have converged properly. Starting points are one of the factors that can influence this process.</p>
+<p>One of the ways to help make sure your MCMC chains are sampling well is to run multiple chains for a while and check to see whether they have all converged around the same parameter space. Ideally, each chain will start from a different initial value. In practice, the first several iterations following the starting values are typically discarded. With older methods, like the Gibbs sampler, this was called the “burn-in” period. With Hamiltonian Monte Carlo (HMC), which is what <strong>brms</strong> uses, we have a similar period called “warmup.” When everything goes well, the MCMC chains will all have traversed from their starting values to sampling probabilistically from the posterior distribution once they have emerged from the warmup phase. However, this isn’t always the case. Sometimes the chains get stuck around their stating values and continue to linger there, even after you have terminated the warmup period. When this happens, you’ll end up with samples that are still tainted by their starting values and are not yet representative of the posterior distribution.</p>
+<p>In our example, above, we used the <strong>brms</strong> default settings of four chains, each of which ran for 1,000 warmup iterations and then 1,000 post-warmup iterations. We also used the <strong>brms</strong> default for the starting values. These defaults are based on the Stan defaults, which is to randomly select the starting points from a uniform distribution ranging from -2 to 2. For details, see the <a href="https://mc-stan.org/docs/2_25/reference-manual/initialization.html#random-initial-values"><em>Random initial values</em></a> section of the <em>Stan Reference Manual</em> <span class="citation">(<a href="#ref-standevelopmentteamStanReferenceManual2021" role="doc-biblioref">Stan Development Team, 2021</a>)</span>.</p>
+<p>In my experience, the <strong>brms</strong> defaults are usually pretty good. My models often quickly traverse from their starting values to concentrate in the posterior, just like our second chain did, above. When things go wrong, sometimes adding stronger priors can work. Other times it makes sense to rescale or reparameterize the model, somehow. In this case, I have reasons to want to (a) use default priors and to (b) stick to the default parameterization applied to the transformed data. Happily, we have another trick at out disposal: We can adjust the starting points.</p>
+<p>Within <code>brms::brm()</code>, we can control the starting values with the <code>inits</code> argument. The default is <code>inits = "random"</code>, which follows the Stan convention of sampling from <span class="math inline">\((-2, 2)\)</span>, as discussed above. Another option is to fix all starting values to zero by setting <code>inits = "0"</code>. This often works surprisingly well, but it wasn’t the solution in this case. If you look at the trace plot, above, you’ll see that all the starting values are a long ways from the target range, which is somewhere around 1,300. So why not just put the starting values near there?</p>
+</div>
+<div id="model-2-fit-the-model-with-initial-values-set-by-hand." class="section level3">
+<h3>Model 2: Fit the model with initial values set by hand.</h3>
+<p>When you specify start values for the parameters in your Stan models, you need to do so with a list of lists. Each MCMC chain will need its own list. In our case, that means we’ll need four separate lists, each of which will be nested within a single higher-order list. For example, here we’ll define a single list called <code>inits</code>, which will have starting values defined for our primary three population-level parameters.</p>
+<pre class="r"><code>inits &lt;- list(
+  Intercept = 1300,
+  sigma     = 150,
+  beta      = 520
+  )
+
+# what is this?
+inits</code></pre>
+<pre><code>## $Intercept
+## [1] 1300
+## 
+## $sigma
+## [1] 150
+## 
+## $beta
+## [1] 520</code></pre>
+<p>Notice that we didn’t bother setting a starting value for the standard-deviation parameter for the random intercepts. That parameter, then, will just get the <strong>brms</strong> default. The others will the the start values, as assigned. Now, since we have four chains to assign start values to, a quick and dirty method is to just use the same ones for all four chains. Here’s how to do that.</p>
+<pre class="r"><code>list_of_inits &lt;- list(inits, inits, inits, inits)</code></pre>
+<p>Our <code>list_of_inits</code> object is a list into which we have saved four copies of our <code>inits</code> list. Here’s how to use those values within <code>brms::brm()</code>. Just plug them into the <code>inits</code> argument.</p>
+<pre class="r"><code>fit2 &lt;- brm(
+  data = dat,
+  family = exgaussian(),
+  formula = rt ~ 1 + (1 | id),
+  cores = 4, seed = 1,
+  inits = list_of_inits
+)</code></pre>
+<p>The effective sample sizes are still a little low, but the major pathologies are now gone. Compare the updated traceplot for the intercept to the first one.</p>
+<pre class="r"><code># adjust fit1
+p1 &lt;- p1 +
+  geom_trace(subtitle = &quot;fit1 (default settings)&quot;,
+             xlab = NULL, xbreaks = NULL)
+
+# fit2
+p2 &lt;- ggs(fit2) %&gt;%
+  filter(Parameter == &quot;b_Intercept&quot;) %&gt;% 
+  mutate(chain = factor(Chain),
+         intercept = value) %&gt;% 
+  
+  ggplot(aes(x = Iteration, y = intercept, color = chain)) +
+  geom_trace(subtitle = &quot;fit2 (manual copy/paste inits settings)&quot;) +
+  coord_cartesian(ylim = c(1200, 1400))
+
+# combine
+p1 / p2</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-16-1.png" width="576" /></p>
+<p>Man that looks better! See how all four of our chains started out at 1,300? That’s because of how we copy/pasted <code>inits</code> four times within our <code>list_of_inits</code> object. This is kinda okay, but we can do better.</p>
+</div>
+<div id="model-3-set-the-initial-values-with-a-custom-function." class="section level3">
+<h3>Model 3: Set the initial values with a custom function.</h3>
+<p>Returning back to MCMC theory, a bit, it’s generally a better idea to assign each chain its own starting value. Then, if all chains converge into the same part in the parameter space, that provides more convincing evidence they’re all properly exploring the posterior. To be clear, this isn’t rigorous evidence. It’s just better evidence than if we started them all in the same spot.</p>
+<p>One way to give each chain its own starting value would be to manually set them. Here’s what that would look like if we were only working with two chains.</p>
+<pre class="r"><code># set the values for the first chain
+inits1 &lt;- list(
+  Intercept = 1250,
+  sigma     = 140,
+  beta      = 500
+  )
+
+# set new values for the second chain
+inits2 &lt;- list(
+  Intercept = 1350,
+  sigma     = 160,
+  beta      = 540
+  )
+
+# combine the two lists into a single list
+list_of_inits &lt;- list(inits1, inits2)</code></pre>
+<p>This approach will work fine, but it’s tedious, especially if you’d like to apply it to a large number of parameters. A more programmatic approach would be to use a pseudorandom number-generating function to randomly set the starting values. Since the intercept is an unbounded parameter, the posterior for which will often look Gaussian, the <code>rnorm()</code> function can be a great choice for selecting its starting values. Since both <span class="math inline">\(\sigma\)</span> and <span class="math inline">\(\beta\)</span> parameters need to be non-negative, a better choice might be the <code>runif()</code> or <code>rgamma()</code> functions. Here we’ll just use <code>runif()</code> for each.</p>
+<p>Since we’re talking about using the pseudorandom number generators to pick our values, it would be nice if the results were reproducible. We can do that by working in the <code>set.seed()</code> function. Finally, it would be really sweet if we had a way to wrap <code>set.seed()</code> and the various number-generating functions into a single higher-order function. Here’s one way to make such a function, which I’m calling <code>set_inits()</code>.</p>
+<pre class="r"><code>set_inits &lt;- function(seed = 1) {
+  
+  set.seed(seed)
+  list(
+    Intercept = rnorm(n = 1, mean = 1300, sd = 100),
+    sigma     = runif(n = 1, min = 100, max = 200),
+    beta      = runif(n = 1, min = 450, max = 550)
+  )
+  
+}
+
+# try it out
+set_inits(seed = 0)</code></pre>
+<pre><code>## $Intercept
+## [1] 1426.295
+## 
+## $sigma
+## [1] 137.2124
+## 
+## $beta
+## [1] 507.2853</code></pre>
+<p>Notice how we set the parameters within the <code>rnorm()</code> and <code>runif()</code> functions to values that seemed reasonable given our model. These values aren’t magic and you could adjust them to your own needs. Now, here’s how to use our handy <code>set_inits()</code> function to choose similar, but distinct, starting values for each of our four chains. We save the results in a higher-order list called <code>my_second_list_of_inits</code>.</p>
+<pre class="r"><code>my_second_list_of_inits &lt;- list(
+  # different seed values will return different results
+  set_inits(seed = 1),
+  set_inits(seed = 2),
+  set_inits(seed = 3),
+  set_inits(seed = 4)
+)
+
+# what have we done?
+str(my_second_list_of_inits)</code></pre>
+<pre><code>## List of 4
+##  $ :List of 3
+##   ..$ Intercept: num 1237
+##   ..$ sigma    : num 157
+##   ..$ beta     : num 541
+##  $ :List of 3
+##   ..$ Intercept: num 1210
+##   ..$ sigma    : num 157
+##   ..$ beta     : num 467
+##  $ :List of 3
+##   ..$ Intercept: num 1204
+##   ..$ sigma    : num 138
+##   ..$ beta     : num 483
+##  $ :List of 3
+##   ..$ Intercept: num 1322
+##   ..$ sigma    : num 129
+##   ..$ beta     : num 478</code></pre>
+<p>Now just plug <code>my_second_list_of_inits</code> into the <code>inits</code> argument and fit the model.</p>
+<pre class="r"><code>fit3 &lt;- brm(
+  data = dat,
+  family = exgaussian(),
+  formula = rt ~ 1 + (1 | id),
+  cores = 4, seed = 1,
+  inits = my_second_list_of_inits
+)</code></pre>
+<p>As with <code>fit2</code>, our <code>fit3</code> came out okay. Let’s inspect the intercept parameter with a final trace plot.</p>
+<pre class="r"><code># adjust fit2
+p2 &lt;- p2 +
+  geom_trace(subtitle = &quot;fit2 (manual copy/paste inits settings)&quot;,
+             xlab = NULL, xbreaks = NULL)
+
+# fit3
+p3 &lt;- ggs(fit3) %&gt;%
+  filter(Parameter == &quot;b_Intercept&quot;) %&gt;% 
+  mutate(chain = factor(Chain),
+         intercept = value) %&gt;% 
+  
+  ggplot(aes(x = Iteration, y = intercept, color = chain)) +
+  geom_trace(subtitle = &quot;fit3 (inits by a custom function)&quot;) +
+  coord_cartesian(ylim = c(1200, 1400))
+
+# combine
+p1 / p2 / p3</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-22-1.png" width="576" /></p>
+<p>Now we have visual evidence that even though all four chains started at different places in the parameter space, they all converged into the same area. This still isn’t fully rigorous evidence our chains are performing properly, but it’s a major improvement from <code>fit1</code> and a minor improvement from <code>fit2</code>. They aren’t shown here, but the same point holds for the <span class="math inline">\(\sigma\)</span> and <span class="math inline">\(\beta\)</span> parameters.</p>
+<p>Okay, just for kicks and giggles, let’s see how well our last model did by way of a posterior predictive check.</p>
+<pre class="r"><code>bayesplot::color_scheme_set(fk[c(31, 31, 31, 3, 3, 3)])
+
+pp_check(fit3, nsamples = 100) + 
+  # we don&#39;t need to see the whole right tail
+  coord_cartesian(xlim = c(0, 5000))</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-23-1.png" width="576" /></p>
+<p>The model could be better, but it’s moving in the right direction and there don’t appear to be any major pathologies, like what we saw with <code>fit1</code>.</p>
+</div>
+</div>
+<div id="recap" class="section level2">
+<h2>Recap</h2>
+<ul>
+<li>If your try to fit a model with MCMC, you may sometimes end up with pathologies, such as divergent transitions, large numbers of transitions, high R-hat values, and/or very low effective sample size estimates.</li>
+<li>Sometimes these pathologies arise when the starting values for your chains are far away from the centers of their posterior densities.</li>
+<li>When using <strong>brms</strong>, you can solve this problem by setting the starting values with the <code>inits</code> argument.</li>
+<li>One approach is to manually set the starting values, saving them in a list of lists.</li>
+<li>Another approach is to use the pseudorandom number generators, such as <code>rnorm()</code> and <code>runif()</code>, to assign starting values within user-defined ranges.</li>
+</ul>
+</div>
+<div id="session-info" class="section level2">
+<h2>Session info</h2>
+<pre class="r"><code>sessionInfo()</code></pre>
+<pre><code>## R version 4.0.4 (2021-02-15)
+## Platform: x86_64-apple-darwin17.0 (64-bit)
+## Running under: macOS Catalina 10.15.7
+## 
+## Matrix products: default
+## BLAS:   /Library/Frameworks/R.framework/Versions/4.0/Resources/lib/libRblas.dylib
+## LAPACK: /Library/Frameworks/R.framework/Versions/4.0/Resources/lib/libRlapack.dylib
+## 
+## locale:
+## [1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+## 
+## attached base packages:
+## [1] stats     graphics  grDevices utils     datasets  methods   base     
+## 
+## other attached packages:
+##  [1] lisa_0.1.2      ggmcmc_1.5.1.1  patchwork_1.1.1 brms_2.15.0     Rcpp_1.0.6      forcats_0.5.1  
+##  [7] stringr_1.4.0   dplyr_1.0.6     purrr_0.3.4     readr_1.4.0     tidyr_1.1.3     tibble_3.1.2   
+## [13] ggplot2_3.3.3   tidyverse_1.3.0
+## 
+## loaded via a namespace (and not attached):
+##   [1] readxl_1.3.1         backports_1.2.1      plyr_1.8.6           igraph_1.2.6         splines_4.0.4       
+##   [6] crosstalk_1.1.0.1    TH.data_1.0-10       rstantools_2.1.1     inline_0.3.17        digest_0.6.27       
+##  [11] htmltools_0.5.1.1    rsconnect_0.8.16     fansi_0.4.2          magrittr_2.0.1       modelr_0.1.8        
+##  [16] RcppParallel_5.0.2   matrixStats_0.57.0   xts_0.12.1           sandwich_3.0-0       prettyunits_1.1.1   
+##  [21] colorspace_2.0-0     rvest_0.3.6          haven_2.3.1          xfun_0.23            callr_3.7.0         
+##  [26] crayon_1.4.1         jsonlite_1.7.2       lme4_1.1-25          survival_3.2-10      zoo_1.8-8           
+##  [31] glue_1.4.2           gtable_0.3.0         emmeans_1.5.2-1      V8_3.4.0             pkgbuild_1.2.0      
+##  [36] rstan_2.21.2         abind_1.4-5          scales_1.1.1         mvtnorm_1.1-1        GGally_2.1.1        
+##  [41] DBI_1.1.0            miniUI_0.1.1.1       xtable_1.8-4         stats4_4.0.4         StanHeaders_2.21.0-7
+##  [46] DT_0.16              htmlwidgets_1.5.2    httr_1.4.2           threejs_0.3.3        RColorBrewer_1.1-2  
+##  [51] ellipsis_0.3.2       farver_2.1.0         reshape_0.8.8        pkgconfig_2.0.3      loo_2.4.1           
+##  [56] sass_0.3.1           dbplyr_2.0.0         utf8_1.2.1           labeling_0.4.2       tidyselect_1.1.1    
+##  [61] rlang_0.4.11         reshape2_1.4.4       later_1.2.0          munsell_0.5.0        cellranger_1.1.0    
+##  [66] tools_4.0.4          cli_2.5.0            generics_0.1.0       broom_0.7.6          ggridges_0.5.3      
+##  [71] evaluate_0.14        fastmap_1.1.0        yaml_2.2.1           processx_3.5.2       knitr_1.33          
+##  [76] fs_1.5.0             nlme_3.1-152         mime_0.10            projpred_2.0.2       xml2_1.3.2          
+##  [81] rstudioapi_0.13      compiler_4.0.4       bayesplot_1.8.0      shinythemes_1.1.2    curl_4.3            
+##  [86] gamm4_0.2-6          reprex_0.3.0         statmod_1.4.35       bslib_0.2.4          stringi_1.6.2       
+##  [91] highr_0.9            ps_1.6.0             blogdown_1.3         Brobdingnag_1.2-6    lattice_0.20-41     
+##  [96] Matrix_1.3-2         nloptr_1.2.2.2       markdown_1.1         shinyjs_2.0.0        vctrs_0.3.8         
+## [101] pillar_1.6.1         lifecycle_1.0.0      jquerylib_0.1.4      bridgesampling_1.0-0 estimability_1.3    
+## [106] httpuv_1.6.0         R6_2.5.0             bookdown_0.22        promises_1.2.0.1     gridExtra_2.3       
+## [111] codetools_0.2-18     boot_1.3-26          colourpicker_1.1.0   MASS_7.3-53          gtools_3.8.2        
+## [116] assertthat_0.2.1     withr_2.4.2          shinystan_2.5.0      multcomp_1.4-16      mgcv_1.8-33         
+## [121] parallel_4.0.4       hms_0.5.3            grid_4.0.4           coda_0.19-4          minqa_1.2.4         
+## [126] rmarkdown_2.8        shiny_1.6.0          lubridate_1.7.9.2    base64enc_0.1-3      dygraphs_1.1.1.6</code></pre>
+</div>
+<div id="references" class="section level2 unnumbered">
+<h2>References</h2>
+<div id="refs" class="references csl-bib-body hanging-indent" line-spacing="2">
+<div id="ref-Bürkner2021Parameterization" class="csl-entry">
+Bürkner, P.-C. (2021). <em>Parameterization of response distributions in brms</em>. <a href="https://CRAN.R-project.org/package=brms/vignettes/brms_families.html">https://CRAN.R-project.org/package=brms/vignettes/brms_families.html</a>
+</div>
+<div id="ref-burknerBrmsPackageBayesian2017" class="csl-entry">
+Bürkner, P.-C. (2017). <span class="nocase">brms</span>: <span>An R</span> package for <span>Bayesian</span> multilevel models using <span>Stan</span>. <em>Journal of Statistical Software</em>, <em>80</em>(1), 1–28. <a href="https://doi.org/10.18637/jss.v080.i01">https://doi.org/10.18637/jss.v080.i01</a>
+</div>
+<div id="ref-burknerAdvancedBayesianMultilevel2018" class="csl-entry">
+Bürkner, P.-C. (2018). Advanced <span>Bayesian</span> multilevel modeling with the <span>R</span> package brms. <em>The R Journal</em>, <em>10</em>(1), 395–411. <a href="https://doi.org/10.32614/RJ-2018-017">https://doi.org/10.32614/RJ-2018-017</a>
+</div>
+<div id="ref-R-brms" class="csl-entry">
+Bürkner, P.-C. (2020). <em><span class="nocase">brms</span>: <span>Bayesian</span> regression models using ’<span>Stan</span>’</em>. <a href="https://CRAN.R-project.org/package=brms">https://CRAN.R-project.org/package=brms</a>
+</div>
+<div id="ref-marinGgmcmcAnalysisMCMC2016" class="csl-entry">
+Fernández i Marín, X. (2016). <span class="nocase">ggmcmc</span>: <span>Analysis</span> of <span>MCMC</span> samples and <span>Bayesian</span> inference. <em>Journal of Statistical Software</em>, <em>70</em>(9), 1–20. <a href="https://doi.org/10.18637/jss.v070.i09">https://doi.org/10.18637/jss.v070.i09</a>
+</div>
+<div id="ref-R-ggmcmc" class="csl-entry">
+Fernández i Marín, X. (2020). <em><span class="nocase">ggmcmc</span>: <span>Tools</span> for analyzing <span>MCMC</span> simulations from <span>Bayesian</span> inference</em> [Manual]. <a href="https://CRAN.R-project.org/package=ggmcmc">https://CRAN.R-project.org/package=ggmcmc</a>
+</div>
+<div id="ref-gelman2013bayesian" class="csl-entry">
+Gelman, A., Carlin, J. B., Stern, H. S., Dunson, D. B., Vehtari, A., &amp; Rubin, D. B. (2013). <em>Bayesian data analysis</em> (Third Edition). <span>CRC press</span>. <a href="https://stat.columbia.edu/~gelman/book/">https://stat.columbia.edu/~gelman/book/</a>
+</div>
+<div id="ref-gelmanRegressionOtherStories2020" class="csl-entry">
+Gelman, A., Hill, J., &amp; Vehtari, A. (2020). <em>Regression and other stories</em>. <span>Cambridge University Press</span>. <a href="https://doi.org/10.1017/9781139161879">https://doi.org/10.1017/9781139161879</a>
+</div>
+<div id="ref-gillBayesianMethods2015" class="csl-entry">
+Gill, J. (2015). <em>Bayesian methods: <span>A</span> social and behavioral sciences approach</em> (Third Edition). <span>CRC press</span>. <a href="https://www.routledge.com/Bayesian-Methods-A-Social-and-Behavioral-Sciences-Approach-Third-Edition/Gill/p/book/9781439862483">https://www.routledge.com/Bayesian-Methods-A-Social-and-Behavioral-Sciences-Approach-Third-Edition/Gill/p/book/9781439862483</a>
+</div>
+<div id="ref-kruschkeDoingBayesianData2015" class="csl-entry">
+Kruschke, J. K. (2015). <em>Doing <span>Bayesian</span> data analysis: <span>A</span> tutorial with <span>R</span>, <span>JAGS</span>, and <span>Stan</span></em>. <span>Academic Press</span>. <a href="https://sites.google.com/site/doingbayesiandataanalysis/">https://sites.google.com/site/doingbayesiandataanalysis/</a>
+</div>
+<div id="ref-R-lisa" class="csl-entry">
+Littlefield, T. (2020). <em><span class="nocase">lisa</span>: <span>Color</span> palettes from color lisa</em> [Manual]. <a href="https://CRAN.R-project.org/package=lisa">https://CRAN.R-project.org/package=lisa</a>
+</div>
+<div id="ref-mcelreathStatisticalRethinkingBayesian2020" class="csl-entry">
+McElreath, R. (2020). <em>Statistical rethinking: <span>A Bayesian</span> course with examples in <span>R</span> and <span>Stan</span></em> (Second Edition). <span>CRC Press</span>. <a href="https://xcelab.net/rm/statistical-rethinking/">https://xcelab.net/rm/statistical-rethinking/</a>
+</div>
+<div id="ref-mcelreathStatisticalRethinkingBayesian2015" class="csl-entry">
+McElreath, R. (2015). <em>Statistical rethinking: <span>A Bayesian</span> course with examples in <span>R</span> and <span>Stan</span></em>. <span>CRC press</span>. <a href="https://xcelab.net/rm/statistical-rethinking/">https://xcelab.net/rm/statistical-rethinking/</a>
+</div>
+<div id="ref-R-patchwork" class="csl-entry">
+Pedersen, T. L. (2019). <em><span class="nocase">patchwork</span>: <span>The</span> composer of plots</em>. <a href="https://CRAN.R-project.org/package=patchwork">https://CRAN.R-project.org/package=patchwork</a>
+</div>
+<div id="ref-R-base" class="csl-entry">
+R Core Team. (2020). <em>R: <span>A</span> language and environment for statistical computing</em>. <span>R Foundation for Statistical Computing</span>. <a href="https://www.R-project.org/">https://www.R-project.org/</a>
+</div>
+<div id="ref-standevelopmentteamStanReferenceManual2021" class="csl-entry">
+Stan Development Team. (2021). <em>Stan reference manual, <span>Version</span> 2.27</em>. <a href="https://mc-stan.org/docs/2_27/reference-manual/">https://mc-stan.org/docs/2_27/reference-manual/</a>
+</div>
+<div id="ref-R-tidyverse" class="csl-entry">
+Wickham, H. (2019). <em><span class="nocase">tidyverse</span>: <span>Easily</span> install and load the ’tidyverse’</em>. <a href="https://CRAN.R-project.org/package=tidyverse">https://CRAN.R-project.org/package=tidyverse</a>
+</div>
+<div id="ref-wickhamWelcomeTidyverse2019" class="csl-entry">
+Wickham, H., Averick, M., Bryan, J., Chang, W., McGowan, L. D., François, R., Grolemund, G., Hayes, A., Henry, L., Hester, J., Kuhn, M., Pedersen, T. L., Miller, E., Bache, S. M., Müller, K., Ooms, J., Robinson, D., Seidel, D. P., Spinu, V., … Yutani, H. (2019). Welcome to the tidyverse. <em>Journal of Open Source Software</em>, <em>4</em>(43), 1686. <a href="https://doi.org/10.21105/joss.01686">https://doi.org/10.21105/joss.01686</a>
+</div>
+</div>
+</div>
+<div class="footnotes">
+<hr />
+<ol>
+<li id="fn1"><p>There are different ways to parameterize the exGaussian distribution and these differences may involve different ways to express what we’re calling <span class="math inline">\(\beta\)</span>. Since our parameterization is based on Paul Bürkner’s work, you might check out the <a href="https://cran.r-project.org/web/packages/brms/vignettes/brms_families.html#response-time-models"><em>Response time models</em></a> section in his <span class="citation">(<a href="#ref-Bürkner2021Parameterization" role="doc-biblioref">2021</a>)</span> document, <em>Parameterization of response distributions in brms</em>.<a href="#fnref1" class="footnote-back">↩︎</a></p></li>
+</ol>
+</div>
