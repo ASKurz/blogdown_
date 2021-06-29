@@ -54,7 +54,7 @@ This tutorial is for those with a passing familiarity with the following:
 
 * You'll want to be familiar with Bayesian multilevel regression. In addition to the resources, above, I recommend either edition of McElreath's introductory text [-@mcelreathStatisticalRethinkingBayesian2015; -@mcelreathStatisticalRethinkingBayesian2020] or Kruschke's [-@kruschkeDoingBayesianData2015] introductory text.
 
-* You'll want to be familiar with IRT. The framework in this blog comes most directly from Bürkner's [-@burknerBayesianItemResponse2020] preprint. Though I'm not in a position to vouch for them myself, I've had people recommend @crockerIntroductionToClassical2006; @deayalaTheoryAndPractice2008; @reckaseMultidimensionalIRT2009; @bonifayMultidimensionalIRT2019; and @albanoIntroductionToEducational2020.
+* You'll want to be familiar with IRT. The framework in this blog comes most directly from Bürkner's [-@burknerBayesianItemResponse2020] preprint. Though I'm not in a position to vouch for them myself, I've had people recommend @crockerIntroductionToClassical2006; @deayalaTheoryAndPractice2008; @reckaseMultidimensionalIRT2009; @bonifayMultidimensionalIRT2019[^1]; and @albanoIntroductionToEducational2020.
  
 * All code is in **R** [@R-base], with healthy doses of the **tidyverse** [@R-tidyverse; @wickhamWelcomeTidyverse2019]. Probably the best place to learn about the **tidyverse**-style of coding, as well as an introduction to **R**, is Grolemund and Wickham's [-@grolemundDataScience2017] freely-available online text, [*R for data science*](https://r4ds.had.co.nz).
 
@@ -67,7 +67,7 @@ library(brms)
 
 ## Data
 
-The data for this post come from the preprint by @loramValidationOfANovel2019, who generously shared their data and code on [GitHub](https://github.com/Lingtax/2018_measures_study) and the [Open Science Framework](https://osf.io/t9w2x/). In their paper, they used IRT to make a self-report measure of climate change denial. After pruning their initial item set, Loram and colleagues settled on eight binary items for their measure. Here we load the data for those items.
+The data for this post come from the preprint by @loramValidationOfANovel2019, who generously shared their data and code on [GitHub](https://github.com/Lingtax/2018_measures_study) and the [Open Science Framework](https://osf.io/t9w2x/). In their paper, they used IRT to make a self-report measure of climate change denial. After pruning their initial item set, Loram and colleagues settled on eight binary items for their measure. Here we load the data for those items[^2].
 
 ```{r}
 load("data/ccdrefined02.rda")
@@ -93,11 +93,11 @@ Now responses (`y`) are nested within participants (`id`) and items (`item`).
 
 ## IRT
 
-In -@burknerBayesianItemResponse2020, Bürkner outlined the framework for the multilevel Bayesian approach to IRT, as implemented in **brms**. For a thorough introduction to IRT, see that paper and the works referenced therein. In short, IRT allows one to decompose the information from assessment measures into person parameters ($\theta$) and item parameters ($\xi$). The IRT framework offers a large variety of model types. In this post, we'll focus on the widely-used 1PL and 2PL models. First, we'll briefly introduce them within the context of our multilevel Bayesian approach. Then we'll fit those models to the `dat_long` data. Finally, we'll show how to explore those models using ICC and IIC plots.
+In his -@burknerBayesianItemResponse2020 preprint, Bürkner outlined the framework for the multilevel Bayesian approach to IRT, as implemented in **brms**. In short, IRT allows one to decompose the information from assessment measures into person parameters ($\theta$) and item parameters ($\xi$). The IRT framework offers a large variety of model types. In this post, we'll focus on the widely-used 1PL and 2PL models. First, we'll briefly introduce them within the context of Bürkner's multilevel Bayesian approach. Then we'll fit those models to the `dat_long` data. Finally, we'll show how to explore those models using ICC and IIC plots.
 
 ### What is the 1PL?
 
-With a set of binary items $y_{pi}$, which vary across $P$ persons and $I$ items, we can express the simple one-parameter logistic (1PL) model as
+With a set of binary data $y_{pi}$, which vary across $P$ persons and $I$ items, we can express the simple one-parameter logistic (1PL) model as
 
 $$
 \begin{align*}
@@ -119,7 +119,7 @@ y_{pi} & \sim \operatorname{Bernoulli}(p_{pi}) \\
 \end{align*}
 $$
 
-where the new parameter $\beta_0$ is the grand mean. Now our $\theta_p$ and $\xi_i$ parameters are expressed as deviations around the grand mean $\beta_0$. As is typical within the multilevel framework, we model these deviations as normally distributed with means set to zero and standard deviations ($\sigma_\theta$ and $\sigma_\xi$) estimated from the data[^1].
+where the new parameter $\beta_0$ is the grand mean. Now our $\theta_p$ and $\xi_i$ parameters are expressed as deviations around the grand mean $\beta_0$. As is typical within the multilevel framework, we model these deviations as normally distributed with means set to zero and standard deviations ($\sigma_\theta$ and $\sigma_\xi$) estimated from the data[^3].
 
 To finish off our multilevel Bayesian version the 1PL, we just need to add in our priors. In this blog post, we'll follow the weakly-regularizing approach and set
 
@@ -131,7 +131,7 @@ $$
 \end{align*}
 $$
 
-where the $+$ superscripts indicates the Student-$t$ priors for the $\sigma$ parameters are restricted to non-negative values.
+where the $+$ superscripts indicate the Student-$t$ priors for the $\sigma$ parameters are restricted to non-negative values.
 
 ### How about the 2PL?
 
@@ -160,15 +160,15 @@ y_{pi} & \sim \operatorname{Bernoulli}(p_{pi}) \\
 \end{align*}
 $$
 
-where the $\alpha$ term is multiplied by the grand mean $\beta_0$, in addition to the $\theta_p$ and $\xi_i$ parameters. But note that $\alpha$ is itself a composite of a grand mean $\beta_1$ and the item-level deviations around that grand mean, $\alpha_i$. Since both $\alpha$ and $\xi$ vary across items, they are modeled as multivariate normal, with a mean vector of zeros and variance/covariance matrix $\mathbf \Sigma$. As is typical with **brms**, we will decompose $\mathbf \Sigma$ into a diagonal matrix of standard deviations $(\mathbf S)$ and a correlation matrix $(\mathbf R)$.
+where the $\alpha$ term is multiplied by $\beta_0$, in addition to the $\theta_p$ and $\xi_i$ parameters. But note that $\alpha$ is itself a composite of its own grand mean $\beta_1$ and the item-level deviations around it, $\alpha_i$. Since both $\alpha$ and $\xi$ vary across items, they are modeled as multivariate normal, with a mean vector of zeros and variance/covariance matrix $\mathbf \Sigma$. As is typical with **brms**, we will decompose $\mathbf \Sigma$ into a diagonal matrix of standard deviations $(\mathbf S)$ and a correlation matrix $(\mathbf R)$.
 
-As Bürkner [-@burknerBayesianItemResponse2020] discussed in Section 5, this particular model might have identification problems without strong priors. The issue is "a switch in the sign of [$\alpha$] can be corrected for by a switch in the sign of [$(\beta_0 + \theta_p + \xi_i)$] without a change in the overall likelihood." One solution, then, would be to constrain $\alpha$ to be positive. We can do that by modeling
+As Bürkner [-@burknerBayesianItemResponse2020] discussed in Section 5, this particular model might have identification problems without strong priors. The issue is "a switch in the sign of $[\alpha]$ can be corrected for by a switch in the sign of $[(\beta_0 + \theta_p + \xi_i)]$ without a change in the overall likelihood." One solution, then, would be to constrain $\alpha$ to be positive. We can do that with
 
 $$
 \begin{align*}
 y_{pi} & \sim \operatorname{Bernoulli}(p_{pi}) \\
-\operatorname{logit}(p_{pi}) & = \exp(\log \alpha) \times (\beta_0 + \theta_p + \xi_i) \\
-\log \alpha & = \beta_1 + \alpha_i \\
+\operatorname{logit}(p_{pi}) & = \color{#8b0000}{\exp(\log \alpha)} \times (\beta_0 + \theta_p + \xi_i) \\
+\color{#8b0000}{\log \alpha} & = \beta_1 + \alpha_i \\
 \theta_p & \sim \operatorname{Normal}(0, \sigma_\theta) \\
 \begin{bmatrix} \alpha_i \\ \xi_i \end{bmatrix} & \sim \operatorname{MVNormal}(\mathbf 0, \mathbf \Sigma) \\
 \Sigma    & = \mathbf{SRS} \\
@@ -190,7 +190,7 @@ $$
 \end{align*}
 $$
 
-where "LKJ" is the Lewandowski, Kurowicka, and Joe prior for correlation matrices [@lewandowski2009generating]. With $\eta = 2$, the LKJ weakly regularizes the correlations away from extreme values[^2].
+where "LKJ" is the Lewandowski, Kurowicka, and Joe prior for correlation matrices [@lewandowski2009generating]. With $\eta = 2$, the LKJ weakly regularizes the correlations away from extreme values[^4].
 
 ### Fire up **brms**
 
@@ -207,7 +207,7 @@ irt1 <- brm(
 )
 ```
 
-Our non-linear 2PL model, however, will require the **brms** non-linear syntax [@Bürkner2021Non_linear]. Here we'll follow the same basic configuration Bürkner used in his [-@burknerBayesianItemResponse2020] IRT manuscript.
+Our non-linear 2PL model, however, will require the **brms** non-linear syntax [@Bürkner2021Non_linear]. Here we'll follow the same basic configuration Bürkner used in his [-@burknerBayesianItemResponse2020] IRT preprint.
 
 ```{r, eval = F}
 irt2 <- brm(
@@ -240,7 +240,7 @@ With respect to the $\sigma$ parameters, both models suggest the loin's share of
 
 ### ICCs.
 
-For IRT models of binary items, item-characteristic curves (ICCs) show the expected relation between one's underlying "ability" and the probability of scoring 1 on a given item. In our models, above, each participant in the data had a their underlying ability estimated by way of the $\theta_i$ parameters. However, what we want, here is is to specify the relevant part of the parameter space for $\theta$ without reference to any given participant. Since the the 1PL and 2PL models are fit with the logit link, this will mean entertaining $\theta$ values ranging within an interval like $[-4, 4]$, $[-6, 6]$, or some similar values. This range will define our $x$ axis. Since our $y$ axis has to do with probabilities, it will range from 0 to 1. The trick is knowing how to work with the posterior draws to compute the relevant probability values for their corresponding $\theta$ values.
+For IRT models of binary items, item-characteristic curves (ICCs) show the expected relation between one's underlying "ability" and the probability of scoring 1 on a given item. In our models, above, each participant in the data had a their underlying ability estimated by way of the $\theta_i$ parameters. However, what we want, here, is is to specify the relevant part of the parameter space for $\theta$ without reference to any given participant. Since the the 1PL and 2PL models are fit with the logit link, this will mean entertaining $\theta$ values ranging within an interval like $[-4, 4]$ or $[-6, 6]$. This range will define our $x$ axis. Since our $y$ axis has to do with probabilities, it will range from 0 to 1. The trick is knowing how to work with the posterior draws to compute the relevant probability values for their corresponding $\theta$ values.
 
 We'll start with our 1PL model, `irt1`. First, we extract the posterior draws.
 
@@ -251,7 +251,7 @@ post <- posterior_samples(irt1)
 glimpse(post)
 ```
 
-I'm not showing the output for `glimpse(post)` because `post` is a $4000 \times 218$ data frame and all that output is just too much for a blog post. Here's a more focused look at the primary columns of interest.
+I'm not showing the output for `glimpse(post)` because `post` is a $4{,}000 \times 218$ data frame and all that output is just too much for a blog post. Here's a more focused look at the primary columns of interest.
 
 ```{r}
 post %>% 
@@ -267,7 +267,7 @@ where $\operatorname{logit}^{-1}$ is the inverse logit function
 
 $$\frac{\exp(x)}{1 + \exp(x)}.$$
 
-With **brms**, we can use the $\operatorname{logit}^{-1}$ function with the convenience function called `inv_logit_scaled()`. Before we put the `inv_logit_scaled()` function to use, we'll want to rearrange our `post` samples into the long format so that all the $\xi_i$ draws for each of the eight items are nested within a single column, we'll call `xi`. We'll index which draw corresponds to which of the eight items with a nominal `item` column. And to make this all work within the context of 4,000 posterior draws, we'll also need to make an iteration index, which we'll call `iter`.
+With **brms**, we have access to the $\operatorname{logit}^{-1}$ function by way of the convenience function called `inv_logit_scaled()`. Before we put the `inv_logit_scaled()` function to use, we'll want to rearrange our `post` samples into the long format so that all the $\xi_i$ draws for each of the eight items are nested within a single column, which we'll call `xi`. We'll index which draw corresponds to which of the eight items with a nominal `item` column. And to make this all work within the context of 4,000 posterior draws, we'll also need to make an iteration index, which we'll call `iter`.
 
 ```{r}
 post <- post %>% 
@@ -280,7 +280,7 @@ post <- post %>%
 head(post)
 ```
 
-Now we're ready to compute our probabilities, conditional in different ability ($\theta$) levels.
+Now we're ready to compute our probabilities, conditional in different ability $(\theta)$ levels.
 
 ```{r, warning = F, message = F}
 post <- post %>% 
@@ -322,7 +322,7 @@ post %>%
   glimpse()
 ```
 
-Now there are 16 `r_item__eta` columns, half of which correspond to the $\xi_i$ deviations and the other half of which correspond to the $\alpha_i$ deviations. In addition, we also have the `b_logalpha_Intercept` columns to content with. So this time, we'll follow up our `pivot_longer()` code with subsequent `mutate()` and `select()` steps, and complete the task with `pivot_wider()`.
+Now there are 16 `r_item__` columns, half of which correspond to the $\xi_i$ deviations and the other half of which correspond to the $\alpha_i$ deviations. In addition, we also have the `b_logalpha_Intercept` columns to content with. So this time, we'll follow up our `pivot_longer()` code with subsequent `mutate()` and `select()` steps, and complete the task with `pivot_wider()`.
 
 ```{r}
 post <- post %>% 
@@ -448,7 +448,7 @@ We might outlines the steps in this post as:
 * Extract your posterior draws with the `posterior_samples()` function.
 * Isolate the item-related columns. Within the multilevel IRT context, this will typically involve an overall intercept (e.g., `b_Intercept` for our 1PL `irt1`) and item-specific deviations (e.g., the columns starting with `r_item` in our 1PL `irt1`). 
 * Arrange the data into a format that makes it easy to add the overall intercept in question to each of the item-level deviations in question. For me, this seemed easiest with the long format via the `pivot_longer()` function.
-* Expand the data over a range of ability ($\theta$) values. For me, this worked well with the `expand()` function.
+* Expand the data over a range of ability $(\theta)$ values. For me, this worked well with the `expand()` function.
 * Use the model-implied formula to compute the $p(y = 1)$.
 * Group the results by item and $\theta$ and summarize the $p(y = 1)$ distributions with something like the mean or median.
 * Plot the results with `ggplot2::geom_line()` and friends.
@@ -459,7 +459,7 @@ You should be able to generalize this workflow to IRT models for data with more 
 
 You could totally switch up this workflow to use some of the data wrangling helpers from the [**tidybayes** package](https://CRAN.R-project.org/package=tidybayes). That could be a nifty little blog post in and of itself.
 
-One thing that's super lame about conventional ICC/IIC plots is there's no expression of uncertainty. To overcome that, you could compute the 95% intervals (or 50% or whatever) in the same `summarise()` where you computed the mean and then express those interval bounds with something like `geom_ribbon()` in your plot. The difficulty I foresee is will results in overplotting for any models with more than like five items. Perhaps faceting would be the solution, there.
+One thing that's super lame about conventional ICC/IIC plots is there's no expression of uncertainty. To overcome that, you could compute the 95% intervals (or 50% or whatever) in the same `summarise()` where you computed the mean and then express those interval bounds with something like `geom_ribbon()` in your plot. The difficulty I foresee is will result in overplotting for any models with more than like five items. Perhaps faceting would be the solution, there.
 
 I'm no IRT jock and may have goofed some of the steps or equations. To report mistakes or provide any other constructive criticism, just chime in on this Twitter thread:
 
@@ -471,7 +471,11 @@ sessionInfo()
 
 ## References
 
-[^1]: Adopting the three-term multilevel structure--$\beta_0 + \theta_p + \xi_i$, where the latter two terms are $\operatorname{Normal}(0, \sigma_x)$--places this form of the 1PL model squarely within the generalized linear multilevel model (GLMM). McElreath [-@mcelreathStatisticalRethinkingBayesian2015, Chapter 12] referred to this particular model type as a cross-classified model. Coming from another perspective, Kruschke [-@kruschkeDoingBayesianData2015, Chapters 19 and 20] described this as a kind of multilevel analysis of variance (ANOVA).
+[^1]: I should disclose that although I have not read through Bonifay's [-@bonifayMultidimensionalIRT2019] text, he offered to send me a copy around the time I uploaded this post.
 
-[^2]: For a nice blog post on the LKJ, check out Stephen Martin's [*Is the LKJ(1) prior uniform? "Yes"*](http://srmart.in/is-the-lkj1-prior-uniform-yes/).
+[^2]: You can find a copy of these data on my GitHub [here](https://github.com/ASKurz/blogdown/tree/main/content/post/2021-06-29-make-icc-plots-for-your-brms-irt-models/data0).
+
+[^3]: Adopting the three-term multilevel structure--$\beta_0 + \theta_p + \xi_i$, where the latter two terms are $\operatorname{Normal}(0, \sigma_x)$--places this form of the 1PL model squarely within the generalized linear multilevel model (GLMM). McElreath [-@mcelreathStatisticalRethinkingBayesian2015, Chapter 12] referred to this particular model type as a cross-classified model. Coming from another perspective, Kruschke [-@kruschkeDoingBayesianData2015, Chapters 19 and 20] described this as a kind of multilevel analysis of variance (ANOVA).
+
+[^4]: For a nice blog post on the LKJ, check out Stephen Martin's [*Is the LKJ(1) prior uniform? "Yes"*](http://srmart.in/is-the-lkj1-prior-uniform-yes/).
 
