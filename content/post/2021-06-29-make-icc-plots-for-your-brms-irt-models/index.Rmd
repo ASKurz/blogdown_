@@ -167,7 +167,7 @@ As Bürkner [-@burknerBayesianItemResponse2020] discussed in Section 5, this par
 $$
 \begin{align*}
 y_{pi} & \sim \operatorname{Bernoulli}(p_{pi}) \\
-\operatorname{logit}(p_{pi}) & = \color{#8b0000}{\exp(\log \alpha)} \times (\beta_0 + \theta_p + \xi_i) \\
+\operatorname{logit}(p_{pi}) & = \color{#8b0000}{ \exp(\log \alpha) } \times (\beta_0 + \theta_p + \xi_i) \\
 \color{#8b0000}{\log \alpha} & = \beta_1 + \alpha_i \\
 \theta_p & \sim \operatorname{Normal}(0, \sigma_\theta) \\
 \begin{bmatrix} \alpha_i \\ \xi_i \end{bmatrix} & \sim \operatorname{MVNormal}(\mathbf 0, \mathbf \Sigma) \\
@@ -192,7 +192,7 @@ $$
 
 where "LKJ" is the Lewandowski, Kurowicka, and Joe prior for correlation matrices [@lewandowski2009generating]. With $\eta = 2$, the LKJ weakly regularizes the correlations away from extreme values[^4].
 
-### Fire up **brms**
+### Fire up **brms**.
 
 With `brms::brm()`, we can fit our 1PL model with conventional multilevel syntax.
 
@@ -457,7 +457,7 @@ We might outlines the steps in this post as:
 
 You should be able to generalize this workflow to IRT models for data with more than two categories. You'll just have to be careful about juggling your thresholds. You might find some inspiration along these lines [here](https://bookdown.org/content/4857/monsters-and-mixtures.html#ordered-categorical-outcomes) and [here](https://bookdown.org/content/3686/ordinal-predicted-variable.html).
 
-You could totally switch up this workflow to use some of the data wrangling helpers from the [**tidybayes** package](https://CRAN.R-project.org/package=tidybayes). That could be a nifty little blog post in and of itself.
+You could totally switch up this workflow to use some of the data wrangling helpers from the [**tidybayes** package](https://CRAN.R-project.org/package=tidybayes) [@R-tidybayes]. That could be a nifty little blog post in and of itself.
 
 One thing that's super lame about conventional ICC/IIC plots is there's no expression of uncertainty. To overcome that, you could compute the 95% intervals (or 50% or whatever) in the same `summarise()` where you computed the mean and then express those interval bounds with something like `geom_ribbon()` in your plot. The difficulty I foresee is will result in overplotting for any models with more than like five items. Perhaps faceting would be the solution, there.
 

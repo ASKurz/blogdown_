@@ -147,7 +147,7 @@ y_{pi} &amp; \sim \operatorname{Bernoulli}(p_{pi}) \\
 <p><span class="math display">\[
 \begin{align*}
 y_{pi} &amp; \sim \operatorname{Bernoulli}(p_{pi}) \\
-\operatorname{logit}(p_{pi}) &amp; = \color{#8b0000}{\exp(\log \alpha)} \times (\beta_0 + \theta_p + \xi_i) \\
+\operatorname{logit}(p_{pi}) &amp; = \color{#8b0000}{ \exp(\log \alpha) } \times (\beta_0 + \theta_p + \xi_i) \\
 \color{#8b0000}{\log \alpha} &amp; = \beta_1 + \alpha_i \\
 \theta_p &amp; \sim \operatorname{Normal}(0, \sigma_\theta) \\
 \begin{bmatrix} \alpha_i \\ \xi_i \end{bmatrix} &amp; \sim \operatorname{MVNormal}(\mathbf 0, \mathbf \Sigma) \\
@@ -169,8 +169,8 @@ y_{pi} &amp; \sim \operatorname{Bernoulli}(p_{pi}) \\
 \]</span></p>
 <p>where “LKJ” is the Lewandowski, Kurowicka, and Joe prior for correlation matrices <span class="citation">(<a href="#ref-lewandowski2009generating" role="doc-biblioref">Lewandowski et al., 2009</a>)</span>. With <span class="math inline">\(\eta = 2\)</span>, the LKJ weakly regularizes the correlations away from extreme values<a href="#fn4" class="footnote-ref" id="fnref4"><sup>4</sup></a>.</p>
 </div>
-<div id="fire-up-brms" class="section level3">
-<h3>Fire up <strong>brms</strong></h3>
+<div id="fire-up-brms." class="section level3">
+<h3>Fire up <strong>brms</strong>.</h3>
 <p>With <code>brms::brm()</code>, we can fit our 1PL model with conventional multilevel syntax.</p>
 <pre class="r"><code>irt1 &lt;- brm(
   data = dat_long,
@@ -496,7 +496,7 @@ posterior_samples(irt2) %&gt;%
 <div id="next-steps" class="section level2">
 <h2>Next steps</h2>
 <p>You should be able to generalize this workflow to IRT models for data with more than two categories. You’ll just have to be careful about juggling your thresholds. You might find some inspiration along these lines <a href="https://bookdown.org/content/4857/monsters-and-mixtures.html#ordered-categorical-outcomes">here</a> and <a href="https://bookdown.org/content/3686/ordinal-predicted-variable.html">here</a>.</p>
-<p>You could totally switch up this workflow to use some of the data wrangling helpers from the <a href="https://CRAN.R-project.org/package=tidybayes"><strong>tidybayes</strong> package</a>. That could be a nifty little blog post in and of itself.</p>
+<p>You could totally switch up this workflow to use some of the data wrangling helpers from the <a href="https://CRAN.R-project.org/package=tidybayes"><strong>tidybayes</strong> package</a> <span class="citation">(<a href="#ref-R-tidybayes" role="doc-biblioref">Kay, 2020</a>)</span>. That could be a nifty little blog post in and of itself.</p>
 <p>One thing that’s super lame about conventional ICC/IIC plots is there’s no expression of uncertainty. To overcome that, you could compute the 95% intervals (or 50% or whatever) in the same <code>summarise()</code> where you computed the mean and then express those interval bounds with something like <code>geom_ribbon()</code> in your plot. The difficulty I foresee is will result in overplotting for any models with more than like five items. Perhaps faceting would be the solution, there.</p>
 <p>I’m no IRT jock and may have goofed some of the steps or equations. To report mistakes or provide any other constructive criticism, just chime in on this Twitter thread:</p>
 <p>{{% tweet "1409951540228628482" %}}</p>
@@ -582,6 +582,9 @@ De Ayala, R. J. (2008). <em>The theory and practice of item response theory</em>
 </div>
 <div id="ref-grolemundDataScience2017" class="csl-entry">
 Grolemund, G., &amp; Wickham, H. (2017). <em>R for data science</em>. <span>O’Reilly</span>. <a href="https://r4ds.had.co.nz">https://r4ds.had.co.nz</a>
+</div>
+<div id="ref-R-tidybayes" class="csl-entry">
+Kay, M. (2020). <em><span class="nocase">tidybayes</span>: <span>Tidy</span> data and ’geoms’ for <span>Bayesian</span> models</em>. <a href="https://mjskay.github.io/tidybayes/">https://mjskay.github.io/tidybayes/</a>
 </div>
 <div id="ref-kruschkeDoingBayesianData2015" class="csl-entry">
 Kruschke, J. K. (2015). <em>Doing <span>Bayesian</span> data analysis: <span>A</span> tutorial with <span>R</span>, <span>JAGS</span>, and <span>Stan</span></em>. <span>Academic Press</span>. <a href="https://sites.google.com/site/doingbayesiandataanalysis/">https://sites.google.com/site/doingbayesiandataanalysis/</a>
