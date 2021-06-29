@@ -44,7 +44,7 @@ load("fits/irt2.rda")
 
 ## Context
 
-Someone recently posted a [thread on the Stan forums](https://discourse.mc-stan.org/t/item-characteristic-curves-and-item-information-curves-from-item-response-models/22964) asking how one might make item-character curve (ICC) and item-information curve (IIC) plots for an item-response theory (IRT) model fit with **brms**. People were slow to provide answers and I came up disappointingly empty handed after a quick web search. The purpose of this blog post is to show how one might make ICC and IIC plots for **brms** IRT models using general-purpose data wrangling steps.
+Someone recently posted a [thread on the Stan forums](https://discourse.mc-stan.org/t/item-characteristic-curves-and-item-information-curves-from-item-response-models/22964) asking how one might make item-characteristic curve (ICC) and item-information curve (IIC) plots for an item-response theory (IRT) model fit with **brms**. People were slow to provide answers and I came up disappointingly empty handed after a quick web search. The purpose of this blog post is to show how one might make ICC and IIC plots for **brms** IRT models using general-purpose data wrangling steps.
 
 ### I make assumptions.
 
