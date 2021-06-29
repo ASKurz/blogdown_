@@ -443,15 +443,15 @@ posterior_samples(irt2) %>%
 
 We might outlines the steps in this post as:
 
-* Fit your **brms** IRT model.
-* Inspect the model with all your standard quality checks (e.g., $\widehat R$ values, trace plots).
-* Extract your posterior draws with the `posterior_samples()` function.
-* Isolate the item-related columns. Within the multilevel IRT context, this will typically involve an overall intercept (e.g., `b_Intercept` for our 1PL `irt1`) and item-specific deviations (e.g., the columns starting with `r_item` in our 1PL `irt1`). 
-* Arrange the data into a format that makes it easy to add the overall intercept in question to each of the item-level deviations in question. For me, this seemed easiest with the long format via the `pivot_longer()` function.
-* Expand the data over a range of ability $(\theta)$ values. For me, this worked well with the `expand()` function.
-* Use the model-implied formula to compute the $p(y = 1)$.
-* Group the results by item and $\theta$ and summarize the $p(y = 1)$ distributions with something like the mean or median.
-* Plot the results with `ggplot2::geom_line()` and friends.
+1. Fit your **brms** IRT model.
+2. Inspect the model with all your standard quality checks (e.g., $\widehat R$ values, trace plots).
+3. Extract your posterior draws with the `posterior_samples()` function.
+4. Isolate the item-related columns. Within the multilevel IRT context, this will typically involve an overall intercept (e.g., `b_Intercept` for our 1PL `irt1`) and item-specific deviations (e.g., the columns starting with `r_item` in our 1PL `irt1`). 
+5. Arrange the data into a format that makes it easy to add the overall intercept in question to each of the item-level deviations in question. For me, this seemed easiest with the long format via the `pivot_longer()` function.
+6. Expand the data over a range of ability $(\theta)$ values. For me, this worked well with the `expand()` function.
+7. Use the model-implied formula to compute the $p(y = 1)$.
+8. Group the results by item and $\theta$ and summarize the $p(y = 1)$ distributions with something like the mean or median.
+9. Plot the results with `ggplot2::geom_line()` and friends.
 
 ## Next steps
 
@@ -459,7 +459,7 @@ You should be able to generalize this workflow to IRT models for data with more 
 
 You could totally switch up this workflow to use some of the data wrangling helpers from the [**tidybayes** package](https://CRAN.R-project.org/package=tidybayes) [@R-tidybayes]. That could be a nifty little blog post in and of itself.
 
-One thing that's super lame about conventional ICC/IIC plots is there's no expression of uncertainty. To overcome that, you could compute the 95% intervals (or 50% or whatever) in the same `summarise()` where you computed the mean and then express those interval bounds with something like `geom_ribbon()` in your plot. The difficulty I foresee is will result in overplotting for any models with more than like five items. Perhaps faceting would be the solution, there.
+One thing that's super lame about conventional ICC/IIC plots is there's no expression of uncertainty. To overcome that, you could compute the 95% intervals (or 50% or whatever) in the same `summarise()` line where you computed the mean and then express those interval bounds with something like `geom_ribbon()` in your plot. The difficulty I foresee is it will result in overplotting for any models with more than like five items. Perhaps faceting would be the solution, there.
 
 I'm no IRT jock and may have goofed some of the steps or equations. To report mistakes or provide any other constructive criticism, just chime in on this Twitter thread:
 

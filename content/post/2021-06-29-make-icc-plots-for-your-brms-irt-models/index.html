@@ -481,7 +481,7 @@ posterior_samples(irt2) %&gt;%
 <div id="overview" class="section level2">
 <h2>Overview</h2>
 <p>We might outlines the steps in this post as:</p>
-<ul>
+<ol style="list-style-type: decimal">
 <li>Fit your <strong>brms</strong> IRT model.</li>
 <li>Inspect the model with all your standard quality checks (e.g., <span class="math inline">\(\widehat R\)</span> values, trace plots).</li>
 <li>Extract your posterior draws with the <code>posterior_samples()</code> function.</li>
@@ -491,13 +491,13 @@ posterior_samples(irt2) %&gt;%
 <li>Use the model-implied formula to compute the <span class="math inline">\(p(y = 1)\)</span>.</li>
 <li>Group the results by item and <span class="math inline">\(\theta\)</span> and summarize the <span class="math inline">\(p(y = 1)\)</span> distributions with something like the mean or median.</li>
 <li>Plot the results with <code>ggplot2::geom_line()</code> and friends.</li>
-</ul>
+</ol>
 </div>
 <div id="next-steps" class="section level2">
 <h2>Next steps</h2>
 <p>You should be able to generalize this workflow to IRT models for data with more than two categories. You’ll just have to be careful about juggling your thresholds. You might find some inspiration along these lines <a href="https://bookdown.org/content/4857/monsters-and-mixtures.html#ordered-categorical-outcomes">here</a> and <a href="https://bookdown.org/content/3686/ordinal-predicted-variable.html">here</a>.</p>
 <p>You could totally switch up this workflow to use some of the data wrangling helpers from the <a href="https://CRAN.R-project.org/package=tidybayes"><strong>tidybayes</strong> package</a> <span class="citation">(<a href="#ref-R-tidybayes" role="doc-biblioref">Kay, 2020</a>)</span>. That could be a nifty little blog post in and of itself.</p>
-<p>One thing that’s super lame about conventional ICC/IIC plots is there’s no expression of uncertainty. To overcome that, you could compute the 95% intervals (or 50% or whatever) in the same <code>summarise()</code> where you computed the mean and then express those interval bounds with something like <code>geom_ribbon()</code> in your plot. The difficulty I foresee is will result in overplotting for any models with more than like five items. Perhaps faceting would be the solution, there.</p>
+<p>One thing that’s super lame about conventional ICC/IIC plots is there’s no expression of uncertainty. To overcome that, you could compute the 95% intervals (or 50% or whatever) in the same <code>summarise()</code> line where you computed the mean and then express those interval bounds with something like <code>geom_ribbon()</code> in your plot. The difficulty I foresee is it will result in overplotting for any models with more than like five items. Perhaps faceting would be the solution, there.</p>
 <p>I’m no IRT jock and may have goofed some of the steps or equations. To report mistakes or provide any other constructive criticism, just chime in on this Twitter thread:</p>
 <p>{{% tweet "1409951540228628482" %}}</p>
 </div>
