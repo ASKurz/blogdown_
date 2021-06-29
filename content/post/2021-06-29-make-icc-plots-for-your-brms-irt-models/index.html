@@ -1,0 +1,620 @@
+---
+title: Make ICC plots for your brms IRT models
+author: A. Solomon Kurz
+date: '2021-06-29'
+slug: ''
+categories: []
+tags:
+  - Bayesian
+  - brms
+  - IRT
+  - multilevel
+  - plot
+  - R
+  - tidyverse
+  - tutorial
+subtitle: ''
+summary: ''
+authors: []
+lastmod: '2021-06-29T11:22:57-05:00'
+featured: no
+image:
+  caption: ''
+  focal_point: ''
+  preview_only: no
+projects: []
+bibliography: /Users/solomonkurz/Dropbox/blogdown/content/post/my_blog.bib
+biblio-style: apalike
+csl: /Users/solomonkurz/Dropbox/blogdown/content/post/apa.csl  
+link-citations: yes
+---
+
+<script src="{{< blogdown/postref >}}index_files/header-attrs/header-attrs.js"></script>
+
+
+<div id="context" class="section level2">
+<h2>Context</h2>
+<p>Someone recently posted a <a href="https://discourse.mc-stan.org/t/item-characteristic-curves-and-item-information-curves-from-item-response-models/22964">thread on the Stan forums</a> asking how one might make item-character curve (ICC) and item-information curve (IIC) plots for an item-response theory (IRT) model fit with <strong>brms</strong>. People were slow to provide answers and I came up disappointingly empty handed after a quick web search. The purpose of this blog post is to show how one might make ICC and IIC plots for <strong>brms</strong> IRT models using general-purpose data wrangling steps.</p>
+<div id="i-make-assumptions." class="section level3">
+<h3>I make assumptions.</h3>
+<p>This tutorial is for those with a passing familiarity with the following:</p>
+<ul>
+<li><p>You’ll want to be familiar with the <strong>brms</strong> package <span class="citation">(<a href="#ref-burknerBrmsPackageBayesian2017" role="doc-biblioref">Bürkner, 2017</a>, <a href="#ref-burknerAdvancedBayesianMultilevel2018" role="doc-biblioref">2018</a>, <a href="#ref-R-brms" role="doc-biblioref">2020b</a>)</span>. In addition to the references I just cited, you can find several helpful vignettes at <a href="https://github.com/paul-buerkner/brms">https://github.com/paul-buerkner/brms</a>. I’ve also written a few ebooks highlighting <strong>brms</strong>, which you can find at <a href="https://solomonkurz.netlify.app/bookdown/">https://solomonkurz.netlify.app/bookdown/</a>.</p></li>
+<li><p>You’ll want to be familiar with Bayesian multilevel regression. In addition to the resources, above, I recommend either edition of McElreath’s introductory text <span class="citation">(<a href="#ref-mcelreathStatisticalRethinkingBayesian2020" role="doc-biblioref">2020</a>, <a href="#ref-mcelreathStatisticalRethinkingBayesian2015" role="doc-biblioref">2015</a>)</span> or Kruschke’s <span class="citation">(<a href="#ref-kruschkeDoingBayesianData2015" role="doc-biblioref">2015</a>)</span> introductory text.</p></li>
+<li><p>You’ll want to be familiar with IRT. The framework in this blog comes most directly from Bürkner’s <span class="citation">(<a href="#ref-burknerBayesianItemResponse2020" role="doc-biblioref">2020a</a>)</span> preprint. Though I’m not in a position to vouch for them myself, I’ve had people recommend <span class="citation"><a href="#ref-crockerIntroductionToClassical2006" role="doc-biblioref">Crocker &amp; Algina</a> (<a href="#ref-crockerIntroductionToClassical2006" role="doc-biblioref">2006</a>)</span>; <span class="citation"><a href="#ref-deayalaTheoryAndPractice2008" role="doc-biblioref">De Ayala</a> (<a href="#ref-deayalaTheoryAndPractice2008" role="doc-biblioref">2008</a>)</span>; <span class="citation"><a href="#ref-reckaseMultidimensionalIRT2009" role="doc-biblioref">Reckase</a> (<a href="#ref-reckaseMultidimensionalIRT2009" role="doc-biblioref">2009</a>)</span>; <span class="citation"><a href="#ref-bonifayMultidimensionalIRT2019" role="doc-biblioref">Bonifay</a> (<a href="#ref-bonifayMultidimensionalIRT2019" role="doc-biblioref">2019</a>)</span>; and <span class="citation"><a href="#ref-albanoIntroductionToEducational2020" role="doc-biblioref">Albano</a> (<a href="#ref-albanoIntroductionToEducational2020" role="doc-biblioref">2020</a>)</span>.</p></li>
+<li><p>All code is in <strong>R</strong> <span class="citation">(<a href="#ref-R-base" role="doc-biblioref">R Core Team, 2020</a>)</span>, with healthy doses of the <strong>tidyverse</strong> <span class="citation">(<a href="#ref-R-tidyverse" role="doc-biblioref">Wickham, 2019</a>; <a href="#ref-wickhamWelcomeTidyverse2019" role="doc-biblioref">Wickham et al., 2019</a>)</span>. Probably the best place to learn about the <strong>tidyverse</strong>-style of coding, as well as an introduction to <strong>R</strong>, is Grolemund and Wickham’s <span class="citation">(<a href="#ref-grolemundDataScience2017" role="doc-biblioref">2017</a>)</span> freely-available online text, <a href="https://r4ds.had.co.nz"><em>R for data science</em></a>.</p></li>
+</ul>
+<p>Load the primary <strong>R</strong> packages.</p>
+<pre class="r"><code>library(tidyverse)
+library(brms)</code></pre>
+</div>
+</div>
+<div id="data" class="section level2">
+<h2>Data</h2>
+<p>The data for this post come from the preprint by <span class="citation"><a href="#ref-loramValidationOfANovel2019" role="doc-biblioref">Loram et al.</a> (<a href="#ref-loramValidationOfANovel2019" role="doc-biblioref">2019</a>)</span>, who generously shared their data and code on <a href="https://github.com/Lingtax/2018_measures_study">GitHub</a> and the <a href="https://osf.io/t9w2x/">Open Science Framework</a>. In their paper, they used IRT to make a self-report measure of climate change denial. After pruning their initial item set, Loram and colleagues settled on eight binary items for their measure. Here we load the data for those items.</p>
+<pre class="r"><code>load(&quot;data/ccdrefined02.rda&quot;)
+
+ccdrefined02 %&gt;% 
+  glimpse()</code></pre>
+<pre><code>## Rows: 206
+## Columns: 8
+## $ ccd05 &lt;dbl&gt; 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0…
+## $ ccd18 &lt;dbl&gt; 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0…
+## $ ccd11 &lt;dbl&gt; 1, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0…
+## $ ccd13 &lt;dbl&gt; 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0…
+## $ ccd08 &lt;dbl&gt; 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0…
+## $ ccd06 &lt;dbl&gt; 1, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 0, 1, 0…
+## $ ccd09 &lt;dbl&gt; 1, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 1, 0…
+## $ ccd16 &lt;dbl&gt; 1, 0, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 1, 0…</code></pre>
+<p>If you walk through the code in Loram and colleagues’ <a href="https://github.com/Lingtax/2018_measures_study/blob/master/Rcode/2018_Loram_CC_IRT.R"><code>2018_Loram_CC_IRT.R</code></a> file, you’ll see where this version of the data comes from. For our purposes, we’ll want to make an explicit participant number column and then convert the data to the long format.</p>
+<pre class="r"><code>dat_long &lt;-
+  ccdrefined02 %&gt;% 
+  mutate(id = 1:n()) %&gt;% 
+  pivot_longer(-id, names_to = &quot;item&quot;, values_to = &quot;y&quot;) %&gt;% 
+  mutate(item = str_remove(item, &quot;ccd&quot;))
+
+# what did we do?
+head(dat_long)</code></pre>
+<pre><code>## # A tibble: 6 x 3
+##      id item      y
+##   &lt;int&gt; &lt;chr&gt; &lt;dbl&gt;
+## 1     1 05        0
+## 2     1 18        0
+## 3     1 11        1
+## 4     1 13        1
+## 5     1 08        0
+## 6     1 06        1</code></pre>
+<p>Now responses (<code>y</code>) are nested within participants (<code>id</code>) and items (<code>item</code>).</p>
+</div>
+<div id="irt" class="section level2">
+<h2>IRT</h2>
+<p>In <span class="citation">(<a href="#ref-burknerBayesianItemResponse2020" role="doc-biblioref">2020a</a>)</span>, Bürkner outlined the framework for the multilevel Bayesian approach to IRT, as implemented in <strong>brms</strong>. For a thorough introduction to IRT, see that paper and the works referenced therein. In short, IRT allows one to decompose the information from assessment measures into person parameters (<span class="math inline">\(\theta\)</span>) and item parameters (<span class="math inline">\(\xi\)</span>). The IRT framework offers a large variety of model types. In this post, we’ll focus on the widely-used 1PL and 2PL models. First, we’ll briefly introduce them within the context of our multilevel Bayesian approach. Then we’ll fit those models to the <code>dat_long</code> data. Finally, we’ll show how to explore those models using ICC and IIC plots.</p>
+<div id="what-is-the-1pl" class="section level3">
+<h3>What is the 1PL?</h3>
+<p>With a set of binary items <span class="math inline">\(y_{pi}\)</span>, which vary across <span class="math inline">\(P\)</span> persons and <span class="math inline">\(I\)</span> items, we can express the simple one-parameter logistic (1PL) model as</p>
+<p><span class="math display">\[
+\begin{align*}
+y_{pi} &amp; \sim \operatorname{Bernoulli}(p_{pi}) \\
+\operatorname{logit}(p_{pi}) &amp; = \theta_p + \xi_i,
+\end{align*}
+\]</span></p>
+<p>where the <span class="math inline">\(p_{pi}\)</span> parameter from the Bernoulli distribution indicates the probability of <code>1</code> for the <span class="math inline">\(p\text{th}\)</span> person on the <span class="math inline">\(i\text{th}\)</span> item. To constrain the model predictions to within the <span class="math inline">\([0, 1]\)</span> probability space, we use the logit link. Note that with this parameterization, the linear model itself is just the additive sum of the person parameter <span class="math inline">\(\theta_p\)</span> and item parameter <span class="math inline">\(\xi_i\)</span>.</p>
+<p>Within our multilevel Bayesian framework, we will expand this a bit to</p>
+<p><span class="math display">\[
+\begin{align*}
+y_{pi} &amp; \sim \operatorname{Bernoulli}(p_{pi}) \\
+\operatorname{logit}(p_{pi}) &amp; = \beta_0 + \theta_p + \xi_i \\
+\theta_p &amp; \sim \operatorname{Normal}(0, \sigma_\theta) \\
+\xi_i    &amp; \sim \operatorname{Normal}(0, \sigma_\xi),
+\end{align*}
+\]</span></p>
+<p>where the new parameter <span class="math inline">\(\beta_0\)</span> is the grand mean. Now our <span class="math inline">\(\theta_p\)</span> and <span class="math inline">\(\xi_i\)</span> parameters are expressed as deviations around the grand mean <span class="math inline">\(\beta_0\)</span>. As is typical within the multilevel framework, we model these deviations as normally distributed with means set to zero and standard deviations (<span class="math inline">\(\sigma_\theta\)</span> and <span class="math inline">\(\sigma_\xi\)</span>) estimated from the data<a href="#fn1" class="footnote-ref" id="fnref1"><sup>1</sup></a>.</p>
+<p>To finish off our multilevel Bayesian version the 1PL, we just need to add in our priors. In this blog post, we’ll follow the weakly-regularizing approach and set</p>
+<p><span class="math display">\[
+\begin{align*}
+\beta_0 &amp; \sim \operatorname{Normal}(0, 1.5) \\
+\sigma_\theta &amp; \sim \operatorname{Student-t}^+(10, 0, 1) \\
+\sigma_\xi    &amp; \sim \operatorname{Student-t}^+(10, 0, 1),
+\end{align*}
+\]</span></p>
+<p>where the <span class="math inline">\(+\)</span> superscripts indicates the Student-<span class="math inline">\(t\)</span> priors for the <span class="math inline">\(\sigma\)</span> parameters are restricted to non-negative values.</p>
+</div>
+<div id="how-about-the-2pl" class="section level3">
+<h3>How about the 2PL?</h3>
+<p>We can express the two-parameter logistic (2PL) model as</p>
+<p><span class="math display">\[
+\begin{align*}
+y_{pi} &amp; \sim \operatorname{Bernoulli}(p_{pi}) \\
+\operatorname{logit}(p_{pi}) &amp; = \alpha_i \theta_p + \alpha_i \xi_i \\
+                             &amp; = \alpha_i(\theta_p + \xi_i),
+\end{align*}
+\]</span></p>
+<p>where the <span class="math inline">\(\theta_p\)</span> and <span class="math inline">\(\xi_i\)</span> parameters are now both multiplied by the discrimination parameter <span class="math inline">\(\alpha_i\)</span>. The <span class="math inline">\(i\)</span> subscript indicates the discrimination parameter varies across the items, but not across persons. We should note that because we are now multiplying parameters, this makes the 2PL a non-liner model. Within our multilevel Bayesian framework, we might express the 2PL as</p>
+<p><span class="math display">\[
+\begin{align*}
+y_{pi} &amp; \sim \operatorname{Bernoulli}(p_{pi}) \\
+\operatorname{logit}(p_{pi}) &amp; = \alpha (\beta_0 + \theta_p + \xi_i) \\
+\alpha &amp; = \beta_1 + \alpha_i \\
+\theta_p &amp; \sim \operatorname{Normal}(0, \sigma_\theta) \\
+\begin{bmatrix} \alpha_i \\ \xi_i \end{bmatrix} &amp; \sim \operatorname{MVNormal}(\mathbf 0, \mathbf \Sigma) \\
+\Sigma    &amp; = \mathbf{SRS} \\
+\mathbf S &amp; = \begin{bmatrix} \sigma_\alpha &amp; 0 \\ 0 &amp; \sigma_\xi \end{bmatrix} \\
+\mathbf R &amp; = \begin{bmatrix} 1 &amp; \rho \\ \rho &amp; 1 \end{bmatrix} ,
+\end{align*}
+\]</span></p>
+<p>where the <span class="math inline">\(\alpha\)</span> term is multiplied by the grand mean <span class="math inline">\(\beta_0\)</span>, in addition to the <span class="math inline">\(\theta_p\)</span> and <span class="math inline">\(\xi_i\)</span> parameters. But note that <span class="math inline">\(\alpha\)</span> is itself a composite of a grand mean <span class="math inline">\(\beta_1\)</span> and the item-level deviations around that grand mean, <span class="math inline">\(\alpha_i\)</span>. Since both <span class="math inline">\(\alpha\)</span> and <span class="math inline">\(\xi\)</span> vary across items, they are modeled as multivariate normal, with a mean vector of zeros and variance/covariance matrix <span class="math inline">\(\mathbf \Sigma\)</span>. As is typical with <strong>brms</strong>, we will decompose <span class="math inline">\(\mathbf \Sigma\)</span> into a diagonal matrix of standard deviations <span class="math inline">\((\mathbf S)\)</span> and a correlation matrix <span class="math inline">\((\mathbf R)\)</span>.</p>
+<p>As Bürkner <span class="citation">(<a href="#ref-burknerBayesianItemResponse2020" role="doc-biblioref">2020a</a>)</span> discussed in Section 5, this particular model might have identification problems without strong priors. The issue is “a switch in the sign of [<span class="math inline">\(\alpha\)</span>] can be corrected for by a switch in the sign of [<span class="math inline">\((\beta_0 + \theta_p + \xi_i)\)</span>] without a change in the overall likelihood.” One solution, then, would be to constrain <span class="math inline">\(\alpha\)</span> to be positive. We can do that by modeling</p>
+<p><span class="math display">\[
+\begin{align*}
+y_{pi} &amp; \sim \operatorname{Bernoulli}(p_{pi}) \\
+\operatorname{logit}(p_{pi}) &amp; = \exp(\log \alpha) \times (\beta_0 + \theta_p + \xi_i) \\
+\log \alpha &amp; = \beta_1 + \alpha_i \\
+\theta_p &amp; \sim \operatorname{Normal}(0, \sigma_\theta) \\
+\begin{bmatrix} \alpha_i \\ \xi_i \end{bmatrix} &amp; \sim \operatorname{MVNormal}(\mathbf 0, \mathbf \Sigma) \\
+\Sigma    &amp; = \mathbf{SRS} \\
+\mathbf S &amp; = \begin{bmatrix} \sigma_\alpha &amp; 0 \\ 0 &amp; \sigma_\xi \end{bmatrix} \\
+\mathbf R &amp; = \begin{bmatrix} 1 &amp; \rho \\ \rho &amp; 1 \end{bmatrix},
+\end{align*}
+\]</span></p>
+<p>wherein we are now modeling <span class="math inline">\(\alpha\)</span> on the log scale and then exponentiating <span class="math inline">\(\log \alpha\)</span> within the linear formula for <span class="math inline">\(\operatorname{logit}(p_{pi})\)</span>. Continuing on with our weakly-regularizing approach, we will express our priors for this model as</p>
+<p><span class="math display">\[
+\begin{align*}
+\beta_0 &amp; \sim \operatorname{Normal}(0, 1.5) \\
+\beta_1 &amp; \sim \operatorname{Normal}(0, 1) \\
+\sigma_\theta &amp; \sim \operatorname{Student-t}^+(10, 0, 1) \\
+\sigma_\alpha &amp; \sim \operatorname{Student-t}^+(10, 0, 1) \\
+\sigma_\xi    &amp; \sim \operatorname{Student-t}^+(10, 0, 1) \\
+\mathbf R &amp; \sim \operatorname{LKJ}(2),
+\end{align*}
+\]</span></p>
+<p>where “LKJ” is the Lewandowski, Kurowicka, and Joe prior for correlation matrices <span class="citation">(<a href="#ref-lewandowski2009generating" role="doc-biblioref">Lewandowski et al., 2009</a>)</span>. With <span class="math inline">\(\eta = 2\)</span>, the LKJ weakly regularizes the correlations away from extreme values<a href="#fn2" class="footnote-ref" id="fnref2"><sup>2</sup></a>.</p>
+</div>
+<div id="fire-up-brms" class="section level3">
+<h3>Fire up <strong>brms</strong></h3>
+<p>With <code>brms::brm()</code>, we can fit our 1PL model with conventional multilevel syntax.</p>
+<pre class="r"><code>irt1 &lt;- brm(
+  data = dat_long,
+  family = brmsfamily(&quot;bernoulli&quot;, &quot;logit&quot;),
+  y ~ 1 + (1 | item) + (1 | id),
+  prior = c(prior(normal(0, 1.5), class = Intercept),
+            prior(student_t(10, 0, 1), class = sd)),
+  cores = 4, seed = 1
+)</code></pre>
+<p>Our non-linear 2PL model, however, will require the <strong>brms</strong> non-linear syntax <span class="citation">(<a href="#ref-Bürkner2021Non_linear" role="doc-biblioref">Bürkner, 2021</a>)</span>. Here we’ll follow the same basic configuration Bürkner used in his <span class="citation">(<a href="#ref-burknerBayesianItemResponse2020" role="doc-biblioref">2020a</a>)</span> IRT manuscript.</p>
+<pre class="r"><code>irt2 &lt;- brm(
+  data = dat_long,
+  family = brmsfamily(&quot;bernoulli&quot;, &quot;logit&quot;),
+  bf(
+    y ~ exp(logalpha) * eta,
+    eta ~ 1 + (1 |i| item) + (1 | id),
+    logalpha ~ 1 + (1 |i| item),
+    nl = TRUE
+  ),
+  prior = c(prior(normal(0, 1.5), class = b, nlpar = eta),
+            prior(normal(0, 1), class = b, nlpar = logalpha),
+            prior(student_t(10, 0, 1), class = sd, nlpar = eta),
+            prior(student_t(10, 0, 1), class = sd, nlpar = logalpha),
+            prior(lkj(2), class = cor)),
+  cores = 4, seed = 1,
+  control = list(adapt_delta = .99)
+)</code></pre>
+<p>Note that for <code>irt2</code>, we had to adjust the <code>adapt_delta</code> settings to stave off a few divergent transitions. Anyway, here are the parameter summaries for the models.</p>
+<pre class="r"><code>print(irt1)</code></pre>
+<pre><code>##  Family: bernoulli 
+##   Links: mu = logit 
+## Formula: y ~ 1 + (1 | item) + (1 | id) 
+##    Data: dat_long (Number of observations: 1648) 
+## Samples: 4 chains, each with iter = 2000; warmup = 1000; thin = 1;
+##          total post-warmup samples = 4000
+## 
+## Group-Level Effects: 
+## ~id (Number of levels: 206) 
+##               Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+## sd(Intercept)     3.81      0.38     3.12     4.61 1.01     1129     2107
+## 
+## ~item (Number of levels: 8) 
+##               Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+## sd(Intercept)     0.96      0.29     0.55     1.67 1.00     1815     2835
+## 
+## Population-Level Effects: 
+##           Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+## Intercept    -2.88      0.47    -3.82    -1.94 1.00     1308     2040
+## 
+## Samples were drawn using sampling(NUTS). For each parameter, Bulk_ESS
+## and Tail_ESS are effective sample size measures, and Rhat is the potential
+## scale reduction factor on split chains (at convergence, Rhat = 1).</code></pre>
+<pre class="r"><code>print(irt2)</code></pre>
+<pre><code>##  Family: bernoulli 
+##   Links: mu = logit 
+## Formula: y ~ exp(logalpha) * eta 
+##          eta ~ 1 + (1 | i | item) + (1 | id)
+##          logalpha ~ 1 + (1 | i | item)
+##    Data: dat_long (Number of observations: 1648) 
+## Samples: 4 chains, each with iter = 2000; warmup = 1000; thin = 1;
+##          total post-warmup samples = 4000
+## 
+## Group-Level Effects: 
+## ~id (Number of levels: 206) 
+##                   Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+## sd(eta_Intercept)     1.78      0.69     0.68     3.39 1.00     1933     2321
+## 
+## ~item (Number of levels: 8) 
+##                                       Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+## sd(eta_Intercept)                         0.50      0.25     0.16     1.16 1.00     1521     2181
+## sd(logalpha_Intercept)                    0.36      0.16     0.13     0.74 1.00     1544     2075
+## cor(eta_Intercept,logalpha_Intercept)     0.44      0.31    -0.26     0.90 1.00     2847     2922
+## 
+## Population-Level Effects: 
+##                    Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+## eta_Intercept         -1.41      0.57    -2.71    -0.51 1.00     1700     2140
+## logalpha_Intercept     0.91      0.42     0.16     1.82 1.00     1944     2282
+## 
+## Samples were drawn using sampling(NUTS). For each parameter, Bulk_ESS
+## and Tail_ESS are effective sample size measures, and Rhat is the potential
+## scale reduction factor on split chains (at convergence, Rhat = 1).</code></pre>
+<p>With respect to the <span class="math inline">\(\sigma\)</span> parameters, both models suggest the loin’s share of the variability in the responses was due to variation in the participants, as expressed by the relatively large <span class="math inline">\(\sigma_\theta\)</span> parameters, which are summarized in the <code>sd(eta_Intercept)</code> rows. Even so, the items still vary quite a bit with respect to <span class="math inline">\(\xi\)</span> and <span class="math inline">\(\alpha\)</span>. In the next two sections, we’ll get a better sense of that variation with plots.</p>
+</div>
+<div id="iccs." class="section level3">
+<h3>ICCs.</h3>
+<p>For IRT models of binary items, item-characteristic curves (ICCs) show the expected relation between one’s underlying “ability” and the probability of scoring 1 on a given item. In our models, above, each participant in the data had a their underlying ability estimated by way of the <span class="math inline">\(\theta_i\)</span> parameters. However, what we want, here is is to specify the relevant part of the parameter space for <span class="math inline">\(\theta\)</span> without reference to any given participant. Since the the 1PL and 2PL models are fit with the logit link, this will mean entertaining <span class="math inline">\(\theta\)</span> values ranging within an interval like <span class="math inline">\([-4, 4]\)</span>, <span class="math inline">\([-6, 6]\)</span>, or some similar values. This range will define our <span class="math inline">\(x\)</span> axis. Since our <span class="math inline">\(y\)</span> axis has to do with probabilities, it will range from 0 to 1. The trick is knowing how to work with the posterior draws to compute the relevant probability values for their corresponding <span class="math inline">\(\theta\)</span> values.</p>
+<p>We’ll start with our 1PL model, <code>irt1</code>. First, we extract the posterior draws.</p>
+<pre class="r"><code>post &lt;- posterior_samples(irt1)
+
+# what is this?
+glimpse(post)</code></pre>
+<p>I’m not showing the output for <code>glimpse(post)</code> because <code>post</code> is a <span class="math inline">\(4000 \times 218\)</span> data frame and all that output is just too much for a blog post. Here’s a more focused look at the primary columns of interest.</p>
+<pre class="r"><code>post %&gt;% 
+  select(b_Intercept, starts_with(&quot;r_item&quot;)) %&gt;% 
+  glimpse()</code></pre>
+<pre><code>## Rows: 4,000
+## Columns: 9
+## $ b_Intercept            &lt;dbl&gt; -2.347027, -2.710615, -2.613853, -3.166867, -2.676470, -2.794820, -3.079290, …
+## $ `r_item[05,Intercept]` &lt;dbl&gt; -1.6323003, -1.8058115, -1.8621189, -1.6090339, -2.5323344, -1.5353327, -1.43…
+## $ `r_item[06,Intercept]` &lt;dbl&gt; 0.1559534455, -0.2575624215, 0.0149043141, 0.4396739597, -0.2644399951, 0.115…
+## $ `r_item[08,Intercept]` &lt;dbl&gt; -0.4202201485, -0.3789631590, -0.5076833653, -0.1256742164, -0.9035688171, -0…
+## $ `r_item[09,Intercept]` &lt;dbl&gt; 0.16016701, 0.04171247, 0.19869473, 0.92882887, 0.07287032, 0.41171578, 0.935…
+## $ `r_item[11,Intercept]` &lt;dbl&gt; -0.80410817, -1.31470954, -0.98800140, -0.58681735, -1.75515227, -1.20933771,…
+## $ `r_item[13,Intercept]` &lt;dbl&gt; -0.78569824, -0.68159922, -0.69046836, -0.33288882, -0.96657408, -0.01837113,…
+## $ `r_item[16,Intercept]` &lt;dbl&gt; 0.2638089, 0.4226998, 0.1968664, 0.9465201, 0.1394158, 0.3445774, 1.0695805, …
+## $ `r_item[18,Intercept]` &lt;dbl&gt; -1.1746881, -1.2400993, -1.4093647, -1.1124993, -1.8502372, -0.9874308, -1.10…</code></pre>
+<p>For each of our 8 questionnaire items, we compute their conditional probability with the equation</p>
+<p><span class="math display">\[p(y = 1) = \operatorname{logit}^{-1}(\beta_0 + \xi_i + \theta),\]</span></p>
+<p>where <span class="math inline">\(\operatorname{logit}^{-1}\)</span> is the inverse logit function</p>
+<p><span class="math display">\[\frac{\exp(x)}{1 + \exp(x)}.\]</span></p>
+<p>With <strong>brms</strong>, we can use the <span class="math inline">\(\operatorname{logit}^{-1}\)</span> function with the convenience function called <code>inv_logit_scaled()</code>. Before we put the <code>inv_logit_scaled()</code> function to use, we’ll want to rearrange our <code>post</code> samples into the long format so that all the <span class="math inline">\(\xi_i\)</span> draws for each of the eight items are nested within a single column, we’ll call <code>xi</code>. We’ll index which draw corresponds to which of the eight items with a nominal <code>item</code> column. And to make this all work within the context of 4,000 posterior draws, we’ll also need to make an iteration index, which we’ll call <code>iter</code>.</p>
+<pre class="r"><code>post &lt;- post %&gt;% 
+  select(b_Intercept, starts_with(&quot;r_item&quot;)) %&gt;% 
+  mutate(iter = 1:n()) %&gt;% 
+  pivot_longer(starts_with(&quot;r_item&quot;), names_to = &quot;item&quot;, values_to = &quot;xi&quot;) %&gt;% 
+  mutate(item = str_extract(item, &quot;\\d+&quot;)) 
+
+# what is this?
+head(post)</code></pre>
+<pre><code>## # A tibble: 6 x 4
+##   b_Intercept  iter item      xi
+##         &lt;dbl&gt; &lt;int&gt; &lt;chr&gt;  &lt;dbl&gt;
+## 1       -2.35     1 05    -1.63 
+## 2       -2.35     1 06     0.156
+## 3       -2.35     1 08    -0.420
+## 4       -2.35     1 09     0.160
+## 5       -2.35     1 11    -0.804
+## 6       -2.35     1 13    -0.786</code></pre>
+<p>Now we’re ready to compute our probabilities, conditional in different ability (<span class="math inline">\(\theta\)</span>) levels.</p>
+<pre class="r"><code>post &lt;- post %&gt;% 
+  expand(nesting(iter, b_Intercept, item, xi),
+         theta = seq(from = -6, to = 6, length.out = 100)) %&gt;% 
+  mutate(p = inv_logit_scaled(b_Intercept + xi + theta)) %&gt;% 
+  group_by(theta, item) %&gt;% 
+  summarise(p = mean(p))
+
+# what have we done?
+head(post)</code></pre>
+<pre><code>## # A tibble: 6 x 3
+## # Groups:   theta [1]
+##   theta item          p
+##   &lt;dbl&gt; &lt;chr&gt;     &lt;dbl&gt;
+## 1    -6 05    0.0000364
+## 2    -6 06    0.000241 
+## 3    -6 08    0.000162 
+## 4    -6 09    0.000300 
+## 5    -6 11    0.0000797
+## 6    -6 13    0.000121</code></pre>
+<p>With those summaries in hand, it’s trivial to make the ICC plot with good old <strong>ggplot2</strong> syntax.</p>
+<pre class="r"><code>post %&gt;% 
+  ggplot(aes(x = theta, y = p, color = item, fill = item)) +
+  geom_line() +
+  scale_fill_viridis_d(option = &quot;H&quot;) +
+  scale_color_viridis_d(option = &quot;H&quot;) +
+  labs(title = &quot;ICCs for the 1PL&quot;,
+       subtitle = &quot;Each curve is based on the posterior mean.&quot;, 
+       x = expression(theta~(&#39;ability on the logit scale&#39;)),
+       y = expression(italic(p)(y==1))) +
+  theme_classic()</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-13-1.png" width="672" /></p>
+<p>Since each item had a relatively low response probability, you have to go pretty far into the right-hand side of the <span class="math inline">\(\theta\)</span> range before the curves start to approach the top of the <span class="math inline">\(y\)</span> axis.</p>
+<p>To make the ICCs for the 2PL model, the data wrangling will require a couple more steps. First, we extract the posterior draws and take a quick look at the columns of interest.</p>
+<pre class="r"><code>post &lt;- posterior_samples(irt2) 
+
+# what do we care about?
+post %&gt;% 
+  select(b_eta_Intercept, b_logalpha_Intercept, starts_with(&quot;r_item&quot;)) %&gt;% 
+  glimpse()</code></pre>
+<pre><code>## Rows: 4,000
+## Columns: 18
+## $ b_eta_Intercept                  &lt;dbl&gt; -1.3855075, -1.4968294, -1.6918246, -1.6252046, -1.7095222, -1.4090…
+## $ b_logalpha_Intercept             &lt;dbl&gt; 0.7814705, 0.6435611, 0.3971659, 0.5084503, 0.7547493, 1.2154113, 1…
+## $ `r_item__eta[05,Intercept]`      &lt;dbl&gt; -0.7922848, -0.7423704, -1.1893399, -1.0718978, -0.2636685, -0.3965…
+## $ `r_item__eta[06,Intercept]`      &lt;dbl&gt; 0.26895443, 0.21153136, 0.24488884, 0.20332673, 0.52650711, 0.51766…
+## $ `r_item__eta[08,Intercept]`      &lt;dbl&gt; 0.1730248531, -0.0251183662, 0.0966877581, -0.0626794892, 0.3235805…
+## $ `r_item__eta[09,Intercept]`      &lt;dbl&gt; 0.50089389, 0.39236895, 0.35678623, 0.41680088, 0.66285740, 0.53730…
+## $ `r_item__eta[11,Intercept]`      &lt;dbl&gt; -0.17619531, -1.00068058, -0.41426442, -0.71686852, -0.15409689, -0…
+## $ `r_item__eta[13,Intercept]`      &lt;dbl&gt; 0.02890276, -0.19689487, 0.12965889, -0.13639774, 0.35999998, 0.250…
+## $ `r_item__eta[16,Intercept]`      &lt;dbl&gt; 0.5650797, 0.3484697, 0.5692639, 0.4691862, 0.5286982, 0.7387770, 0…
+## $ `r_item__eta[18,Intercept]`      &lt;dbl&gt; -0.03100911, -0.94785287, -0.40602161, -1.06680784, -0.29232278, 0.…
+## $ `r_item__logalpha[05,Intercept]` &lt;dbl&gt; -0.445733584, -0.168897075, -0.175487957, -0.023652177, -0.38447241…
+## $ `r_item__logalpha[06,Intercept]` &lt;dbl&gt; 0.106865933, 0.183709540, 0.352641061, 0.372592174, 0.606879092, 0.…
+## $ `r_item__logalpha[08,Intercept]` &lt;dbl&gt; 0.279715442, 0.224570579, 0.613387942, 0.344415036, 0.249641920, -0…
+## $ `r_item__logalpha[09,Intercept]` &lt;dbl&gt; 0.46984590, 0.59974910, 0.61973239, 0.57372330, 0.67782554, 0.38758…
+## $ `r_item__logalpha[11,Intercept]` &lt;dbl&gt; -0.23306444, -0.85055396, -0.31303715, -0.60098567, -0.40559846, -0…
+## $ `r_item__logalpha[13,Intercept]` &lt;dbl&gt; -0.008225223, 0.116253481, 0.122579334, 0.291166675, 0.689798894, 0…
+## $ `r_item__logalpha[16,Intercept]` &lt;dbl&gt; 0.092113896, 0.104240677, 0.092359783, 0.097844755, 0.494488271, 0.…
+## $ `r_item__logalpha[18,Intercept]` &lt;dbl&gt; 0.09498269, -0.15278053, 0.01792382, -0.01208098, -0.31325790, -0.0…</code></pre>
+<p>Now there are 16 <code>r_item__eta</code> columns, half of which correspond to the <span class="math inline">\(\xi_i\)</span> deviations and the other half of which correspond to the <span class="math inline">\(\alpha_i\)</span> deviations. In addition, we also have the <code>b_logalpha_Intercept</code> columns to content with. So this time, we’ll follow up our <code>pivot_longer()</code> code with subsequent <code>mutate()</code> and <code>select()</code> steps, and complete the task with <code>pivot_wider()</code>.</p>
+<pre class="r"><code>post &lt;- post %&gt;% 
+  select(b_eta_Intercept, b_logalpha_Intercept, starts_with(&quot;r_item&quot;)) %&gt;% 
+  mutate(iter = 1:n()) %&gt;% 
+  pivot_longer(starts_with(&quot;r_item&quot;)) %&gt;% 
+  mutate(item      = str_extract(name, &quot;\\d+&quot;),
+         parameter = ifelse(str_detect(name, &quot;eta&quot;), &quot;xi&quot;, &quot;logalpha&quot;)) %&gt;% 
+  select(-name) %&gt;% 
+  pivot_wider(names_from = parameter, values_from = value)
+
+# what does this look like, now?
+head(post)</code></pre>
+<pre><code>## # A tibble: 6 x 6
+##   b_eta_Intercept b_logalpha_Intercept  iter item       xi logalpha
+##             &lt;dbl&gt;                &lt;dbl&gt; &lt;int&gt; &lt;chr&gt;   &lt;dbl&gt;    &lt;dbl&gt;
+## 1           -1.39                0.781     1 05    -0.792  -0.446  
+## 2           -1.39                0.781     1 06     0.269   0.107  
+## 3           -1.39                0.781     1 08     0.173   0.280  
+## 4           -1.39                0.781     1 09     0.501   0.470  
+## 5           -1.39                0.781     1 11    -0.176  -0.233  
+## 6           -1.39                0.781     1 13     0.0289 -0.00823</code></pre>
+<p>With this configuration, it’s only a little more complicated to compute the probability summaries.</p>
+<pre class="r"><code>post &lt;- post %&gt;% 
+  expand(nesting(iter, b_eta_Intercept, b_logalpha_Intercept, item, xi, logalpha),
+         theta = seq(from = -6, to = 6, length.out = 100)) %&gt;% 
+  # note the difference in the equation
+  mutate(p = inv_logit_scaled(exp(b_logalpha_Intercept + logalpha) * (b_eta_Intercept + theta + xi))) %&gt;% 
+  group_by(theta, item) %&gt;% 
+  summarise(p = mean(p))
+
+# what have we done?
+head(post)</code></pre>
+<pre><code>## # A tibble: 6 x 3
+## # Groups:   theta [1]
+##   theta item           p
+##   &lt;dbl&gt; &lt;chr&gt;      &lt;dbl&gt;
+## 1    -6 05    0.0000152 
+## 2    -6 06    0.00000543
+## 3    -6 08    0.00000967
+## 4    -6 09    0.00000105
+## 5    -6 11    0.000127  
+## 6    -6 13    0.00000111</code></pre>
+<p>And we plot.</p>
+<pre class="r"><code>post %&gt;% 
+  ggplot(aes(x = theta, y = p, color = item, fill = item)) +
+  geom_line() +
+  scale_fill_viridis_d(option = &quot;H&quot;) +
+  scale_color_viridis_d(option = &quot;H&quot;) +
+  labs(title = &quot;ICCs for the 2PL&quot;,
+       subtitle = &quot;Each curve is based on the posterior mean.&quot;, 
+       x = expression(theta~(&#39;ability on the logit scale&#39;)),
+       y = expression(italic(p)(y==1))) +
+  theme_classic()</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-17-1.png" width="672" /></p>
+<p>Looks like those <span class="math inline">\(\alpha_i\)</span> parameters made a big difference for the ICCs.</p>
+</div>
+<div id="iics." class="section level3">
+<h3>IICs.</h3>
+<p>From a computational standpoint, item information curves (IICs) are a transformation of the ICCs. Recall that the <span class="math inline">\(y\)</span> axis for the ICC is <span class="math inline">\(p\)</span>, the probability <span class="math inline">\(y = 1\)</span> for a given item. For the IIC plots, the <span class="math inline">\(y\)</span> axis shows information, which is a simple transformation of <span class="math inline">\(p\)</span>, following the form</p>
+<p><span class="math display">\[\text{information} = p(1 - p).\]</span></p>
+<p>So here’s how to use that equation and make the IIC plot for our 1PL model.</p>
+<pre class="r"><code># these wrangling steps are all the same as before
+posterior_samples(irt1) %&gt;% 
+  select(b_Intercept, starts_with(&quot;r_item&quot;)) %&gt;% 
+  mutate(iter = 1:n()) %&gt;% 
+  pivot_longer(starts_with(&quot;r_item&quot;), names_to = &quot;item&quot;, values_to = &quot;xi&quot;) %&gt;% 
+  mutate(item = str_extract(item, &quot;\\d+&quot;)) %&gt;% 
+  expand(nesting(iter, b_Intercept, item, xi),
+         theta = seq(from = -6, to = 6, length.out = 200)) %&gt;% 
+  mutate(p = inv_logit_scaled(b_Intercept + xi + theta)) %&gt;% 
+  
+  # this part, right here, is what&#39;s new
+  mutate(i = p * (1 - p)) %&gt;% 
+  group_by(theta, item) %&gt;% 
+  summarise(i = median(i)) %&gt;%
+  
+  # now plot!
+  ggplot(aes(x = theta, y = i, color = item, fill = item)) +
+  geom_line() +
+  scale_fill_viridis_d(option = &quot;H&quot;) +
+  scale_color_viridis_d(option = &quot;H&quot;) +
+  labs(title = &quot;IICs for the 1PL&quot;,
+       subtitle = &quot;Each curve is based on the posterior median.&quot;, 
+       x = expression(theta~(&#39;ability on the logit scale&#39;)),
+       y = &quot;information&quot;) +
+  theme_classic()</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-18-1.png" width="672" /></p>
+<p>For kicks and giggles, we used the posterior medians, rather than the means. It’s similarly easy to compute the item-level information for the 2PL.</p>
+<pre class="r"><code># these wrangling steps are all the same as before
+posterior_samples(irt2) %&gt;% 
+  select(b_eta_Intercept, b_logalpha_Intercept, starts_with(&quot;r_item&quot;)) %&gt;% 
+  mutate(iter = 1:n()) %&gt;% 
+  pivot_longer(starts_with(&quot;r_item&quot;)) %&gt;% 
+  mutate(item      = str_extract(name, &quot;\\d+&quot;),
+         parameter = ifelse(str_detect(name, &quot;eta&quot;), &quot;xi&quot;, &quot;logalpha&quot;)) %&gt;% 
+  select(-name) %&gt;% 
+  pivot_wider(names_from = parameter, values_from = value) %&gt;% 
+  expand(nesting(iter, b_eta_Intercept, b_logalpha_Intercept, item, xi, logalpha),
+         theta = seq(from = -6, to = 6, length.out = 200)) %&gt;% 
+  mutate(p = inv_logit_scaled(exp(b_logalpha_Intercept + logalpha) * (b_eta_Intercept + theta + xi))) %&gt;% 
+
+  # again, here&#39;s the new part
+  mutate(i = p * (1 - p)) %&gt;% 
+  group_by(theta, item) %&gt;% 
+  summarise(i = median(i)) %&gt;%
+  
+  # now plot!
+  ggplot(aes(x = theta, y = i, color = item, fill = item)) +
+  geom_line() +
+  scale_fill_viridis_d(option = &quot;H&quot;) +
+  scale_color_viridis_d(option = &quot;H&quot;) +
+  labs(title = &quot;IICs for the 2PL&quot;,
+       subtitle = &quot;Each curve is based on the posterior median.&quot;, 
+       x = expression(theta~(&#39;ability on the logit scale&#39;)),
+       y = &quot;information&quot;) +
+  theme_classic()</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-19-1.png" width="672" /></p>
+</div>
+</div>
+<div id="overview" class="section level2">
+<h2>Overview</h2>
+<p>We might outlines the steps in this post as:</p>
+<ul>
+<li>Fit your <strong>brms</strong> IRT model.</li>
+<li>Inspect the model with all your standard quality checks (e.g., <span class="math inline">\(\widehat R\)</span> values, trace plots).</li>
+<li>Extract your posterior draws with the <code>posterior_samples()</code> function.</li>
+<li>Isolate the item-related columns. Within the multilevel IRT context, this will typically involve an overall intercept (e.g., <code>b_Intercept</code> for our 1PL <code>irt1</code>) and item-specific deviations (e.g., the columns starting with <code>r_item</code> in our 1PL <code>irt1</code>).</li>
+<li>Arrange the data into a format that makes it easy to add the overall intercept in question to each of the item-level deviations in question. For me, this seemed easiest with the long format via the <code>pivot_longer()</code> function.</li>
+<li>Expand the data over a range of ability (<span class="math inline">\(\theta\)</span>) values. For me, this worked well with the <code>expand()</code> function.</li>
+<li>Use the model-implied formula to compute the <span class="math inline">\(p(y = 1)\)</span>.</li>
+<li>Group the results by item and <span class="math inline">\(\theta\)</span> and summarize the <span class="math inline">\(p(y = 1)\)</span> distributions with something like the mean or median.</li>
+<li>Plot the results with <code>ggplot2::geom_line()</code> and friends.</li>
+</ul>
+</div>
+<div id="next-steps" class="section level2">
+<h2>Next steps</h2>
+<p>You should be able to generalize this workflow to IRT models for data with more than two categories. You’ll just have to be careful about juggling your thresholds. You might find some inspiration along these lines <a href="https://bookdown.org/content/4857/monsters-and-mixtures.html#ordered-categorical-outcomes">here</a> and <a href="https://bookdown.org/content/3686/ordinal-predicted-variable.html">here</a>.</p>
+<p>You could totally switch up this workflow to use some of the data wrangling helpers from the <a href="https://CRAN.R-project.org/package=tidybayes"><strong>tidybayes</strong> package</a>. That could be a nifty little blog post in and of itself.</p>
+<p>One thing that’s super lame about conventional ICC/IIC plots is there’s no expression of uncertainty. To overcome that, you could compute the 95% intervals (or 50% or whatever) in the same <code>summarise()</code> where you computed the mean and then express those interval bounds with something like <code>geom_ribbon()</code> in your plot. The difficulty I foresee is will results in overplotting for any models with more than like five items. Perhaps faceting would be the solution, there.</p>
+<p>I’m no IRT jock and may have goofed some of the steps or equations. To report mistakes or provide any other constructive criticism, just chime in on this Twitter thread:</p>
+</div>
+<div id="session-info" class="section level2">
+<h2>Session info</h2>
+<pre class="r"><code>sessionInfo()</code></pre>
+<pre><code>## R version 4.0.4 (2021-02-15)
+## Platform: x86_64-apple-darwin17.0 (64-bit)
+## Running under: macOS Catalina 10.15.7
+## 
+## Matrix products: default
+## BLAS:   /Library/Frameworks/R.framework/Versions/4.0/Resources/lib/libRblas.dylib
+## LAPACK: /Library/Frameworks/R.framework/Versions/4.0/Resources/lib/libRlapack.dylib
+## 
+## locale:
+## [1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+## 
+## attached base packages:
+## [1] stats     graphics  grDevices utils     datasets  methods   base     
+## 
+## other attached packages:
+##  [1] brms_2.15.0     Rcpp_1.0.6      forcats_0.5.1   stringr_1.4.0   dplyr_1.0.6     purrr_0.3.4    
+##  [7] readr_1.4.0     tidyr_1.1.3     tibble_3.1.2    ggplot2_3.3.3   tidyverse_1.3.0
+## 
+## loaded via a namespace (and not attached):
+##   [1] readxl_1.3.1         backports_1.2.1      plyr_1.8.6           igraph_1.2.6         splines_4.0.4       
+##   [6] crosstalk_1.1.0.1    TH.data_1.0-10       rstantools_2.1.1     inline_0.3.17        digest_0.6.27       
+##  [11] htmltools_0.5.1.1    rsconnect_0.8.16     fansi_0.4.2          magrittr_2.0.1       modelr_0.1.8        
+##  [16] RcppParallel_5.0.2   matrixStats_0.57.0   xts_0.12.1           sandwich_3.0-0       prettyunits_1.1.1   
+##  [21] colorspace_2.0-0     rvest_0.3.6          haven_2.3.1          xfun_0.23            callr_3.7.0         
+##  [26] crayon_1.4.1         jsonlite_1.7.2       lme4_1.1-25          survival_3.2-10      zoo_1.8-8           
+##  [31] glue_1.4.2           gtable_0.3.0         emmeans_1.5.2-1      V8_3.4.0             pkgbuild_1.2.0      
+##  [36] rstan_2.21.2         abind_1.4-5          scales_1.1.1         mvtnorm_1.1-1        DBI_1.1.0           
+##  [41] miniUI_0.1.1.1       viridisLite_0.4.0    xtable_1.8-4         stats4_4.0.4         StanHeaders_2.21.0-7
+##  [46] DT_0.16              htmlwidgets_1.5.3    httr_1.4.2           threejs_0.3.3        ellipsis_0.3.2      
+##  [51] farver_2.1.0         pkgconfig_2.0.3      loo_2.4.1            sass_0.3.1           dbplyr_2.0.0        
+##  [56] utf8_1.2.1           labeling_0.4.2       tidyselect_1.1.1     rlang_0.4.11         reshape2_1.4.4      
+##  [61] later_1.2.0          munsell_0.5.0        cellranger_1.1.0     tools_4.0.4          cli_2.5.0           
+##  [66] generics_0.1.0       broom_0.7.6          ggridges_0.5.3       evaluate_0.14        fastmap_1.1.0       
+##  [71] yaml_2.2.1           processx_3.5.2       knitr_1.33           fs_1.5.0             nlme_3.1-152        
+##  [76] mime_0.10            projpred_2.0.2       xml2_1.3.2           rstudioapi_0.13      compiler_4.0.4      
+##  [81] bayesplot_1.8.0      shinythemes_1.1.2    curl_4.3             gamm4_0.2-6          reprex_0.3.0        
+##  [86] statmod_1.4.35       bslib_0.2.4          stringi_1.6.2        highr_0.9            ps_1.6.0            
+##  [91] blogdown_1.3         Brobdingnag_1.2-6    lattice_0.20-41      Matrix_1.3-2         nloptr_1.2.2.2      
+##  [96] markdown_1.1         shinyjs_2.0.0        vctrs_0.3.8          pillar_1.6.1         lifecycle_1.0.0     
+## [101] jquerylib_0.1.4      bridgesampling_1.0-0 estimability_1.3     httpuv_1.6.0         R6_2.5.0            
+## [106] bookdown_0.22        promises_1.2.0.1     gridExtra_2.3        codetools_0.2-18     boot_1.3-26         
+## [111] colourpicker_1.1.0   MASS_7.3-53          gtools_3.8.2         assertthat_0.2.1     withr_2.4.2         
+## [116] shinystan_2.5.0      multcomp_1.4-16      mgcv_1.8-33          parallel_4.0.4       hms_0.5.3           
+## [121] grid_4.0.4           coda_0.19-4          minqa_1.2.4          rmarkdown_2.8        shiny_1.6.0         
+## [126] lubridate_1.7.9.2    base64enc_0.1-3      dygraphs_1.1.1.6</code></pre>
+</div>
+<div id="references" class="section level2 unnumbered">
+<h2>References</h2>
+<div id="refs" class="references csl-bib-body hanging-indent" line-spacing="2">
+<div id="ref-albanoIntroductionToEducational2020" class="csl-entry">
+Albano, T. (2020). <em>Introduction to educational and psychological measurement using <span>R</span></em>. <a href="https://www.thetaminusb.com/intro-measurement-r/">https://www.thetaminusb.com/intro-measurement-r/</a>
+</div>
+<div id="ref-bonifayMultidimensionalIRT2019" class="csl-entry">
+Bonifay, W. (2019). <em>Multidimensional item response theory</em>. <span>SAGE Publications</span>. <a href="https://us.sagepub.com/en-us/nam/multidimensional-item-response-theory/book257740">https://us.sagepub.com/en-us/nam/multidimensional-item-response-theory/book257740</a>
+</div>
+<div id="ref-burknerBayesianItemResponse2020" class="csl-entry">
+Bürkner, P.-C. (2020a). Bayesian item response modeling in <span>R</span> with brms and <span>Stan</span>. <em>arXiv:1905.09501 [Stat]</em>. <a href="http://arxiv.org/abs/1905.09501">http://arxiv.org/abs/1905.09501</a>
+</div>
+<div id="ref-Bürkner2021Non_linear" class="csl-entry">
+Bürkner, P.-C. (2021). <em>Estimating non-linear models with brms</em>. <a href="https://CRAN.R-project.org/package=brms/vignettes/brms_nonlinear.html">https://CRAN.R-project.org/package=brms/vignettes/brms_nonlinear.html</a>
+</div>
+<div id="ref-burknerBrmsPackageBayesian2017" class="csl-entry">
+Bürkner, P.-C. (2017). <span class="nocase">brms</span>: <span>An R</span> package for <span>Bayesian</span> multilevel models using <span>Stan</span>. <em>Journal of Statistical Software</em>, <em>80</em>(1), 1–28. <a href="https://doi.org/10.18637/jss.v080.i01">https://doi.org/10.18637/jss.v080.i01</a>
+</div>
+<div id="ref-burknerAdvancedBayesianMultilevel2018" class="csl-entry">
+Bürkner, P.-C. (2018). Advanced <span>Bayesian</span> multilevel modeling with the <span>R</span> package brms. <em>The R Journal</em>, <em>10</em>(1), 395–411. <a href="https://doi.org/10.32614/RJ-2018-017">https://doi.org/10.32614/RJ-2018-017</a>
+</div>
+<div id="ref-R-brms" class="csl-entry">
+Bürkner, P.-C. (2020b). <em><span class="nocase">brms</span>: <span>Bayesian</span> regression models using ’<span>Stan</span>’</em>. <a href="https://CRAN.R-project.org/package=brms">https://CRAN.R-project.org/package=brms</a>
+</div>
+<div id="ref-crockerIntroductionToClassical2006" class="csl-entry">
+Crocker, L., &amp; Algina, J. (2006). <em>Introduction to classical and modern test theory</em>. <span>Cengage Learning</span>.
+</div>
+<div id="ref-deayalaTheoryAndPractice2008" class="csl-entry">
+De Ayala, R. J. (2008). <em>The theory and practice of item response theory</em>. <span>Guilford Publications</span>. <a href="https://www.guilford.com/books/The-Theory-and-Practice-of-Item-Response-Theory/R-de-Ayala/9781593858698">https://www.guilford.com/books/The-Theory-and-Practice-of-Item-Response-Theory/R-de-Ayala/9781593858698</a>
+</div>
+<div id="ref-grolemundDataScience2017" class="csl-entry">
+Grolemund, G., &amp; Wickham, H. (2017). <em>R for data science</em>. <span>O’Reilly</span>. <a href="https://r4ds.had.co.nz">https://r4ds.had.co.nz</a>
+</div>
+<div id="ref-kruschkeDoingBayesianData2015" class="csl-entry">
+Kruschke, J. K. (2015). <em>Doing <span>Bayesian</span> data analysis: <span>A</span> tutorial with <span>R</span>, <span>JAGS</span>, and <span>Stan</span></em>. <span>Academic Press</span>. <a href="https://sites.google.com/site/doingbayesiandataanalysis/">https://sites.google.com/site/doingbayesiandataanalysis/</a>
+</div>
+<div id="ref-lewandowski2009generating" class="csl-entry">
+Lewandowski, D., Kurowicka, D., &amp; Joe, H. (2009). Generating random correlation matrices based on vines and extended onion method. <em>Journal of Multivariate Analysis</em>, <em>100</em>(9), 1989–2001. <a href="https://doi.org/10.1016/j.jmva.2009.04.008">https://doi.org/10.1016/j.jmva.2009.04.008</a>
+</div>
+<div id="ref-loramValidationOfANovel2019" class="csl-entry">
+Loram, G., Ling, M., Head, A., &amp; Clarke, E. J. R. (2019). <em>Validation of a novel climate change denial measure using item response theory</em>. <a href="https://doi.org/10.31234/osf.io/57nbk">https://doi.org/10.31234/osf.io/57nbk</a>
+</div>
+<div id="ref-mcelreathStatisticalRethinkingBayesian2020" class="csl-entry">
+McElreath, R. (2020). <em>Statistical rethinking: <span>A Bayesian</span> course with examples in <span>R</span> and <span>Stan</span></em> (Second Edition). <span>CRC Press</span>. <a href="https://xcelab.net/rm/statistical-rethinking/">https://xcelab.net/rm/statistical-rethinking/</a>
+</div>
+<div id="ref-mcelreathStatisticalRethinkingBayesian2015" class="csl-entry">
+McElreath, R. (2015). <em>Statistical rethinking: <span>A Bayesian</span> course with examples in <span>R</span> and <span>Stan</span></em>. <span>CRC press</span>. <a href="https://xcelab.net/rm/statistical-rethinking/">https://xcelab.net/rm/statistical-rethinking/</a>
+</div>
+<div id="ref-R-base" class="csl-entry">
+R Core Team. (2020). <em>R: <span>A</span> language and environment for statistical computing</em>. <span>R Foundation for Statistical Computing</span>. <a href="https://www.R-project.org/">https://www.R-project.org/</a>
+</div>
+<div id="ref-reckaseMultidimensionalIRT2009" class="csl-entry">
+Reckase, M. D. (2009). <em>Multidimensional item response theory models</em>. <span>Springer</span>. <a href="https://www.springer.com/gp/book/9780387899756">https://www.springer.com/gp/book/9780387899756</a>
+</div>
+<div id="ref-R-tidyverse" class="csl-entry">
+Wickham, H. (2019). <em><span class="nocase">tidyverse</span>: <span>Easily</span> install and load the ’tidyverse’</em>. <a href="https://CRAN.R-project.org/package=tidyverse">https://CRAN.R-project.org/package=tidyverse</a>
+</div>
+<div id="ref-wickhamWelcomeTidyverse2019" class="csl-entry">
+Wickham, H., Averick, M., Bryan, J., Chang, W., McGowan, L. D., François, R., Grolemund, G., Hayes, A., Henry, L., Hester, J., Kuhn, M., Pedersen, T. L., Miller, E., Bache, S. M., Müller, K., Ooms, J., Robinson, D., Seidel, D. P., Spinu, V., … Yutani, H. (2019). Welcome to the tidyverse. <em>Journal of Open Source Software</em>, <em>4</em>(43), 1686. <a href="https://doi.org/10.21105/joss.01686">https://doi.org/10.21105/joss.01686</a>
+</div>
+</div>
+</div>
+<div class="footnotes">
+<hr />
+<ol>
+<li id="fn1"><p>Adopting the three-term multilevel structure–<span class="math inline">\(\beta_0 + \theta_p + \xi_i\)</span>, where the latter two terms are <span class="math inline">\(\operatorname{Normal}(0, \sigma_x)\)</span>–places this form of the 1PL model squarely within the generalized linear multilevel model (GLMM). McElreath <span class="citation">(<a href="#ref-mcelreathStatisticalRethinkingBayesian2015" role="doc-biblioref">2015</a>, Chapter 12)</span> referred to this particular model type as a cross-classified model. Coming from another perspective, Kruschke <span class="citation">(<a href="#ref-kruschkeDoingBayesianData2015" role="doc-biblioref">2015</a>, Chapters 19 and 20)</span> described this as a kind of multilevel analysis of variance (ANOVA).<a href="#fnref1" class="footnote-back">↩︎</a></p></li>
+<li id="fn2"><p>For a nice blog post on the LKJ, check out Stephen Martin’s <a href="http://srmart.in/is-the-lkj1-prior-uniform-yes/"><em>Is the LKJ(1) prior uniform? “Yes”</em></a>.<a href="#fnref2" class="footnote-back">↩︎</a></p></li>
+</ol>
+</div>
