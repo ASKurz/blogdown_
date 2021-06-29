@@ -93,7 +93,7 @@ Now responses (`y`) are nested within participants (`id`) and items (`item`).
 
 ## IRT
 
-In his -@burknerBayesianItemResponse2020 preprint, Bürkner outlined the framework for the multilevel Bayesian approach to IRT, as implemented in **brms**. In short, IRT allows one to decompose the information from assessment measures into person parameters ($\theta$) and item parameters ($\xi$). The IRT framework offers a large variety of model types. In this post, we'll focus on the widely-used 1PL and 2PL models. First, we'll briefly introduce them within the context of Bürkner's multilevel Bayesian approach. Then we'll fit those models to the `dat_long` data. Finally, we'll show how to explore those models using ICC and IIC plots.
+In his -@burknerBayesianItemResponse2020 preprint, Bürkner outlined the framework for the multilevel Bayesian approach to IRT, as implemented in **brms**. In short, IRT allows one to decompose the information from assessment measures into person parameters $(\theta)$ and item parameters $(\xi)$. The IRT framework offers a large variety of model types. In this post, we'll focus on the widely-used 1PL and 2PL models. First, we'll briefly introduce them within the context of Bürkner's multilevel Bayesian approach. Then we'll fit those models to the `dat_long` data. Finally, we'll show how to explore those models using ICC and IIC plots.
 
 ### What is the 1PL?
 
@@ -473,7 +473,7 @@ sessionInfo()
 
 [^1]: I should disclose that although I have not read through Bonifay's [-@bonifayMultidimensionalIRT2019] text, he offered to send me a copy around the time I uploaded this post.
 
-[^2]: You can find a copy of these data on my GitHub [here](https://github.com/ASKurz/blogdown/tree/main/content/post/2021-06-29-make-icc-plots-for-your-brms-irt-models/data0).
+[^2]: You can find a copy of these data on my GitHub [here](https://github.com/ASKurz/blogdown/tree/main/content/post/2021-06-29-make-icc-plots-for-your-brms-irt-models/data).
 
 [^3]: Adopting the three-term multilevel structure--$\beta_0 + \theta_p + \xi_i$, where the latter two terms are $\operatorname{Normal}(0, \sigma_x)$--places this form of the 1PL model squarely within the generalized linear multilevel model (GLMM). McElreath [-@mcelreathStatisticalRethinkingBayesian2015, Chapter 12] referred to this particular model type as a cross-classified model. Coming from another perspective, Kruschke [-@kruschkeDoingBayesianData2015, Chapters 19 and 20] described this as a kind of multilevel analysis of variance (ANOVA).
 
