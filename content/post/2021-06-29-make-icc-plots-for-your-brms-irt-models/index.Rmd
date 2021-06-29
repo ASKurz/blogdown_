@@ -463,6 +463,10 @@ One thing that's super lame about conventional ICC/IIC plots is there's no expre
 
 I'm no IRT jock and may have goofed some of the steps or equations. To report mistakes or provide any other constructive criticism, just chime in on this Twitter thread:
 
+```{r echo = FALSE}
+blogdown::shortcode('tweet', '1409951540228628482')
+```
+
 ## Session info
 
 ```{r}

@@ -499,6 +499,7 @@ posterior_samples(irt2) %&gt;%
 <p>You could totally switch up this workflow to use some of the data wrangling helpers from the <a href="https://CRAN.R-project.org/package=tidybayes"><strong>tidybayes</strong> package</a>. That could be a nifty little blog post in and of itself.</p>
 <p>One thing that’s super lame about conventional ICC/IIC plots is there’s no expression of uncertainty. To overcome that, you could compute the 95% intervals (or 50% or whatever) in the same <code>summarise()</code> where you computed the mean and then express those interval bounds with something like <code>geom_ribbon()</code> in your plot. The difficulty I foresee is will result in overplotting for any models with more than like five items. Perhaps faceting would be the solution, there.</p>
 <p>I’m no IRT jock and may have goofed some of the steps or equations. To report mistakes or provide any other constructive criticism, just chime in on this Twitter thread:</p>
+<p>{{% tweet "1409951540228628482" %}}</p>
 </div>
 <div id="session-info" class="section level2">
 <h2>Session info</h2>
