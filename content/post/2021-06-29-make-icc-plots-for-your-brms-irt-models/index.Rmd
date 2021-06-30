@@ -235,7 +235,7 @@ print(irt1)
 print(irt2)
 ```
 
-I'm not going to bother interpreting these results because, well, this isn't a full-blown IRT tutorial. For our purposes, we'll just note that the $\widehat R$ and effective sample size values all look good and nothing seems off with the parameter summaries. They're not shown here, but the trace plots look good, too. We're on good footing to explore the models with our ICC and IIT plots.
+I'm not going to bother interpreting these results because, well, this isn't a full-blown IRT tutorial. For our purposes, we'll just note that the $\widehat R$ and effective sample size values all look good and nothing seems off with the parameter summaries. They're not shown here, but the trace plots look good, too. We're on good footing to explore the models with our ICC and IIC plots.
 
 ```{r, eval = F, echo = F}
 plot(irt1, widths = c(1, 2))
