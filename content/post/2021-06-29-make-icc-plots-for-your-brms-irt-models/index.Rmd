@@ -434,6 +434,75 @@ posterior_samples(irt2) %>%
   theme_classic()
 ```
 
+#### TIC.
+
+Sometimes researchers want to get a overall sense of the information in a group of items. For simplicity, here, we'll just call groups of items a *test*. The test information curve (TIC) is a special case of the IIC, but applied to the test. In short, you compute the TIC buy summing up the information for the individual items at each level of $\theta$. Using the 1PL as an example, here's how we might do that by hand.
+
+```{r, message = F}
+posterior_samples(irt1) %>% 
+  select(b_Intercept, starts_with("r_item")) %>% 
+  mutate(iter = 1:n()) %>% 
+  pivot_longer(starts_with("r_item"), names_to = "item", values_to = "xi") %>% 
+  mutate(item = str_extract(item, "\\d+")) %>% 
+  expand(nesting(iter, b_Intercept, item, xi),
+         theta = seq(from = -6, to = 6, length.out = 200)) %>% 
+  mutate(p = inv_logit_scaled(b_Intercept + xi + theta)) %>% 
+  mutate(i = p * (1 - p)) %>% 
+  
+  # this is where the TIC magic happens
+  group_by(theta, iter) %>% 
+  summarise(sum_i = sum(i)) %>% 
+  group_by(theta) %>% 
+  summarise(i = median(sum_i)) %>%
+  
+  # we plot
+  ggplot(aes(x = theta, y = i)) +
+  geom_line() +
+  labs(title = "The test information curve for the 1PL",
+       subtitle = "The curve is based on the posterior median.", 
+       x = expression(theta~('ability on the logit scale')),
+       y = "information") +
+  theme_classic()
+```
+
+Taken as a whole, the combination of the eight items @loramValidationOfANovel2019 settled on does a reasonable job differentiating among those with high $\theta_p$ values. But this combination of items isn't going to be the best at differentiating among those on the lower end of the $\theta$ scale. You might say these eight items make for a difficult test.
+
+Our method of extending the 1PL IIC to the TIC should work the same for the 2PL. I'll leave it as an exercise for the interested reader.
+
+```{r, message = F, echo = F, eval = F}
+# these wrangling steps are all the same as before
+posterior_samples(irt2) %>% 
+  select(b_eta_Intercept, b_logalpha_Intercept, starts_with("r_item")) %>% 
+  mutate(iter = 1:n()) %>% 
+  pivot_longer(starts_with("r_item")) %>% 
+  mutate(item      = str_extract(name, "\\d+"),
+         parameter = ifelse(str_detect(name, "eta"), "xi", "logalpha")) %>% 
+  select(-name) %>% 
+  pivot_wider(names_from = parameter, values_from = value) %>% 
+  expand(nesting(iter, b_eta_Intercept, b_logalpha_Intercept, item, xi, logalpha),
+         theta = seq(from = -6, to = 6, length.out = 200)) %>% 
+  mutate(p = inv_logit_scaled(exp(b_logalpha_Intercept + logalpha) * (b_eta_Intercept + theta + xi))) %>% 
+  mutate(i = p * (1 - p)) %>% 
+  
+  # this is where the TIC magic happens
+  group_by(theta, iter) %>% 
+  summarise(sum_i = sum(i)) %>% 
+  group_by(theta) %>% 
+  summarise(i = median(sum_i),
+            ll = quantile(sum_i, 0.1),
+            ul = quantile(sum_i, 0.9)) %>%
+  
+  # now plot!
+  ggplot(aes(x = theta, y = i, ymin = ll, ymax = ul)) +
+  geom_ribbon(alpha = 1/3) +
+  geom_line() +
+  labs(title = "TIC for the 2PL",
+       subtitle = "The black line shows the posterior median.\nThe gray ribbon shows the 80% uncertainty inveraval.", 
+       x = expression(theta~('ability on the logit scale')),
+       y = "information") +
+  theme_classic()
+```
+
 ## Overview
 
 We might outlines the steps in this post as:

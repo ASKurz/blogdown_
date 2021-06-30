@@ -471,6 +471,37 @@ posterior_samples(irt2) %&gt;%
        y = &quot;information&quot;) +
   theme_classic()</code></pre>
 <p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-19-1.png" width="672" /></p>
+<div id="tic." class="section level4">
+<h4>TIC.</h4>
+<p>Sometimes researchers want to get a overall sense of the information in a group of items. For simplicity, here, we’ll just call groups of items a <em>test</em>. The test information curve (TIC) is a special case of the IIC, but applied to the test. In short, you compute the TIC buy summing up the information for the individual items at each level of <span class="math inline">\(\theta\)</span>. Using the 1PL as an example, here’s how we might do that by hand.</p>
+<pre class="r"><code>posterior_samples(irt1) %&gt;% 
+  select(b_Intercept, starts_with(&quot;r_item&quot;)) %&gt;% 
+  mutate(iter = 1:n()) %&gt;% 
+  pivot_longer(starts_with(&quot;r_item&quot;), names_to = &quot;item&quot;, values_to = &quot;xi&quot;) %&gt;% 
+  mutate(item = str_extract(item, &quot;\\d+&quot;)) %&gt;% 
+  expand(nesting(iter, b_Intercept, item, xi),
+         theta = seq(from = -6, to = 6, length.out = 200)) %&gt;% 
+  mutate(p = inv_logit_scaled(b_Intercept + xi + theta)) %&gt;% 
+  mutate(i = p * (1 - p)) %&gt;% 
+  
+  # this is where the TIC magic happens
+  group_by(theta, iter) %&gt;% 
+  summarise(sum_i = sum(i)) %&gt;% 
+  group_by(theta) %&gt;% 
+  summarise(i = median(sum_i)) %&gt;%
+  
+  # we plot
+  ggplot(aes(x = theta, y = i)) +
+  geom_line() +
+  labs(title = &quot;The test information curve for the 1PL&quot;,
+       subtitle = &quot;The curve is based on the posterior median.&quot;, 
+       x = expression(theta~(&#39;ability on the logit scale&#39;)),
+       y = &quot;information&quot;) +
+  theme_classic()</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-20-1.png" width="672" /></p>
+<p>Taken as a whole, the combination of the eight items <span class="citation"><a href="#ref-loramValidationOfANovel2019" role="doc-biblioref">Loram et al.</a> (<a href="#ref-loramValidationOfANovel2019" role="doc-biblioref">2019</a>)</span> settled on does a reasonable job differentiating among those with high <span class="math inline">\(\theta_p\)</span> values. But this combination of items isn’t going to be the best at differentiating among those on the lower end of the <span class="math inline">\(\theta\)</span> scale. You might say these eight items make for a difficult test.</p>
+<p>Our method of extending the 1PL IIC to the TIC should work the same for the 2PL. I’ll leave it as an exercise for the interested reader.</p>
+</div>
 </div>
 </div>
 <div id="overview" class="section level2">
