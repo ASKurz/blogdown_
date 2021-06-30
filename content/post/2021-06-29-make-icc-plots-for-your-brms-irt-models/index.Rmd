@@ -235,7 +235,12 @@ print(irt1)
 print(irt2)
 ```
 
-With respect to the $\sigma$ parameters, both models suggest the loin's share of the variability in the responses was due to variation in the participants, as expressed by the relatively large $\sigma_\theta$ parameters, which are summarized in the `sd(eta_Intercept)` rows. Even so, the items still vary quite a bit with respect to $\xi$ and $\alpha$. In the next two sections, we'll get a better sense of that variation with plots.
+I'm not going to bother interpreting these results because, well, this isn't a full-blown IRT tutorial. For our purposes, we'll just note that the $\widehat R$ and effective sample size values all look good and nothing seems off with the parameter summaries. They're not shown here, but the trace plots look good, too. We're on good footing to explore the models with our ICC and IIT plots.
+
+```{r, eval = F, echo = F}
+plot(irt1, widths = c(1, 2))
+plot(irt2, widths = c(1, 2))
+```
 
 ### ICCs.
 
@@ -436,7 +441,7 @@ posterior_samples(irt2) %>%
 
 #### TIC.
 
-Sometimes researchers want to get a overall sense of the information in a group of items. For simplicity, here, we'll just call groups of items a *test*. The test information curve (TIC) is a special case of the IIC, but applied to the test. In short, you compute the TIC buy summing up the information for the individual items at each level of $\theta$. Using the 1PL as an example, here's how we might do that by hand.
+Sometimes researchers want to get a overall sense of the information in a group of items. For simplicity, here, we'll just call groups of items a *test*. The test information curve (TIC) is a special case of the IIC, but applied to the whole test. In short, you compute the TIC by summing up the information for the individual items at each level of $\theta$. Using the 1PL as an example, here's how we might do that by hand.
 
 ```{r, message = F}
 posterior_samples(irt1) %>% 
