@@ -41,7 +41,7 @@ link-citations: yes
 <ul>
 <li><p>You’ll want to be familiar with the <strong>brms</strong> package <span class="citation">(<a href="#ref-burknerBrmsPackageBayesian2017" role="doc-biblioref">Bürkner, 2017</a>, <a href="#ref-burknerAdvancedBayesianMultilevel2018" role="doc-biblioref">2018</a>, <a href="#ref-R-brms" role="doc-biblioref">2020b</a>)</span>. In addition to the references I just cited, you can find several helpful vignettes at <a href="https://github.com/paul-buerkner/brms">https://github.com/paul-buerkner/brms</a>. I’ve also written a few ebooks highlighting <strong>brms</strong>, which you can find at <a href="https://solomonkurz.netlify.app/bookdown/">https://solomonkurz.netlify.app/bookdown/</a>.</p></li>
 <li><p>You’ll want to be familiar with Bayesian multilevel regression. In addition to the resources, above, I recommend either edition of McElreath’s introductory text <span class="citation">(<a href="#ref-mcelreathStatisticalRethinkingBayesian2020" role="doc-biblioref">2020</a>, <a href="#ref-mcelreathStatisticalRethinkingBayesian2015" role="doc-biblioref">2015</a>)</span> or Kruschke’s <span class="citation">(<a href="#ref-kruschkeDoingBayesianData2015" role="doc-biblioref">2015</a>)</span> introductory text.</p></li>
-<li><p>You’ll want to be familiar with IRT. The framework in this blog comes most directly from Bürkner’s <span class="citation">(<a href="#ref-burknerBayesianItemResponse2020" role="doc-biblioref">2020a</a>)</span> preprint. Though I’m not in a position to vouch for them myself, I’ve had people recommend <span class="citation"><a href="#ref-crockerIntroductionToClassical2006" role="doc-biblioref">Crocker &amp; Algina</a> (<a href="#ref-crockerIntroductionToClassical2006" role="doc-biblioref">2006</a>)</span>; <span class="citation"><a href="#ref-deayalaTheoryAndPractice2008" role="doc-biblioref">De Ayala</a> (<a href="#ref-deayalaTheoryAndPractice2008" role="doc-biblioref">2008</a>)</span>; <span class="citation"><a href="#ref-reckaseMultidimensionalIRT2009" role="doc-biblioref">Reckase</a> (<a href="#ref-reckaseMultidimensionalIRT2009" role="doc-biblioref">2009</a>)</span>; <span class="citation"><a href="#ref-bonifayMultidimensionalIRT2019" role="doc-biblioref">Bonifay</a> (<a href="#ref-bonifayMultidimensionalIRT2019" role="doc-biblioref">2019</a>)</span><a href="#fn1" class="footnote-ref" id="fnref1"><sup>1</sup></a>; and <span class="citation"><a href="#ref-albanoIntroductionToEducational2020" role="doc-biblioref">Albano</a> (<a href="#ref-albanoIntroductionToEducational2020" role="doc-biblioref">2020</a>)</span>.</p></li>
+<li><p>You’ll want to be familiar with IRT. The framework in this blog comes most directly from Bürkner’s <span class="citation">(<a href="#ref-burknerBayesianItemResponse2020" role="doc-biblioref">2020a</a>)</span> preprint. Though I’m not in a position to vouch for them myself, I’ve had people recommend the texts by <span class="citation"><a href="#ref-crockerIntroductionToClassical2006" role="doc-biblioref">Crocker &amp; Algina</a> (<a href="#ref-crockerIntroductionToClassical2006" role="doc-biblioref">2006</a>)</span>; <span class="citation"><a href="#ref-deayalaTheoryAndPractice2008" role="doc-biblioref">De Ayala</a> (<a href="#ref-deayalaTheoryAndPractice2008" role="doc-biblioref">2008</a>)</span>; <span class="citation"><a href="#ref-reckaseMultidimensionalIRT2009" role="doc-biblioref">Reckase</a> (<a href="#ref-reckaseMultidimensionalIRT2009" role="doc-biblioref">2009</a>)</span>; <span class="citation"><a href="#ref-bonifayMultidimensionalIRT2019" role="doc-biblioref">Bonifay</a> (<a href="#ref-bonifayMultidimensionalIRT2019" role="doc-biblioref">2019</a>)</span><a href="#fn1" class="footnote-ref" id="fnref1"><sup>1</sup></a>; and <span class="citation"><a href="#ref-albanoIntroductionToEducational2020" role="doc-biblioref">Albano</a> (<a href="#ref-albanoIntroductionToEducational2020" role="doc-biblioref">2020</a>)</span>.</p></li>
 <li><p>All code is in <strong>R</strong> <span class="citation">(<a href="#ref-R-base" role="doc-biblioref">R Core Team, 2020</a>)</span>, with healthy doses of the <strong>tidyverse</strong> <span class="citation">(<a href="#ref-R-tidyverse" role="doc-biblioref">Wickham, 2019</a>; <a href="#ref-wickhamWelcomeTidyverse2019" role="doc-biblioref">Wickham et al., 2019</a>)</span>. Probably the best place to learn about the <strong>tidyverse</strong>-style of coding, as well as an introduction to <strong>R</strong>, is Grolemund and Wickham’s <span class="citation">(<a href="#ref-grolemundDataScience2017" role="doc-biblioref">2017</a>)</span> freely-available online text, <a href="https://r4ds.had.co.nz"><em>R for data science</em></a>.</p></li>
 </ul>
 <p>Load the primary <strong>R</strong> packages.</p>
@@ -67,8 +67,7 @@ ccdrefined02 %&gt;%
 ## $ ccd09 &lt;dbl&gt; 1, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 1, 0…
 ## $ ccd16 &lt;dbl&gt; 1, 0, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 1, 0…</code></pre>
 <p>If you walk through the code in Loram and colleagues’ <a href="https://github.com/Lingtax/2018_measures_study/blob/master/Rcode/2018_Loram_CC_IRT.R"><code>2018_Loram_CC_IRT.R</code></a> file, you’ll see where this version of the data comes from. For our purposes, we’ll want to make an explicit participant number column and then convert the data to the long format.</p>
-<pre class="r"><code>dat_long &lt;-
-  ccdrefined02 %&gt;% 
+<pre class="r"><code>dat_long &lt;- ccdrefined02 %&gt;% 
   mutate(id = 1:n()) %&gt;% 
   pivot_longer(-id, names_to = &quot;item&quot;, values_to = &quot;y&quot;) %&gt;% 
   mutate(item = str_remove(item, &quot;ccd&quot;))
@@ -167,7 +166,7 @@ y_{pi} &amp; \sim \operatorname{Bernoulli}(p_{pi}) \\
 \mathbf R &amp; \sim \operatorname{LKJ}(2),
 \end{align*}
 \]</span></p>
-<p>where “LKJ” is the Lewandowski, Kurowicka, and Joe prior for correlation matrices <span class="citation">(<a href="#ref-lewandowski2009generating" role="doc-biblioref">Lewandowski et al., 2009</a>)</span>. With <span class="math inline">\(\eta = 2\)</span>, the LKJ weakly regularizes the correlations away from extreme values<a href="#fn4" class="footnote-ref" id="fnref4"><sup>4</sup></a>.</p>
+<p>where LKJ is the Lewandowski, Kurowicka, and Joe prior for correlation matrices <span class="citation">(<a href="#ref-lewandowski2009generating" role="doc-biblioref">Lewandowski et al., 2009</a>)</span>. With <span class="math inline">\(\eta = 2\)</span>, the LKJ weakly regularizes the correlations away from extreme values<a href="#fn4" class="footnote-ref" id="fnref4"><sup>4</sup></a>.</p>
 </div>
 <div id="fire-up-brms." class="section level3">
 <h3>Fire up <strong>brms</strong>.</h3>
@@ -321,9 +320,8 @@ head(post)</code></pre>
 ## 6    -6 13    0.000121</code></pre>
 <p>With those summaries in hand, it’s trivial to make the ICC plot with good old <strong>ggplot2</strong> syntax.</p>
 <pre class="r"><code>post %&gt;% 
-  ggplot(aes(x = theta, y = p, color = item, fill = item)) +
+  ggplot(aes(x = theta, y = p, color = item)) +
   geom_line() +
-  scale_fill_viridis_d(option = &quot;H&quot;) +
   scale_color_viridis_d(option = &quot;H&quot;) +
   labs(title = &quot;ICCs for the 1PL&quot;,
        subtitle = &quot;Each curve is based on the posterior mean.&quot;, 
@@ -403,9 +401,8 @@ head(post)</code></pre>
 ## 6    -6 13    0.00000111</code></pre>
 <p>And we plot.</p>
 <pre class="r"><code>post %&gt;% 
-  ggplot(aes(x = theta, y = p, color = item, fill = item)) +
+  ggplot(aes(x = theta, y = p, color = item)) +
   geom_line() +
-  scale_fill_viridis_d(option = &quot;H&quot;) +
   scale_color_viridis_d(option = &quot;H&quot;) +
   labs(title = &quot;ICCs for the 2PL&quot;,
        subtitle = &quot;Each curve is based on the posterior mean.&quot;, 
@@ -436,9 +433,8 @@ posterior_samples(irt1) %&gt;%
   summarise(i = median(i)) %&gt;%
   
   # now plot!
-  ggplot(aes(x = theta, y = i, color = item, fill = item)) +
+  ggplot(aes(x = theta, y = i, color = item)) +
   geom_line() +
-  scale_fill_viridis_d(option = &quot;H&quot;) +
   scale_color_viridis_d(option = &quot;H&quot;) +
   labs(title = &quot;IICs for the 1PL&quot;,
        subtitle = &quot;Each curve is based on the posterior median.&quot;, 
@@ -466,9 +462,8 @@ posterior_samples(irt2) %&gt;%
   summarise(i = median(i)) %&gt;%
   
   # now plot!
-  ggplot(aes(x = theta, y = i, color = item, fill = item)) +
+  ggplot(aes(x = theta, y = i, color = item)) +
   geom_line() +
-  scale_fill_viridis_d(option = &quot;H&quot;) +
   scale_color_viridis_d(option = &quot;H&quot;) +
   labs(title = &quot;IICs for the 2PL&quot;,
        subtitle = &quot;Each curve is based on the posterior median.&quot;, 

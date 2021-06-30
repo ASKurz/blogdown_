@@ -54,7 +54,7 @@ This tutorial is for those with a passing familiarity with the following:
 
 * You'll want to be familiar with Bayesian multilevel regression. In addition to the resources, above, I recommend either edition of McElreath's introductory text [-@mcelreathStatisticalRethinkingBayesian2015; -@mcelreathStatisticalRethinkingBayesian2020] or Kruschke's [-@kruschkeDoingBayesianData2015] introductory text.
 
-* You'll want to be familiar with IRT. The framework in this blog comes most directly from Bürkner's [-@burknerBayesianItemResponse2020] preprint. Though I'm not in a position to vouch for them myself, I've had people recommend @crockerIntroductionToClassical2006; @deayalaTheoryAndPractice2008; @reckaseMultidimensionalIRT2009; @bonifayMultidimensionalIRT2019[^1]; and @albanoIntroductionToEducational2020.
+* You'll want to be familiar with IRT. The framework in this blog comes most directly from Bürkner's [-@burknerBayesianItemResponse2020] preprint. Though I'm not in a position to vouch for them myself, I've had people recommend the texts by @crockerIntroductionToClassical2006; @deayalaTheoryAndPractice2008; @reckaseMultidimensionalIRT2009; @bonifayMultidimensionalIRT2019[^1]; and @albanoIntroductionToEducational2020.
  
 * All code is in **R** [@R-base], with healthy doses of the **tidyverse** [@R-tidyverse; @wickhamWelcomeTidyverse2019]. Probably the best place to learn about the **tidyverse**-style of coding, as well as an introduction to **R**, is Grolemund and Wickham's [-@grolemundDataScience2017] freely-available online text, [*R for data science*](https://r4ds.had.co.nz).
 
@@ -79,8 +79,7 @@ ccdrefined02 %>%
 If you walk through the code in Loram and colleagues' [`2018_Loram_CC_IRT.R`](https://github.com/Lingtax/2018_measures_study/blob/master/Rcode/2018_Loram_CC_IRT.R) file, you'll see where this version of the data comes from. For our purposes, we'll want to make an explicit participant number column and then convert the data to the long format.
 
 ```{r}
-dat_long <-
-  ccdrefined02 %>% 
+dat_long <- ccdrefined02 %>% 
   mutate(id = 1:n()) %>% 
   pivot_longer(-id, names_to = "item", values_to = "y") %>% 
   mutate(item = str_remove(item, "ccd"))
@@ -190,7 +189,7 @@ $$
 \end{align*}
 $$
 
-where "LKJ" is the Lewandowski, Kurowicka, and Joe prior for correlation matrices [@lewandowski2009generating]. With $\eta = 2$, the LKJ weakly regularizes the correlations away from extreme values[^4].
+where LKJ is the Lewandowski, Kurowicka, and Joe prior for correlation matrices [@lewandowski2009generating]. With $\eta = 2$, the LKJ weakly regularizes the correlations away from extreme values[^4].
 
 ### Fire up **brms**.
 
@@ -298,9 +297,8 @@ With those summaries in hand, it's trivial to make the ICC plot with good old **
 
 ```{r}
 post %>% 
-  ggplot(aes(x = theta, y = p, color = item, fill = item)) +
+  ggplot(aes(x = theta, y = p, color = item)) +
   geom_line() +
-  scale_fill_viridis_d(option = "H") +
   scale_color_viridis_d(option = "H") +
   labs(title = "ICCs for the 1PL",
        subtitle = "Each curve is based on the posterior mean.", 
@@ -357,9 +355,8 @@ And we plot.
 
 ```{r}
 post %>% 
-  ggplot(aes(x = theta, y = p, color = item, fill = item)) +
+  ggplot(aes(x = theta, y = p, color = item)) +
   geom_line() +
-  scale_fill_viridis_d(option = "H") +
   scale_color_viridis_d(option = "H") +
   labs(title = "ICCs for the 2PL",
        subtitle = "Each curve is based on the posterior mean.", 
@@ -395,9 +392,8 @@ posterior_samples(irt1) %>%
   summarise(i = median(i)) %>%
   
   # now plot!
-  ggplot(aes(x = theta, y = i, color = item, fill = item)) +
+  ggplot(aes(x = theta, y = i, color = item)) +
   geom_line() +
-  scale_fill_viridis_d(option = "H") +
   scale_color_viridis_d(option = "H") +
   labs(title = "IICs for the 1PL",
        subtitle = "Each curve is based on the posterior median.", 
@@ -428,9 +424,8 @@ posterior_samples(irt2) %>%
   summarise(i = median(i)) %>%
   
   # now plot!
-  ggplot(aes(x = theta, y = i, color = item, fill = item)) +
+  ggplot(aes(x = theta, y = i, color = item)) +
   geom_line() +
-  scale_fill_viridis_d(option = "H") +
   scale_color_viridis_d(option = "H") +
   labs(title = "IICs for the 2PL",
        subtitle = "Each curve is based on the posterior median.", 
