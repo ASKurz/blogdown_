@@ -388,3 +388,54 @@ icc0.9_vr_0.281_d0.3 &lt;-
 <p>To clarify, <span class="math inline">\(N\)</span> in each cell is the total sample size presuming both the control and experimental conditions have equal numbers in each. Thus, <span class="math inline">\(n_\text{control} = n_\text{experimental} = N/2\)</span>.</p>
 </div>
 </div>
+<div id="wrap-up" class="section level2">
+<h2>Wrap up</h2>
+<p>I presented the original report with an HTML document, which used the R Markdown <a href="https://community.rstudio.com/t/notebook-with-code-folding-hide-by-default/55845">code folding</a> option, which hid my code, by default. Since I’m not aware of a good way to use code folding with <strong>blogdown</strong> blog posts, here you see the code in all its glory.</p>
+<p>All you Bayesian freaks may have noticed that this was a conventional frequentist power analysis. I’m not always a Bayesian. 🤷 When you intend to analyze experimental RCT-like data with frequentist software, the <a href="https://github.com/rpsychologist/powerlmm"><strong>powerlmm</strong> package</a> <span class="citation">(<a href="#ref-R-powerlmm" role="doc-biblioref"><strong>R-powerlmm?</strong></a>)</span> can come in really handy.</p>
+<p>Had I intended to share a report like this for a broader audience, possibly as supplemental material for a paper, I might have explained the <strong>powerlmm</strong> code a bit more. Since this was originally meant for internal use, my main goal was to present the results with an extra bit of transparency for the sake of building trust with a new collaborator. It worked, by the way. This person’s grant money now pays for part of my salary.</p>
+<p>If this was supplementary material, I would have also spent more time explicitly showing where I got the Cohen’s <span class="math inline">\(d\)</span>, ICC, and variance ratio values.</p>
+<p>If you didn’t notice, the context for this power analysis wasn’t ideal. Even though I pulled information from two different data sources, neither was ideal and their combination wasn’t, either. Though my collaborator’s pilot data let me compute the Cohen’s <span class="math inline">\(d\)</span> and the ICC, I didn’t have access to the raw data, themselves. Without that, I had no good way to compute the variance ratio. As it turns out, that was a big deal. Though I was able to compute variance ratios from different data from a similar population, it wasn’t on the same criterion variable. The best place to be in is if you have pilot data from the same population and on the same criterion variable. Outside of that, you’re making assumptions about model parameters you might not have spend a lot of time pondering, before. Welcome to the world of multilevel power analyses, friends. Keep your chins up. It’s rough, out there.</p>
+</div>
+<div id="session-info" class="section level2">
+<h2>Session info</h2>
+<pre class="r"><code>sessionInfo()</code></pre>
+<pre><code>## R version 4.0.4 (2021-02-15)
+## Platform: x86_64-apple-darwin17.0 (64-bit)
+## Running under: macOS Catalina 10.15.7
+## 
+## Matrix products: default
+## BLAS:   /Library/Frameworks/R.framework/Versions/4.0/Resources/lib/libRblas.dylib
+## LAPACK: /Library/Frameworks/R.framework/Versions/4.0/Resources/lib/libRlapack.dylib
+## 
+## locale:
+## [1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+## 
+## attached base packages:
+## [1] stats     graphics  grDevices utils     datasets  methods   base     
+## 
+## other attached packages:
+## [1] forcats_0.5.1   stringr_1.4.0   dplyr_1.0.6     purrr_0.3.4    
+## [5] readr_1.4.0     tidyr_1.1.3     tibble_3.1.2    ggplot2_3.3.3  
+## [9] tidyverse_1.3.0
+## 
+## loaded via a namespace (and not attached):
+##  [1] tidyselect_1.1.1  xfun_0.23         bslib_0.2.4       haven_2.3.1      
+##  [5] colorspace_2.0-0  vctrs_0.3.8       generics_0.1.0    viridisLite_0.4.0
+##  [9] htmltools_0.5.1.1 emo_0.0.0.9000    yaml_2.2.1        utf8_1.2.1       
+## [13] rlang_0.4.11      jquerylib_0.1.4   pillar_1.6.1      withr_2.4.2      
+## [17] glue_1.4.2        DBI_1.1.0         dbplyr_2.0.0      modelr_0.1.8     
+## [21] readxl_1.3.1      lifecycle_1.0.0   munsell_0.5.0     blogdown_1.3     
+## [25] gtable_0.3.0      cellranger_1.1.0  rvest_0.3.6       evaluate_0.14    
+## [29] labeling_0.4.2    knitr_1.33        MBESS_4.8.0       fansi_0.4.2      
+## [33] highr_0.9         broom_0.7.6       Rcpp_1.0.6        backports_1.2.1  
+## [37] scales_1.1.1      jsonlite_1.7.2    farver_2.1.0      fs_1.5.0         
+## [41] hms_0.5.3         digest_0.6.27     stringi_1.6.2     bookdown_0.22    
+## [45] grid_4.0.4        cli_2.5.0         tools_4.0.4       magrittr_2.0.1   
+## [49] sass_0.3.1        crayon_1.4.1      pkgconfig_2.0.3   ellipsis_0.3.2   
+## [53] xml2_1.3.2        reprex_0.3.0      lubridate_1.7.9.2 rstudioapi_0.13  
+## [57] assertthat_0.2.1  rmarkdown_2.8     httr_1.4.2        R6_2.5.0         
+## [61] compiler_4.0.4</code></pre>
+</div>
+<div id="references" class="section level2">
+<h2>References</h2>
+</div>

@@ -391,13 +391,24 @@ Again, I recommend playing it safe and relying on the power estimates based on t
 
 To clarify, $N$ in each cell is the total sample size presuming both the control and experimental conditions have equal numbers in each. Thus, $n_\text{control} = n_\text{experimental} = N/2$.
 
+## Wrap up
 
+I presented the original report with an HTML document, which used the R Markdown [code folding](https://community.rstudio.com/t/notebook-with-code-folding-hide-by-default/55845) option, which hid my code, by default. Since I'm not aware of a good way to use code folding with **blogdown** blog posts, here you see the code in all its glory.
 
+All you Bayesian freaks may have noticed that this was a conventional frequentist power analysis. I'm not always a Bayesian. `r emo::ji("shrug")` When you intend to analyze experimental RCT-like data with frequentist software, the [**powerlmm** package](https://github.com/rpsychologist/powerlmm) [@R-powerlmm] can come in really handy.
 
+Had I intended to share a report like this for a broader audience, possibly as supplemental material for a paper, I might have explained the **powerlmm** code a bit more. Since this was originally meant for internal use, my main goal was to present the results with an extra bit of transparency for the sake of building trust with a new collaborator. It worked, by the way. This person's grant money now pays for part of my salary.
 
+If this was supplementary material, I would have also spent more time explicitly showing where I got the Cohen's $d$, ICC, and variance ratio values.
 
+If you didn't notice, the context for this power analysis wasn't ideal. Even though I pulled information from two different data sources, neither was ideal and their combination wasn't, either. Though my collaborator's pilot data let me compute the Cohen's $d$ and the ICC, I didn't have access to the raw data, themselves. Without that, I had no good way to compute the variance ratio. As it turns out, that was a big deal. Though I was able to compute variance ratios from different data from a similar population, it wasn't on the same criterion variable. The best place to be in is if you have pilot data from the same population and on the same criterion variable. Outside of that, you're making assumptions about model parameters you might not have spend a lot of time pondering, before. Welcome to the world of multilevel power analyses, friends. Keep your chins up. It's rough, out there.
 
+## Session info
 
+```{r}
+sessionInfo()
+```
 
+## References
 
 
