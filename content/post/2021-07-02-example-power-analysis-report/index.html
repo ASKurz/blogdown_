@@ -122,4 +122,27 @@ ci %&gt;%
 ## $ smd                  &lt;dbl&gt; 0.3063063
 ## $ Upper.Conf.Limit.smd &lt;dbl&gt; 0.4692338</code></pre>
 <p>The 50% CIs range from 0.14 to 0.47.</p>
+<div id="power-analyses-can-be-tailor-made." class="section level3">
+<h3>Power analyses can be tailor made.</h3>
+<p>Whenever possible, it is preferable to tailor a power analysis to the statistical models researchers plan to use to analyze the data they intend to collect. Based on your previous analyses, I suspect you intend to fit a series of hierarchical models. I would have done the same thing with those data and I further recommend you analyze the data you intend to collect within a hierarchical growth model paradigm. With that in mind, the power analyses in the report are all based on the following model:</p>
+<p><span class="math display">\[\begin{align*}
+y_{ij} &amp; = \beta_{0i} + \beta_{1i} \text{time}_{ij} + \epsilon_{ij} \\
+\beta_{0i} &amp; = \gamma_{00} + \gamma_{01} \text{treatment}_i +  u_{0i} \\
+\beta_{1i} &amp; = \gamma_{10} + \gamma_{11} \text{treatment}_i +  u_{1i}, 
+\end{align*}\]</span></p>
+<p>where <span class="math inline">\(y\)</span> is the dependent variable of interest, which varies across <span class="math inline">\(i\)</span> participants and <span class="math inline">\(j\)</span> measurement occasions. The model is linear with an intercept <span class="math inline">\(\beta_{0i}\)</span> and slope <span class="math inline">\(\beta_{1i}\)</span>. As indicated by the <span class="math inline">\(i\)</span> subscripts, both intercepts and slopes vary across participants with grand means <span class="math inline">\(\gamma_{00}\)</span> and <span class="math inline">\(\gamma_{10}\)</span>, respectively, and participant-specific deviations around those means <span class="math inline">\(u_{0i}\)</span> and <span class="math inline">\(u_{1i}\)</span>, respectively. There is a focal between-participant predictor in the model, <span class="math inline">\(\text{treatment}_i\)</span>, which is coded 0 = <em>control</em> 1 = <em>treatment</em>. Rearranging the the formulas into the composite form will make it clear this is an interaction model:</p>
+<p><span class="math display">\[\begin{align*}
+y_{ij} &amp; = \gamma_{00} + \gamma_{01} \text{treatment}_i \\
+       &amp; \;\;\; + \gamma_{10} \text{time}_{ij} + \gamma_{11} \text{treatment}_i \times \text{time}_{ij} \\
+       &amp; \;\;\; + u_{0i} +  u_{1i} \text{time}_{ij} + \epsilon_{ij},
+\end{align*}\]</span></p>
+<p>where the parameter of primary interest for the study is <span class="math inline">\(\gamma_{11} \text{treatment}_i \times \text{time}_{ij}\)</span>, the difference between the two <span class="math inline">\(\text{treatment}\)</span> conditions in their change in <span class="math inline">\(y\)</span> over <span class="math inline">\(\text{time}\)</span>. As such, the focus of the power analyses reported above are on the power to reject the null hypothesis the <span class="math inline">\(\text{treatment}\)</span> conditions do not differ in their change over <span class="math inline">\(\text{time}\)</span>,</p>
+<p><span class="math display">\[H_0: \gamma_{11} = 0.\]</span></p>
+<p>To finish out the equations, this approach makes the typical assumptions the within-participant residual term, <span class="math inline">\(\epsilon_{ij}\)</span>, is normally distributed around zero,</p>
+<p><span class="math display">\[\epsilon_{ij} \sim \operatorname{Normal} (0, \sigma_\epsilon^2),\]</span></p>
+<p>and the between-participant variances <span class="math inline">\(u_{0i}\)</span> and <span class="math inline">\(u_{1i}\)</span> have a multivariate normal distribution with a mean vector of zeros,</p>
+<p><span class="math display">\[\begin{bmatrix} u_{0i} \\ u_{1i} \end{bmatrix} \sim \operatorname{Normal} \Bigg ( \begin{bmatrix} 0 \\ 0 \end{bmatrix}, \begin{bmatrix} \sigma_0^2 &amp; \sigma_{01} \\ \sigma_{01} &amp; \sigma_1^2 \end{bmatrix} \Bigg ).\]</span></p>
+<p>Following convention, the within-participant residuals <span class="math inline">\(\epsilon_{ij}\)</span> are orthogonal to the between-participant variances <span class="math inline">\(u_{0i}\)</span> and <span class="math inline">\(u_{1i}\)</span>.</p>
+<p>For simplicity, another assumption of this model that the control condition will remain constant over time.</p>
+</div>
 </div>

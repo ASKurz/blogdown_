@@ -115,4 +115,37 @@ MBESS::ci.smd(smd = d,
 
 The 50% CIs range from 0.14 to 0.47.
 
+### Power analyses can be tailor made.
+
+Whenever possible, it is preferable to tailor a power analysis to the statistical models researchers plan to use to analyze the data they intend to collect. Based on your previous analyses, I suspect you intend to fit a series of hierarchical models. I would have done the same thing with those data and I further recommend you analyze the data you intend to collect within a hierarchical growth model paradigm. With that in mind, the power analyses in the report are all based on the following model:
+
+\begin{align*}
+y_{ij} & = \beta_{0i} + \beta_{1i} \text{time}_{ij} + \epsilon_{ij} \\
+\beta_{0i} & = \gamma_{00} + \gamma_{01} \text{treatment}_i +  u_{0i} \\
+\beta_{1i} & = \gamma_{10} + \gamma_{11} \text{treatment}_i +  u_{1i}, 
+\end{align*}
+
+where $y$ is the dependent variable of interest, which varies across $i$ participants and $j$ measurement occasions. The model is linear with an intercept $\beta_{0i}$ and slope $\beta_{1i}$. As indicated by the $i$ subscripts, both intercepts and slopes vary across participants with grand means $\gamma_{00}$ and $\gamma_{10}$, respectively, and participant-specific deviations around those means $u_{0i}$ and $u_{1i}$, respectively. There is a focal between-participant predictor in the model, $\text{treatment}_i$, which is coded 0 = *control* 1 = *treatment*. Rearranging the the formulas into the composite form will make it clear this is an interaction model:
+
+\begin{align*}
+y_{ij} & = \gamma_{00} + \gamma_{01} \text{treatment}_i \\
+       & \;\;\; + \gamma_{10} \text{time}_{ij} + \gamma_{11} \text{treatment}_i \times \text{time}_{ij} \\
+       & \;\;\; + u_{0i} +  u_{1i} \text{time}_{ij} + \epsilon_{ij},
+\end{align*}
+
+where the parameter of primary interest for the study is $\gamma_{11} \text{treatment}_i \times \text{time}_{ij}$, the difference between the two $\text{treatment}$ conditions in their change in $y$ over $\text{time}$. As such, the focus of the power analyses reported above are on the power to reject the null hypothesis the $\text{treatment}$ conditions do not differ in their change over $\text{time}$,
+
+$$H_0: \gamma_{11} = 0.$$
+
+To finish out the equations, this approach makes the typical assumptions the within-participant residual term, $\epsilon_{ij}$, is normally distributed around zero, 
+
+$$\epsilon_{ij} \sim \operatorname{Normal} (0, \sigma_\epsilon^2),$$
+
+and the between-participant variances $u_{0i}$ and $u_{1i}$ have a multivariate normal distribution with a mean vector of zeros,
+
+$$\begin{bmatrix} u_{0i} \\ u_{1i} \end{bmatrix} \sim \operatorname{Normal} \Bigg ( \begin{bmatrix} 0 \\ 0 \end{bmatrix}, \begin{bmatrix} \sigma_0^2 & \sigma_{01} \\ \sigma_{01} & \sigma_1^2 \end{bmatrix} \Bigg ).$$
+
+Following convention, the within-participant residuals $\epsilon_{ij}$ are orthogonal to the between-participant variances $u_{0i}$ and $u_{1i}$.
+
+For simplicity, another assumption of this model that the control condition will remain constant over time.
 
