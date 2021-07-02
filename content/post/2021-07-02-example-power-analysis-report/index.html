@@ -1,0 +1,125 @@
+---
+title: Example power analysis report
+author: A. Solomon Kurz
+date: '2021-07-02'
+slug: ''
+categories: []
+tags:
+  - multilevel
+  - power
+  - powerlmm
+  - R
+  - tidyverse
+  - tutorial
+subtitle: ''
+summary: ''
+authors: []
+lastmod: '2021-07-02T11:15:08-05:00'
+featured: no
+image:
+  caption: ''
+  focal_point: ''
+  preview_only: no
+projects: []
+bibliography: /Users/solomonkurz/Dropbox/blogdown/content/post/my_blog.bib
+biblio-style: apalike
+csl: /Users/solomonkurz/Dropbox/blogdown/content/post/apa.csl  
+link-citations: yes
+
+disable_codefolding: false
+codefolding_show: "hide"
+codefolding_nobutton: false
+---
+
+<script src="{{< blogdown/postref >}}index_files/header-attrs/header-attrs.js"></script>
+
+
+<div id="context" class="section level2">
+<h2>Context</h2>
+<p>In one of my recent Twitter posts, I got pissy and complained about a vague power-analysis statement I saw while reviewing a manuscript submitted to a scientific journal.</p>
+<p>{{% tweet "1409626961161371648" %}}</p>
+<p>It wasn’t my best moment and I ended up apologizing for my tone.</p>
+<p>{{% tweet "1409634560485199876" %}}</p>
+<p>However, the broader issue remains. If you plan to analyze your data with anything more complicated than a <span class="math inline">\(t\)</span>-test, the power analysis phase gets tricky. The manuscript I was complaining about used a complicated multilevel model as its primary analysis. I’m willing to bet that most applied researchers (including the authors of that manuscript) have never done a power analysis for a multilevel model and probably have never seen what one might look like, either. The purpose of this post is to give a real-world example of just such an analysis.</p>
+<p>Over the past couple years, I’ve done a few multilevel power analyses as part of my day job. In this post, I will reproduce one of them. For the sake of confidentiality, some of the original content will be omitted or slightly altered. But the overall workflow will be about 90% faithful to the original report I submitted to my boss. To understand this report, you should know:</p>
+<ul>
+<li>my boss has some experience fitting multilevel models, but they’re not a stats jock;</li>
+<li>we had pilot data from two different sources, each with its strengths and weaknesses; and</li>
+<li>this document was meant for internal purposes only, though I believe some of its contents did make it into other materials.</li>
+</ul>
+<p>At the end, I’ll wrap this post up with a few comments. Here’s the report:</p>
+</div>
+<div id="executive-summary" class="section level2">
+<h2>Executive summary</h2>
+<p>A total sample size of <strong>164</strong> is the minimum number to detect an effect size similar to that in the pilot data (i.e., Cohen’s <span class="math inline">\(d = 0.3\)</span>). This recommendation assumes</p>
+<ul>
+<li>a study design of three time points,</li>
+<li>random assignment of participants into two equal groups, and</li>
+<li>20% dropout on the second time point and another 20% dropout by the third time point.</li>
+</ul>
+<p>If we presume a more conservative effect size of <span class="math inline">\(0.2\)</span> and a larger dropout rate of 30% the second and third time points, the minimum recommended total sample size is <strong>486</strong>.</p>
+<p>The remainder of this report details how I came to these conclusions. For full transparency, I will supplement prose with figures, tables, and the statistical code used used for all computations. By default, the code is hidden is this document. However, if you are interested in the code, you should be able to make it appear by selecting “Show All Code” in the dropdown menu from the “Code” button on the upper-right corner.</p>
+</div>
+<div id="cohens-d" class="section level2">
+<h2>Cohen’s <span class="math inline">\(d\)</span></h2>
+<p>In this report, Cohen’s <span class="math inline">\(d\)</span> is meant to indicate a standardized mean difference. The <span class="math inline">\(d = 0.3\)</span> from above is based on the <code>some_file.docx</code> file you shared with me last week. In Table 1, you provided the following summary information for the intervention group:</p>
+<pre class="r"><code>library(tidyverse)
+
+tibble(summary = c(&quot;mean&quot;, &quot;sd&quot;),
+       baseline = c(1.29, 1.13),
+       followup = c(0.95, 1.09)) %&gt;% 
+  knitr::kable()</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="left">summary</th>
+<th align="right">baseline</th>
+<th align="right">followup</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">mean</td>
+<td align="right">1.29</td>
+<td align="right">0.95</td>
+</tr>
+<tr class="even">
+<td align="left">sd</td>
+<td align="right">1.13</td>
+<td align="right">1.09</td>
+</tr>
+</tbody>
+</table>
+<p>With that information, we can compute a within-subject’s <span class="math inline">\(d\)</span> by hand. With this formula, we will be using the average of the two standard deviations in the denominator.</p>
+<pre class="r"><code>d &lt;- (1.29 - .95) / ((1.13 + 1.09) / 2)
+d</code></pre>
+<pre><code>## [1] 0.3063063</code></pre>
+<p>However, 0.306 is just a point estimate. We can express the uncertainty in that point estimate with 95% confidence intervals.</p>
+<pre class="r"><code>ci &lt;-
+  MBESS::ci.smd(smd = d,
+                n.1 = 50, 
+                n.2 = 26)
+
+ci %&gt;% 
+  data.frame() %&gt;% 
+  glimpse()</code></pre>
+<pre><code>## Rows: 1
+## Columns: 3
+## $ Lower.Conf.Limit.smd &lt;dbl&gt; -0.1711662
+## $ smd                  &lt;dbl&gt; 0.3063063
+## $ Upper.Conf.Limit.smd &lt;dbl&gt; 0.7817338</code></pre>
+<p>In this output, <code>smd</code> refers to “standardized mean difference,” what what we have been referring to as Cohen’s <span class="math inline">\(d\)</span>. The output indicates the effect size for the experimental group from the pilot study was <span class="math inline">\(d\)</span> of 0.31 [-0.17, .78]. The data look promising for a small/moderate effect. But those confidence intervals swing from small negative to large.</p>
+<p>For reference, here are the 50% intervals.</p>
+<pre class="r"><code>MBESS::ci.smd(smd = d,
+              n.1 = 50, 
+              n.2 = 26,
+              conf.level = .5) %&gt;% 
+  data.frame() %&gt;% 
+  glimpse()</code></pre>
+<pre><code>## Rows: 1
+## Columns: 3
+## $ Lower.Conf.Limit.smd &lt;dbl&gt; 0.1413087
+## $ smd                  &lt;dbl&gt; 0.3063063
+## $ Upper.Conf.Limit.smd &lt;dbl&gt; 0.4692338</code></pre>
+<p>The 50% CIs range from 0.14 to 0.47.</p>
+</div>
