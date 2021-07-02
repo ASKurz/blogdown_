@@ -27,7 +27,7 @@ csl: /Users/solomonkurz/Dropbox/blogdown/content/post/apa.csl
 link-citations: yes
 
 disable_codefolding: false
-codefolding_show: "hide"
+codefolding_show: hide
 codefolding_nobutton: false
 ---
 
