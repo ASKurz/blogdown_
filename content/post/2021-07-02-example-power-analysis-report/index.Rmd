@@ -80,10 +80,10 @@ tibble(summary = c("mean", "sd"),
   knitr::kable()
 ```
 
-With that information, we can compute a within-subject's $d$ by hand. With this formula, we will be using the average of the two standard deviations in the denominator.
+With that information, we can compute a within-subject's $d$ by hand. With this formula, we will be using the pooled standard deviation in the denominator.
 
 ```{r}
-d <- (1.29 - .95) / ((1.13 + 1.09) / 2)
+d <- (1.29 - .95) / sqrt((1.13^2 + 1.09^2) / 2)
 d
 ```
 
@@ -401,7 +401,7 @@ Had I intended to share a report like this for a broader audience, possibly as s
 
 If this was supplementary material, I would have also spent more time explicitly showing where I got the Cohen's $d$, ICC, and variance ratio values.
 
-If you didn't notice, the context for this power analysis wasn't ideal. Even though I pulled information from two different data sources, neither was ideal and their combination wasn't, either. Though my collaborator's pilot data let me compute the Cohen's $d$ and the ICC, I didn't have access to the raw data, themselves. Without that, I had no good way to compute the variance ratio. As it turns out, that was a big deal. Though I was able to compute variance ratios from different data from a similar population, it wasn't on the same criterion variable. The best place to be in is if you have pilot data from the same population and on the same criterion variable. Outside of that, you're making assumptions about model parameters you might not have spend a lot of time pondering, before. Welcome to the world of multilevel power analyses, friends. Keep your chins up. It's rough, out there.
+If you didn't notice, the context for this power analysis wasn't ideal. Even though I pulled information from two different data sources, neither was ideal and their combination wasn't, either. Though my collaborator's pilot data let me compute the Cohen's $d$ and the ICC, I didn't have access to the raw data, themselves. Without that, I had no good way to compute the variance ratio. As it turns out, that was a big deal. Though I was able to compute variance ratios from different data from a similar population, it wasn't on the same criterion variable. The best place to be in is if you have pilot data from the same population and on the same criterion variable. Outside of that, you're making assumptions about model parameters you might not have spent a lot of time pondering, before. Welcome to the world of multilevel power analyses, friends. Keep your chins up. It's rough, out there.
 
 ## Session info
 

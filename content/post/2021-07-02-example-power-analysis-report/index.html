@@ -90,10 +90,10 @@ tibble(summary = c(&quot;mean&quot;, &quot;sd&quot;),
 </tr>
 </tbody>
 </table>
-<p>With that information, we can compute a within-subject’s <span class="math inline">\(d\)</span> by hand. With this formula, we will be using the average of the two standard deviations in the denominator.</p>
-<pre class="r"><code>d &lt;- (1.29 - .95) / ((1.13 + 1.09) / 2)
+<p>With that information, we can compute a within-subject’s <span class="math inline">\(d\)</span> by hand. With this formula, we will be using the pooled standard deviation in the denominator.</p>
+<pre class="r"><code>d &lt;- (1.29 - .95) / sqrt((1.13^2 + 1.09^2) / 2)
 d</code></pre>
-<pre><code>## [1] 0.3063063</code></pre>
+<pre><code>## [1] 0.3062566</code></pre>
 <p>However, 0.306 is just a point estimate. We can express the uncertainty in that point estimate with 95% confidence intervals.</p>
 <pre class="r"><code>ci &lt;-
   MBESS::ci.smd(smd = d,
@@ -105,9 +105,9 @@ ci %&gt;%
   glimpse()</code></pre>
 <pre><code>## Rows: 1
 ## Columns: 3
-## $ Lower.Conf.Limit.smd &lt;dbl&gt; -0.1711662
-## $ smd                  &lt;dbl&gt; 0.3063063
-## $ Upper.Conf.Limit.smd &lt;dbl&gt; 0.7817338</code></pre>
+## $ Lower.Conf.Limit.smd &lt;dbl&gt; -0.1712149
+## $ smd                  &lt;dbl&gt; 0.3062566
+## $ Upper.Conf.Limit.smd &lt;dbl&gt; 0.7816834</code></pre>
 <p>In this output, <code>smd</code> refers to “standardized mean difference,” what what we have been referring to as Cohen’s <span class="math inline">\(d\)</span>. The output indicates the effect size for the experimental group from the pilot study was <span class="math inline">\(d\)</span> of 0.31 [-0.17, .78]. The data look promising for a small/moderate effect. But those confidence intervals swing from small negative to large.</p>
 <p>For reference, here are the 50% intervals.</p>
 <pre class="r"><code>MBESS::ci.smd(smd = d,
@@ -118,9 +118,9 @@ ci %&gt;%
   glimpse()</code></pre>
 <pre><code>## Rows: 1
 ## Columns: 3
-## $ Lower.Conf.Limit.smd &lt;dbl&gt; 0.1413087
-## $ smd                  &lt;dbl&gt; 0.3063063
-## $ Upper.Conf.Limit.smd &lt;dbl&gt; 0.4692338</code></pre>
+## $ Lower.Conf.Limit.smd &lt;dbl&gt; 0.1412595
+## $ smd                  &lt;dbl&gt; 0.3062566
+## $ Upper.Conf.Limit.smd &lt;dbl&gt; 0.4691839</code></pre>
 <p>The 50% CIs range from 0.14 to 0.47.</p>
 <div id="power-analyses-can-be-tailor-made." class="section level3">
 <h3>Power analyses can be tailor made.</h3>
@@ -391,10 +391,10 @@ icc0.9_vr_0.281_d0.3 &lt;-
 <div id="wrap-up" class="section level2">
 <h2>Wrap up</h2>
 <p>I presented the original report with an HTML document, which used the R Markdown <a href="https://community.rstudio.com/t/notebook-with-code-folding-hide-by-default/55845">code folding</a> option, which hid my code, by default. Since I’m not aware of a good way to use code folding with <strong>blogdown</strong> blog posts, here you see the code in all its glory.</p>
-<p>All you Bayesian freaks may have noticed that this was a conventional frequentist power analysis. I’m not always a Bayesian. 🤷 When you intend to analyze experimental RCT-like data with frequentist software, the <a href="https://github.com/rpsychologist/powerlmm"><strong>powerlmm</strong> package</a> <span class="citation">(<a href="#ref-R-powerlmm" role="doc-biblioref"><strong>R-powerlmm?</strong></a>)</span> can come in really handy.</p>
+<p>All you Bayesian freaks may have noticed that this was a conventional frequentist power analysis. I’m not always a Bayesian. 🤷 When you intend to analyze experimental RCT-like data with frequentist software, the <a href="https://github.com/rpsychologist/powerlmm"><strong>powerlmm</strong> package</a> <span class="citation">(<a href="#ref-R-powerlmm" role="doc-biblioref">Magnusson, 2018</a>)</span> can come in really handy.</p>
 <p>Had I intended to share a report like this for a broader audience, possibly as supplemental material for a paper, I might have explained the <strong>powerlmm</strong> code a bit more. Since this was originally meant for internal use, my main goal was to present the results with an extra bit of transparency for the sake of building trust with a new collaborator. It worked, by the way. This person’s grant money now pays for part of my salary.</p>
 <p>If this was supplementary material, I would have also spent more time explicitly showing where I got the Cohen’s <span class="math inline">\(d\)</span>, ICC, and variance ratio values.</p>
-<p>If you didn’t notice, the context for this power analysis wasn’t ideal. Even though I pulled information from two different data sources, neither was ideal and their combination wasn’t, either. Though my collaborator’s pilot data let me compute the Cohen’s <span class="math inline">\(d\)</span> and the ICC, I didn’t have access to the raw data, themselves. Without that, I had no good way to compute the variance ratio. As it turns out, that was a big deal. Though I was able to compute variance ratios from different data from a similar population, it wasn’t on the same criterion variable. The best place to be in is if you have pilot data from the same population and on the same criterion variable. Outside of that, you’re making assumptions about model parameters you might not have spend a lot of time pondering, before. Welcome to the world of multilevel power analyses, friends. Keep your chins up. It’s rough, out there.</p>
+<p>If you didn’t notice, the context for this power analysis wasn’t ideal. Even though I pulled information from two different data sources, neither was ideal and their combination wasn’t, either. Though my collaborator’s pilot data let me compute the Cohen’s <span class="math inline">\(d\)</span> and the ICC, I didn’t have access to the raw data, themselves. Without that, I had no good way to compute the variance ratio. As it turns out, that was a big deal. Though I was able to compute variance ratios from different data from a similar population, it wasn’t on the same criterion variable. The best place to be in is if you have pilot data from the same population and on the same criterion variable. Outside of that, you’re making assumptions about model parameters you might not have spent a lot of time pondering, before. Welcome to the world of multilevel power analyses, friends. Keep your chins up. It’s rough, out there.</p>
 </div>
 <div id="session-info" class="section level2">
 <h2>Session info</h2>
@@ -436,6 +436,11 @@ icc0.9_vr_0.281_d0.3 &lt;-
 ## [57] assertthat_0.2.1  rmarkdown_2.8     httr_1.4.2        R6_2.5.0         
 ## [61] compiler_4.0.4</code></pre>
 </div>
-<div id="references" class="section level2">
+<div id="references" class="section level2 unnumbered">
 <h2>References</h2>
+<div id="refs" class="references csl-bib-body hanging-indent" line-spacing="2">
+<div id="ref-R-powerlmm" class="csl-entry">
+Magnusson, K. (2018). <em><span class="nocase">powerlmm</span>: <span>Power</span> analysis for longitudinal multilevel models</em> [Manual]. <a href="https://github.com/rpsychologist/powerlmm">https://github.com/rpsychologist/powerlmm</a>
+</div>
+</div>
 </div>
