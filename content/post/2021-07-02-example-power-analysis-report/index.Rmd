@@ -149,3 +149,255 @@ Following convention, the within-participant residuals $\epsilon_{ij}$ are ortho
 
 For simplicity, another assumption of this model that the control condition will remain constant over time.
 
+### Main results: Power curves.
+
+I computed a series of power curves to examine the necessary sample size given different assumptions. Due to the uncertainty in the effect size from the pilot data, $d = 0.31 [-0.17, .78]$, varied the effect size from 0.1 to 0.3. I also examined different levels of missing data via dropout. These followed four patterns of dropout and were extensions of the missing data pattern described in the `some_other_file.docx` file. They were:
+
+```{r}
+tibble(`dropout rate` = str_c(c(0, 10, 20, 30), "%"),
+       baseline = "100%",
+       `1st followup` = str_c(c(100, 90, 80, 70), "%"),
+       `2nd followup` = str_c(c(100, 80, 60, 40), "%")) %>% 
+  knitr::kable()
+```
+
+The row with the 20% dropout rate, for example, corresponds directly to the dropout rate entertained in the `some_other_file.docx` file.
+
+The power simulations of this kind required two more bits of information. The first was that we specify an expected intraclass correlation coefficient (ICC). I used ICC = .9, which is the ICC value you reported in your previous work (p. 41).
+
+The second value needed is the ratio of $u_{1i}/ \epsilon_{ij}$, sometimes called the "variance ratio." I was not able to determine that value from the `some_file.docx` or the `some_other_file.docx`. However, I was able to compute one based on data from a different project on participants from a similar population. The data are from several hundred participants in a longitudinal survey study. The data do not include your primary variable of interest. Instead, I took the $u_{1i}/ \epsilon_{ij}$ from recent hierarchical analyses of two related measures. These left me with two values: 0.018 on the low end and 0.281 on the high end. Thus, I performed the power curves using both.
+
+Here is the code for the simulations:
+
+```{r, echo = F, warning = F, message = F}
+# save(list = c("icc0.9_vr_0.018_d0.1", "icc0.9_vr_0.018_d0.2", "icc0.9_vr_0.018_d0.3"),
+#      file = "sims/icc0.9_vr_0.018_d0.1_through_3.rda")
+# 
+# save(list = c("icc0.9_vr_0.281_d0.1", "icc0.9_vr_0.281_d0.2", "icc0.9_vr_0.281_d0.3"),
+#      file = "sims/icc0.9_vr_0.281_d0.1_through_3.rda")
+
+load("sims/icc0.9_vr_0.018_d0.1_through_3.rda")
+load("sims/icc0.9_vr_0.281_d0.1_through_3.rda")
+```
+
+```{r, eval = F}
+library(powerlmm)
+
+t <- 3
+n <- 100
+
+# variance ratio 0.018
+icc0.9_vr_0.018_d0.1 <-
+  study_parameters(n1 = t,
+                 n2 = n,
+                 icc_pre_subject = 0.9,
+                  var_ratio = 0.018,
+                  effect_size = cohend(-0.2, 
+                                       standardizer = "pretest_SD"),
+                 dropout = dropout_manual(0, 0.1, 0.2)) %>% 
+  get_power_table(n2 = 25:500,
+                  effect_size = cohend(c(.1, .15, .2, .25, .3), 
+                                       standardizer = "pretest_SD"))
+
+icc0.9_vr_0.018_d0.2 <-
+  study_parameters(n1 = t,
+                 n2 = n,
+                 icc_pre_subject = 0.9,
+                  var_ratio = 0.018,
+                  effect_size = cohend(-0.2, 
+                                       standardizer = "pretest_SD"),
+                 dropout = dropout_manual(0, 0.2, 0.4)) %>% 
+  get_power_table(n2 = 25:500,
+                  effect_size = cohend(c(.1, .15, .2, .25, .3), 
+                                       standardizer = "pretest_SD"))
+
+icc0.9_vr_0.018_d0.3 <-
+  study_parameters(n1 = t,
+                 n2 = n,
+                 icc_pre_subject = 0.9,
+                  var_ratio = 0.018,
+                  effect_size = cohend(-0.2, 
+                                       standardizer = "pretest_SD"),
+                 dropout = dropout_manual(0, 0.3, 0.6)) %>% 
+  get_power_table(n2 = 25:500,
+                  effect_size = cohend(c(.1, .15, .2, .25, .3), 
+                                       standardizer = "pretest_SD"))
+
+# variance ratio 0.281
+icc0.9_vr_0.281_d0.1 <-
+  study_parameters(n1 = t,
+                 n2 = n,
+                 icc_pre_subject = 0.9,
+                  var_ratio = 0.281,
+                  effect_size = cohend(-0.2, 
+                                       standardizer = "pretest_SD"),
+                 dropout = dropout_manual(0, 0.1, 0.2)) %>% 
+  get_power_table(n2 = 25:500,
+                  effect_size = cohend(c(.1, .15, .2, .25, .3), 
+                                       standardizer = "pretest_SD"))
+
+icc0.9_vr_0.281_d0.2 <-
+  study_parameters(n1 = t,
+                 n2 = n,
+                 icc_pre_subject = 0.9,
+                  var_ratio = 0.281,
+                  effect_size = cohend(-0.2, 
+                                       standardizer = "pretest_SD"),
+                 dropout = dropout_manual(0, 0.2, 0.4)) %>% 
+  get_power_table(n2 = 25:500,
+                  effect_size = cohend(c(.1, .15, .2, .25, .3), 
+                                       standardizer = "pretest_SD"))
+
+icc0.9_vr_0.281_d0.3 <-
+  study_parameters(n1 = t,
+                 n2 = n,
+                 icc_pre_subject = 0.9,
+                  var_ratio = 0.281,
+                  effect_size = cohend(-0.2, 
+                                       standardizer = "pretest_SD"),
+                 dropout = dropout_manual(0, 0.3, 0.6)) %>% 
+  get_power_table(n2 = 25:500,
+                  effect_size = cohend(c(.1, .15, .2, .25, .3), 
+                                       standardizer = "pretest_SD"))
+```
+
+Here are the power curve plots, beginning with the plot for the smaller variance ratio of 0.018.
+
+```{r, fig.width = 8.5, fig.height = 6}
+bind_rows(
+  icc0.9_vr_0.018_d0.1 %>% filter(dropout == "with missing"),
+  icc0.9_vr_0.018_d0.2 %>% filter(dropout == "with missing"),
+  icc0.9_vr_0.018_d0.3
+) %>% 
+  mutate(missing = c(rep(str_c(c(10, 20, 30, 00), "% missing per time point after baseline"), each = n() / 4))) %>% 
+  
+  mutate(d = factor(effect_size,
+                    levels = c("0.1", "0.15", "0.2", "0.25", "0.3"),
+                    labels = c(".10", ".15", ".20", ".25", ".30"))) %>% 
+  mutate(d = fct_rev(d)) %>% 
+  
+  ggplot(aes(x = tot_n, y = power, color = d)) +
+  geom_vline(xintercept = 500, color = "white", size = 1) +
+  geom_hline(yintercept = .8, color = "white", size = 1) +
+  geom_line(size = 1.5) +
+  scale_color_viridis_d(expression(paste("Cohen's ", italic(d))),
+                        option = "A", end = .67, direction = -1) +
+  scale_x_continuous(expression(paste(italic(N), " (i.e., the total sample size)")), 
+                     breaks = seq(from = 0, to = 1000, by = 100), limits = c(0, 1000)) +
+  scale_y_continuous(breaks = c(0, .2, .4, .6, .8, 1), limits = c(0, 1)) +
+  ggtitle("Power curves based on a variance ratio of 0.018") +
+  theme(panel.grid.major.y = element_blank(),
+        panel.grid.minor.y = element_blank()) +
+  facet_wrap(~missing)
+```
+
+Here is the power curve plot for the larger variance ratio of 0.281.
+
+```{r, fig.width = 8.5, fig.height = 6}
+bind_rows(
+  icc0.9_vr_0.281_d0.1 %>% filter(dropout == "with missing"),
+  icc0.9_vr_0.281_d0.2 %>% filter(dropout == "with missing"),
+  icc0.9_vr_0.281_d0.3
+) %>% 
+  mutate(missing = c(rep(str_c(c(10, 20, 30, 00), "% missing per time point after baseline"), each = n() / 4))) %>% 
+  
+  mutate(d = factor(effect_size,
+                    levels = c("0.1", "0.15", "0.2", "0.25", "0.3"),
+                    labels = c(".10", ".15", ".20", ".25", ".30"))) %>% 
+  mutate(d = fct_rev(d)) %>% 
+  
+  ggplot(aes(x = tot_n, y = power, color = d)) +
+  geom_vline(xintercept = 500, color = "white", size = 1) +
+  geom_hline(yintercept = .8, color = "white", size = 1) +
+  geom_line(size = 1.5) +
+  scale_color_viridis_d(expression(paste("Cohen's ", italic(d))),
+                        option = "A", end = .67, direction = -1) +
+  scale_x_continuous(expression(paste(italic(N), " (i.e., the total sample size)")), 
+                     breaks = seq(from = 0, to = 1000, by = 100), limits = c(0, 1000)) +
+  scale_y_continuous(breaks = c(0, .2, .4, .6, .8, 1), limits = c(0, 1)) +
+  ggtitle("Power curves based on a variance ratio of 0.281") +
+  theme(panel.grid.major.y = element_blank(),
+        panel.grid.minor.y = element_blank()) +
+  facet_wrap(~missing)
+```
+
+The upshot of the variance ratio issue is that a higher variance ratio led to lower power. To be on the safe side, *I recommend leaning on the more conservative power curve estimates from the simulations based on the larger variance ratio*, **0.281**. 
+
+A more succinct way to summarize the information in the power curves in with two tables. Here is the minimum total sample size required to reach a power of .8 based on the smaller evidence ratio of 0.018 and the various combinations of Cohen's $d$ and dropout:
+
+```{r, fig.width = 6.5, fig.height = 2.125}
+bind_rows(
+  icc0.9_vr_0.018_d0.1 %>% filter(dropout == "with missing"),
+  icc0.9_vr_0.018_d0.2 %>% filter(dropout == "with missing"),
+  icc0.9_vr_0.018_d0.3
+) %>% 
+  mutate(missing = c(rep(c(10, 20, 30, 00), each = n() / 4))) %>% 
+
+  filter(power > .8) %>% 
+  group_by(missing, effect_size) %>% 
+  top_n(-1, power) %>% 
+  select(-n2, -power, -dropout) %>% 
+  ungroup() %>% 
+  mutate(`Cohen's d` = effect_size) %>% 
+  
+  ggplot(aes(x = `Cohen's d`, y = missing)) +
+  geom_tile(aes(fill = tot_n),
+            show.legend = F) +
+  geom_text(aes(label = tot_n, color = tot_n < 700),
+            show.legend = F) +
+  scale_fill_viridis_c(option = "B", begin = .1, end = .70 ,limits = c(0, 1000)) +
+  scale_color_manual(values = c("black", "white")) +
+  labs(title = expression(paste("Total ", italic(N), " required for .8 power, based on a variance ratio of 0.018")),
+       subtitle = expression(paste("The power simulations only considered up to ", italic(N), " = 1,000.")),
+       x = expression(paste("Cohen's ", italic(d))),
+       y = "% missing\nper follow-up") +
+  theme(axis.ticks = element_blank(),
+        panel.grid = element_blank())
+```
+
+Here is an alternative version of that plot, this time based on the more conservative variance ratio of 0.281.
+
+```{r, fig.width = 6.5, fig.height = 2.125}
+bind_rows(
+  icc0.9_vr_0.281_d0.1 %>% filter(dropout == "with missing"),
+  icc0.9_vr_0.281_d0.2 %>% filter(dropout == "with missing"),
+  icc0.9_vr_0.281_d0.3
+) %>% 
+  mutate(missing = c(rep(c(10, 20, 30, 00), each = n() / 4))) %>% 
+
+  filter(power > .8) %>% 
+  group_by(missing, effect_size) %>% 
+  top_n(-1, power) %>% 
+  select(-n2, -power, -dropout) %>% 
+  ungroup() %>% 
+  mutate(`Cohen's d` = effect_size) %>% 
+  
+  ggplot(aes(x = `Cohen's d`, y = missing)) +
+  geom_tile(aes(fill = tot_n),
+            show.legend = F) +
+  geom_text(aes(label = tot_n, color = tot_n < 700),
+            show.legend = F) +
+  scale_fill_viridis_c(option = "B", begin = .1, end = .70 ,limits = c(0, 1000)) +
+  scale_color_manual(values = c("black", "white")) +
+  labs(title = expression(paste("Total ", italic(N), " required for .8 power, based on variance ratio of 0.281")),
+       subtitle = expression(paste("The power simulations only considered up to ", italic(N), " = 1,000.")),
+       x = expression(paste("Cohen's ", italic(d))),
+       y = "% missing\nper follow-up") +
+  theme(axis.ticks = element_blank(),
+        panel.grid = element_blank())
+```
+
+Again, I recommend playing it safe and relying on the power estimates based on the larger variance ratio of 0.281. Those power curves indicate that even with rather large dropout (i.e., 30% at the second time point and another 30% at the final time point), $N = 486$ is sufficient to detect a small effect size (i.e., $d = 0.2$) at the conventional .8 power threshold. Note that because we cut off the power simulations at $N = 1{,}000$, we never reached .8 power in the conditions where $d = 0.1$ and there was missingness at or greater than 0% dropout at each follow-up time point.
+
+To clarify, $N$ in each cell is the total sample size presuming both the control and experimental conditions have equal numbers in each. Thus, $n_\text{control} = n_\text{experimental} = N/2$.
+
+
+
+
+
+
+
+
+
+
+
