@@ -413,7 +413,7 @@ p1 + p2 + p3 + p4 &
   theme_classic(base_size = 8.25)
 ```
 
-At this point, though, you may be wondering how this model, with all its lognormal $\lambda_i$ glory, can inform us about actual counts. You know, the kind of counts that allowed us to fut such a wacky model. We'll want to work with the posterior draws for that, too. First we extract all of the posterior draws for the population parameters.
+At this point, though, you may be wondering how this model, with all its lognormal $\lambda_i$ glory, can inform us about actual counts. You know, the kind of counts that allowed us to fit such a wacky model. We'll want to work with the posterior draws for that, too. First we extract all of the posterior draws for the population parameters.
 
 ```{r}
 post <-
@@ -425,7 +425,7 @@ post <-
 glimpse(post)
 ```
 
-The next code block is a little chunky, so I'll try to explain what we're doing before we dive in. Our goal is to use the posterior draws to make a posterior predictive check, by hand. My reasoning is doing this kind of check by hand, rather than relying on `pp_check()`, requires you to understand the guts of the model. In our check, we are going to compare the histogram of the original `SALAMAN` counts with the histograms of a few data sets simulated from the model. So first, we need to decide how many simulations we want. Since I want a facet plot of 12 histograms, that means we'll need 11 simulations. We set that number with the opening `n_facet <- 12` line. Next, we set our seed for reproducibility and took 11 random draws from the `post` data frame. In the first `mutate()` line, we added an iteration index. Then with the `purrr::map2()` function, we drew 47 $\lambda$ values (47 was the original $N$ in the `salamanders` data) based on the lognormal distribution defined by the $\mu$ and $\sigma$ values from each iteration. After `unnest()`-ing those results, we used `rpois()` within the next `mutate()` line to use those simulated $\lambda$ values to simulate actual counts. The remaining lines clean up the data format a bit and tack on the original `salamanders` data. Then we plot.
+The next code block is a little chunky, so I'll try to explain what we're doing before we dive in. Our goal is to use the posterior draws to make a posterior predictive check, by hand. My reasoning is doing this kind of check by hand, rather than relying on `pp_check()`, requires you to understand the guts of the model. In our check, we are going to compare the histogram of the original `SALAMAN` counts with the histograms of a few data sets simulated from the model. So first, we need to decide how many simulations we want. Since I want a faceted plot of 12 histograms, that means we'll need 11 simulations. We set that number with the opening `n_facet <- 12` line. Next, we set our seed for reproducibility and took 11 random draws from the `post` data frame. In the first `mutate()` line, we added an iteration index. Then with the `purrr::map2()` function, we drew 47 $\lambda$ values (47 was the original $N$ in the `salamanders` data) based on the lognormal distribution defined by the $\mu$ and $\sigma$ values from each iteration. After `unnest()`-ing those results, we used `rpois()` within the next `mutate()` line to use those simulated $\lambda$ values to simulate actual counts. The remaining lines clean up the data format a bit and tack on the original `salamanders` data. Then we plot.
 
 Okay, here it is:
 
