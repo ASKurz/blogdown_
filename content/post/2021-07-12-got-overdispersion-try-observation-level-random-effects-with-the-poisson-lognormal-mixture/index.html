@@ -1,0 +1,615 @@
+---
+title: Got overdispersion? Try observation-level random effects with the Poisson-lognormal
+  mixture
+author: A. Solomon Kurz
+date: '2021-07-12'
+slug: ''
+categories: []
+tags:
+  - brms
+  - counts
+  - multilevel
+  - R
+  - tidyverse
+  - tutorial
+subtitle: ''
+summary: ''
+authors: []
+lastmod: '2021-07-12T09:50:50-05:00'
+featured: no
+image:
+  caption: ''
+  focal_point: ''
+  preview_only: no
+projects: []
+bibliography: /Users/solomonkurz/Dropbox/blogdown/content/post/my_blog.bib
+biblio-style: apalike
+csl: /Users/solomonkurz/Dropbox/blogdown/content/post/apa.csl  
+link-citations: yes
+---
+
+<script src="{{< blogdown/postref >}}index_files/header-attrs/header-attrs.js"></script>
+
+
+<div id="what" class="section level2">
+<h2>What?</h2>
+<p>One of <a href="https://twitter.com/tjmahr">Tristan Mahr</a>’s recent Twitter threads almost broke my brain.</p>
+<p>{{% tweet "1413186646783242242" %}}</p>
+<p>It turns out that you can use random effects on cross-sectional count data. Yes, that’s right. Each count gets its own random effect. Some people call this observation-level random effects and it can be a tricky way to handle overdispersion. The purpose of this post is to show how to do this and to try to make sense of what it even means.</p>
+</div>
+<div id="background" class="section level2">
+<h2>Background</h2>
+<p>First, I should clarify a bit. Mahr’s initial post and much of the thread to follow primarily focused on counts within the context of binomial data. If you’ve ever read a book on the generalized linear model (GLM), you know that the two broad frameworks for modeling counts are as binomial or Poisson. The basic difference is if your counts are out of a known number of trials (e.g., I got 3 out of 5 questions correct in my pop quiz, last week<a href="#fn1" class="footnote-ref" id="fnref1"><sup>1</sup></a>), the binomial is generally the way to go. However, if your counts aren’t out of a well-defined total (e.g., I drank 1497 cups of coffee<a href="#fn2" class="footnote-ref" id="fnref2"><sup>2</sup></a>, last year), the Poisson distribution offers a great way to think about your data. In this post, we’ll be focusing on Poisson-like counts.</p>
+<p>The Poisson distribution is named after the French mathematician <a href="https://upload.wikimedia.org/wikipedia/commons/e/e8/E._Marcellot_Siméon-Denis_Poisson_1804.jpg">Siméon Denis Poisson</a>, who lived and died about 200 years ago. Poisson’s distribution is valid for non-negative integers, which is basically what counts are. It has just one parameter, <span class="math inline">\(\lambda\)</span>, which controls both its mean and variance and imposes the assumption that the mean of your counts is the same as the variance. On the one hand, this is great because it keeps things simple–parsimony and all. On the other hand, assuming your mean and variance are always the same is a really restrictive assumption and it just doesn’t match up well with a lot of real-world data.</p>
+<p>This assumption that the mean equals the variance is sometimes called <em>equidispersion</em>. Count data violate the equidispersion assumption with their variance is smaller than their mean (<em>underdispersion</em>) or when their variance is larger than their mean (<em>overdispersion</em>). In practice, overdispersion tends to crop up most often. Real-world count data are overdispersed so often that statisticians have had to come up with a mess of strategies to handle the problem. In the applied statistics that I’m familiar with, the two most common ways to handle overdispersed count data are with the negative-binomial model, or with random effects. We’ll briefly cover both.</p>
+<div id="negative-binomial-counts." class="section level3">
+<h3>Negative-binomial counts.</h3>
+<p>As it’s name implies, the negative-binomial model has a deep relationship with the binomial model. I’m not going to go into those details, but Hilbe covered them in his well-named <span class="citation">(<a href="#ref-hilbeNegativeBinomialRegression2011" role="doc-biblioref">2011</a>)</span> textbook, if you’re curious. But basically, the negative-binomial model adds a dispersion parameter to the Poisson. Different authors refer to it with different names. Hilbe, for example, called it both <span class="math inline">\(r\)</span> and <span class="math inline">\(\nu\)</span>. <span class="citation"><a href="#ref-Bürkner2021Parameterization" role="doc-biblioref">Bürkner</a> (<a href="#ref-Bürkner2021Parameterization" role="doc-biblioref">2021b</a>)</span> and the <span class="citation"><a href="#ref-standevelopmentteamStanFunctionsReference2021" role="doc-biblioref">Stan Development Team</a> (<a href="#ref-standevelopmentteamStanFunctionsReference2021" role="doc-biblioref">2021</a>)</span> both call it <span class="math inline">\(\phi\)</span>. By which ever name, the negative-binomial overdispersion parameter helps disentangle the mean from the variance in a set of counts. The way it does it is by re-expressing the count data as coming from a mixture where each count is from it’s own Poisson distribution with its own <span class="math inline">\(\lambda\)</span> parameter. Importantly, the <span class="math inline">\(\lambda\)</span>’s in this mixture of Poissons follow a gamma distribution, which is why the negative binomial is also sometimes referred to as a gamma-Poisson model. <span class="citation"><a href="#ref-mcelreathStatisticalRethinkingBayesian2020" role="doc-biblioref">McElreath</a> (<a href="#ref-mcelreathStatisticalRethinkingBayesian2020" role="doc-biblioref">2020a</a>)</span>, for example, generally prefers to speak in terms of the gamma-Poisson.</p>
+</div>
+<div id="poission-counts-with-random-intercepts." class="section level3">
+<h3>Poission counts with random intercepts.</h3>
+<p>Another way to handle overdispersion is to ask whether the data are grouped. In my field, this naturally occurs when you collect longitudinal data. My counts, over time, will differ form your counts, over time, and we accommodate that by adding a multilevel structure to the model. This, then, takes us to the generalized linear mixed model (GLMM), which is covered in text books like <span class="citation"><a href="#ref-cameron2013regression" role="doc-biblioref">Cameron &amp; Trivedi</a> (<a href="#ref-cameron2013regression" role="doc-biblioref">2013</a>)</span>; <span class="citation"><a href="#ref-gelmanDataAnalysisUsing2006" role="doc-biblioref">Gelman &amp; Hill</a> (<a href="#ref-gelmanDataAnalysisUsing2006" role="doc-biblioref">2006</a>)</span>; and <span class="citation"><a href="#ref-mcelreathStatisticalRethinkingBayesian2020" role="doc-biblioref">McElreath</a> (<a href="#ref-mcelreathStatisticalRethinkingBayesian2020" role="doc-biblioref">2020a</a>)</span>. Say your data have <span class="math inline">\(J\)</span> groups. With a simple random-intercept Poisson model, each group of counts gets it’s own <span class="math inline">\(\lambda_j\)</span> parameter and the population of those <span class="math inline">\(\lambda_j\)</span>’s is described in terms of a grand mean (an overall <span class="math inline">\(\lambda\)</span> intercept) and variation around that grand mean (typically a standard deviation or variance parameter). Thus, is your <span class="math inline">\(y\)</span> data are counts from <span class="math inline">\(I\)</span> cases clustered within <span class="math inline">\(J\)</span> groups, the random-intercept Poisson model can be expressed as</p>
+<p><span class="math display">\[
+\begin{align*}
+y_{ij} &amp; \sim \operatorname{Poisson}(\lambda_{ij}) \\
+\log(\lambda_{ij}) &amp; = \beta_0 + \zeta_{0j} \\
+\zeta_{0j} &amp; \sim \operatorname{Normal}(0, \sigma_0)
+\end{align*}
+\]</span></p>
+<p>where the grand mean is <span class="math inline">\(\beta_0\)</span>, the group-specific deviations around the grand mean are the <span class="math inline">\(\zeta_{0j}\)</span>’s, and the variation across those <span class="math inline">\(\zeta_{0j}\)</span>’s is expressed by a standard-deviation parameter <span class="math inline">\(\sigma_0\)</span>. Thus following the typical GLMM convention, we model the group-level deviations with the normal distribution. Also notice that whether we’re talking about single-level GLMs or multilevel GLMMs, we typically model <span class="math inline">\(\log \lambda\)</span>, instead of <span class="math inline">\(\lambda\)</span>. This prevents the model from predicting negative counts. Keep this in mind.</p>
+<p>Anyway, the random-intercept Poisson model can go a long way for handling overdispersion when your data are grouped. It’s also possible to combine this approach with the last one and fit a negative-binomial model with a random intercept, too. Though I haven’t seen this used much in practice, you can even take a distributional model approach <span class="citation">(<a href="#ref-Bürkner2021Distributional" role="doc-biblioref">Bürkner, 2021a</a>)</span> and set the negative-binomial dispersion parameter to random, too. That, for example, could look like</p>
+<p><span class="math display">\[
+\begin{align*}
+y_{ij} &amp; \sim \operatorname{Gamma-Poisson}(\lambda_{ij}, \phi_{ij}) \\
+\log(\lambda_{ij}) &amp; = \beta_0 + \zeta_{0j} \\
+\log(\phi_{ij}) &amp; = \gamma_0 + \zeta_{1j} \\
+\zeta_{0j} &amp; \sim \operatorname{Normal}(0, \sigma_0) \\
+\zeta_{1j} &amp; \sim \operatorname{Normal}(0, \sigma_1).
+\end{align*}
+\]</span></p>
+</div>
+<div id="theres-a-third-option-the-poisson-lognormal." class="section level3">
+<h3>There’s a third option: The Poisson-lognormal.</h3>
+<p>Now a typical condition for a random-intercept model (whether using the Poison, the negative-binomial, or any other likelihood function) is that at least some of the <span class="math inline">\(J\)</span> groups, if not most or all, contain two or more cases. For example, in a randomized controlled trial you might measure the outcome variable 3 or 5 or 10 times over the course of the trial. In a typical non-experimental experience-sampling study, you might get 10 or 50 or a few hundred measurements from each participant over the course of a few days, weeks, or months. Either way, there are multiple <span class="math inline">\(I\)</span>’s within each level of <span class="math inline">\(J\)</span>. As it turns out, you don’t have to restrict yourself that way. With the observation-level random effects (OLRE) approach, each case (each level of <span class="math inline">\(I\)</span>) gets its own random effect <span class="citation">(see <a href="#ref-harrison2014using" role="doc-biblioref">Harrison, 2014</a>)</span>.</p>
+<p><em>But why would you do that?</em></p>
+<p>Think back to the conventional regression model where some variable <span class="math inline">\(x\)</span> is predicting some continuous variable <span class="math inline">\(y\)</span>. We can express the model as</p>
+<p><span class="math display">\[
+\begin{align*}
+y_i &amp; \sim \operatorname{Normal}(\mu_i, \sigma) \\
+\mu_i &amp; = \beta_0 + \beta_1 x_i,
+\end{align*}
+\]</span></p>
+<p>where the residual variance not accounted for by <span class="math inline">\(x\)</span> is captured in <span class="math inline">\(\sigma\)</span><a href="#fn3" class="footnote-ref" id="fnref3"><sup>3</sup></a>. There’s a residual-variance term. The conventional Poisson model,</p>
+<p><span class="math display">\[
+\begin{align*}
+y_i &amp; \sim \operatorname{Poisson}(\lambda_i) \\
+\log(\lambda_i) &amp; = \beta_0 + \beta_1 x_i,
+\end{align*}
+\]</span></p>
+<p>doesn’t have a residual-variance term. Rather, the variance in the data is deterministically controlled by the linear model on <span class="math inline">\(\log(\lambda_i)\)</span>, which works great in the case of equidispersion, but fails when the data are overdispersed. Hence the negative-binomial and the random-intercept models. But what if we could tack on a residual variance term? It might take on a form like</p>
+<p><span class="math display">\[
+\begin{align*}
+y_i &amp; \sim \operatorname{Poisson}(\lambda_i) \\
+\log(\lambda_i) &amp; = \beta_0 + \beta_1 x_i + \epsilon_i,
+\end{align*}
+\]</span></p>
+<p>where <span class="math inline">\(\epsilon_i\)</span> is the residual variation in <span class="math inline">\(y_i\)</span> not captured by the deterministic part of the linear model for <span class="math inline">\(\log(\lambda_i)\)</span>. Following the conventional regression model, we might make our lives simple and further presume <span class="math inline">\(\epsilon_i \sim \operatorname{Normal}(0, \sigma_\epsilon)\)</span>. Though he didn’t use this style of notation, that’s basically the insight from <span class="citation"><a href="#ref-bulmer1974OnFitting" role="doc-biblioref">Bulmer</a> (<a href="#ref-bulmer1974OnFitting" role="doc-biblioref">1974</a>)</span>. But rather than speak in terms of <span class="math inline">\(\epsilon_i\)</span> and residual variance, Bulmer proposed an alternative to the gamma-Poisson mixture and asked his audience to imagine each count in the data was from its own Poisson distribution with its own <span class="math inline">\(\lambda\)</span> parameter, but that those <span class="math inline">\(\lambda\)</span> parameters were distributed according to the lognormal distribution. Now Bulmer had a substantive motivation for proposing the lognormal based on the species-abundance data and I’m not going to get into any of that. But the basic point was, if we can have a gamma-distributed mixture of <span class="math inline">\(\lambda\)</span>’s, why not a lognormal mixture, instead?</p>
+<p>The trouble with Bulmer’s lognormal-mixture approach is it’s not readily available in most software packages. However, notice what happens when you specify an OLRE model with the Poisson likelihood:</p>
+<p><span class="math display">\[
+\begin{align*}
+y_i &amp; \sim \operatorname{Poisson}(\lambda_i) \\
+\log(\lambda_i) &amp; = \beta_0 + \zeta_{0i} \\
+\zeta_{0i} &amp; \sim \operatorname{Normal}(0, \sigma_0).
+\end{align*}
+\]</span></p>
+<p>In this case, <span class="math inline">\(\zeta_{0i}\)</span> now looks a lot like the <span class="math inline">\(\epsilon_i\)</span> term in a standard intercepts-only regression model. Further, since the linear model is defined for <span class="math inline">\(\log \lambda_i\)</span>, that means the <span class="math inline">\(\zeta_{0i}\)</span> terms will be log-normally distributed in the exponentiated count space. In essence, the OLRE-Poisson model is a way to hack your multilevel regression software to fit a Poisson-lognormal model for overdispersed counts.</p>
+<p>Now we have a sense of the theory, it’s time to fit some models.</p>
+</div>
+</div>
+<div id="empirical-example-salamander-data" class="section level2">
+<h2>Empirical example: Salamander data</h2>
+<div id="we-need-data." class="section level3">
+<h3>We need data.</h3>
+<p>As per usual, we’ll be working within <strong>R</strong> <span class="citation">(<a href="#ref-R-base" role="doc-biblioref">R Core Team, 2020</a>)</span>. We’ll be fitting our models with <strong>brms</strong> <span class="citation">(<a href="#ref-burknerBrmsPackageBayesian2017" role="doc-biblioref">Bürkner, 2017</a>, <a href="#ref-burknerAdvancedBayesianMultilevel2018" role="doc-biblioref">2018</a>, <a href="#ref-R-brms" role="doc-biblioref">2020</a>)</span> and most of our data wrangling and plotting work will be done with aid from the <strong>tidyverse</strong> <span class="citation">(<a href="#ref-R-tidyverse" role="doc-biblioref">Wickham, 2019</a>; <a href="#ref-wickhamWelcomeTidyverse2019" role="doc-biblioref">Wickham et al., 2019</a>)</span> and friends (<strong>patchwork</strong> <span class="citation">(<a href="#ref-R-patchwork" role="doc-biblioref">Pedersen, 2019</a>)</span> and <strong>tidybayes</strong> <span class="citation">(<a href="#ref-R-tidybayes" role="doc-biblioref">Kay, 2020</a>)</span>). We’ll take our data set from McElreath’s <span class="citation">(<a href="#ref-R-rethinking" role="doc-biblioref">2020b</a>)</span> <strong>rethinking</strong> package.</p>
+<pre class="r"><code>library(brms)
+library(tidyverse)
+library(tidybayes)
+library(patchwork)
+
+data(salamanders, package = &quot;rethinking&quot;)
+
+glimpse(salamanders)</code></pre>
+<pre><code>## Rows: 47
+## Columns: 4
+## $ SITE      &lt;int&gt; 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 1…
+## $ SALAMAN   &lt;int&gt; 13, 11, 11, 9, 8, 7, 6, 6, 5, 5, 4, 3, 3, 3, 3, 3, 2, 2, 2, …
+## $ PCTCOVER  &lt;int&gt; 85, 86, 90, 88, 89, 83, 83, 91, 88, 90, 87, 83, 87, 89, 92, …
+## $ FORESTAGE &lt;int&gt; 316, 88, 548, 64, 43, 368, 200, 71, 42, 551, 675, 217, 212, …</code></pre>
+<p>The data are in the <code>salamanders</code> data frame, which contains counts of salamanders from 47 locations in northern California <span class="citation">(<a href="#ref-welsh1995habitat" role="doc-biblioref">Welsh Jr &amp; Lind, 1995</a>)</span>. Our count variable is <code>SALAMAN</code>. The location for each count is indexed by the <code>SITE</code> column. You could use the other two variables as covariates, but we won’t be focusing on those in this post. Here’s what <code>SALAMAN</code> looks like.</p>
+<pre class="r"><code># adjust the global plotting theme
+theme_set(theme_classic())
+
+salamanders %&gt;% 
+  ggplot(aes(x = SALAMAN)) +
+  geom_bar()</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-4-1.png" width="672" /></p>
+<p>Those data look overdispersed. We can get a quick sense of the overdispersion with sample statistics.</p>
+<pre class="r"><code>salamanders %&gt;% 
+  summarise(mean = mean(SALAMAN),
+            variance = var(SALAMAN)) </code></pre>
+<pre><code>##       mean variance
+## 1 2.468085 11.38483</code></pre>
+<p>For small-<span class="math inline">\(N\)</span> data, we shouldn’t expect the mean to be exactly the same as the variance in Poisson data. This big of a difference, though, suggests<a href="#fn4" class="footnote-ref" id="fnref4"><sup>4</sup></a> overdispersion even with a modest <span class="math inline">\(N = 47\)</span>.</p>
+</div>
+<div id="fit-the-models." class="section level3">
+<h3>Fit the models.</h3>
+<p>We’ll fit three intercepts-only models. The first will be a conventional Poisson model and the second will be the negative binomial (a.k.a. the gamma-Poisson mixture). We’ll finish off with our Poisson-lognormal mixture via the OLRE technique. Since we’re working with Bayesian software, we’ll need priors. Though I’m not going to explain them in any detail, we’ll be using the weakly-regularizing approach advocated for in <span class="citation"><a href="#ref-mcelreathStatisticalRethinkingBayesian2020" role="doc-biblioref">McElreath</a> (<a href="#ref-mcelreathStatisticalRethinkingBayesian2020" role="doc-biblioref">2020a</a>)</span>.</p>
+<p>Here’s how to fit the models with <strong>brms</strong>.</p>
+<pre class="r"><code># conventional Poisson
+fit1 &lt;-
+  brm(data = salamanders, 
+      family = poisson,
+      SALAMAN ~ 1,
+      prior(normal(log(3), 0.5), class = Intercept),
+      cores = 4, seed = 1)
+
+# gamma-Poisson mixture
+fit2 &lt;-
+  brm(data = salamanders, 
+      family = negbinomial,
+      SALAMAN ~ 1,
+      prior = c(prior(normal(log(3), 0.5), class = Intercept),
+                prior(gamma(0.01, 0.01), class = shape)),
+      cores = 4, seed = 1)
+
+# Poisson-lognormal mixture
+fit3 &lt;-
+  brm(data = salamanders, 
+      family = poisson,
+      SALAMAN ~ 1 + (1 | SITE),
+      prior = c(prior(normal(log(3), 0.5), class = Intercept),
+                prior(exponential(1), class = sd)),
+      cores = 4, seed = 1)</code></pre>
+</div>
+<div id="evaluate-the-models." class="section level3">
+<h3>Evaluate the models.</h3>
+<p>Here’s a quick parameter summary for each of the models.</p>
+<pre class="r"><code>print(fit1)</code></pre>
+<pre><code>##  Family: poisson 
+##   Links: mu = log 
+## Formula: SALAMAN ~ 1 
+##    Data: salamanders (Number of observations: 47) 
+## Samples: 4 chains, each with iter = 2000; warmup = 1000; thin = 1;
+##          total post-warmup samples = 4000
+## 
+## Population-Level Effects: 
+##           Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+## Intercept     0.91      0.09     0.73     1.08 1.00     1483     1967
+## 
+## Samples were drawn using sampling(NUTS). For each parameter, Bulk_ESS
+## and Tail_ESS are effective sample size measures, and Rhat is the potential
+## scale reduction factor on split chains (at convergence, Rhat = 1).</code></pre>
+<pre class="r"><code>print(fit2)</code></pre>
+<pre><code>##  Family: negbinomial 
+##   Links: mu = log; shape = identity 
+## Formula: SALAMAN ~ 1 
+##    Data: salamanders (Number of observations: 47) 
+## Samples: 4 chains, each with iter = 2000; warmup = 1000; thin = 1;
+##          total post-warmup samples = 4000
+## 
+## Population-Level Effects: 
+##           Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+## Intercept     0.95      0.21     0.54     1.36 1.00     2907     2195
+## 
+## Family Specific Parameters: 
+##       Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+## shape     0.58      0.18     0.30     1.01 1.00     3608     2640
+## 
+## Samples were drawn using sampling(NUTS). For each parameter, Bulk_ESS
+## and Tail_ESS are effective sample size measures, and Rhat is the potential
+## scale reduction factor on split chains (at convergence, Rhat = 1).</code></pre>
+<pre class="r"><code>print(fit3)</code></pre>
+<pre><code>##  Family: poisson 
+##   Links: mu = log 
+## Formula: SALAMAN ~ 1 + (1 | SITE) 
+##    Data: salamanders (Number of observations: 47) 
+## Samples: 4 chains, each with iter = 2000; warmup = 1000; thin = 1;
+##          total post-warmup samples = 4000
+## 
+## Group-Level Effects: 
+## ~SITE (Number of levels: 47) 
+##               Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+## sd(Intercept)     1.28      0.23     0.89     1.80 1.00     1117     1435
+## 
+## Population-Level Effects: 
+##           Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+## Intercept     0.34      0.22    -0.12     0.75 1.00     1687     2533
+## 
+## Samples were drawn using sampling(NUTS). For each parameter, Bulk_ESS
+## and Tail_ESS are effective sample size measures, and Rhat is the potential
+## scale reduction factor on split chains (at convergence, Rhat = 1).</code></pre>
+<p>We might the <code>pp_check()</code> function to get a graphic sense of how well each model fit the data.</p>
+<pre class="r"><code>p1 &lt;-
+  pp_check(fit1, type = &quot;bars&quot;, nsample = 150, fatten = 1, size = 1/2) +
+  scale_y_continuous(NULL, breaks = NULL) +
+  coord_cartesian(xlim = c(0, 15),
+                  ylim = c(0, 26)) +
+  labs(title = &quot;fit1&quot;,
+       subtitle = &quot;Conventional Poisson&quot;)
+
+p2 &lt;-
+  pp_check(fit2, type = &quot;bars&quot;, nsample = 150, fatten = 1, size = 1/2) +
+  scale_y_continuous(NULL, breaks = NULL) +
+  coord_cartesian(xlim = c(0, 15),
+                  ylim = c(0, 26)) +
+  labs(title = &quot;fit2&quot;,
+       subtitle = &quot;Gamma-Poisson mixture&quot;)
+
+p3 &lt;-
+  pp_check(fit3, type = &quot;bars&quot;, nsample = 150, fatten = 1, size = 1/2) +
+  scale_y_continuous(NULL, breaks = NULL) +
+  coord_cartesian(xlim = c(0, 15),
+                  ylim = c(0, 26)) +
+  labs(title = &quot;fit3&quot;,
+       subtitle = &quot;Poisson-lognormal mixture&quot;)
+
+p1 + p2 + p3 + plot_layout(guides = &quot;collect&quot;)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-8-1.png" width="768" /></p>
+<p>The conventional Poisson model seems like a disaster. Both the Gamma-Poisson and the Poisson-lognormal models seemed to capture the data much better. We also might want to compare the models with information criteria. Here we’ll use the LOO.</p>
+<pre class="r"><code>fit1 &lt;- add_criterion(fit1, criterion = &quot;loo&quot;)
+fit2 &lt;- add_criterion(fit2, criterion = &quot;loo&quot;)
+fit3 &lt;- add_criterion(fit3, criterion = &quot;loo&quot;)</code></pre>
+<p>When I first executed that code, I got the following warning message:</p>
+<blockquote>
+<p>Found 29 observations with a pareto_k &gt; 0.7 in model ‘fit3.’ It is recommended to set ‘moment_match = TRUE’ in order to perform moment matching for problematic observations.</p>
+</blockquote>
+<p>To use the <code>moment_match = TRUE</code> option within the <code>add_criterion()</code> function, you have to specify <code>save_pars = save_pars(all = TRUE)</code> within <code>brm()</code> when fitting the model. Here’s how to do that.</p>
+<pre class="r"><code># fit the Poisson-lognormal mixture, again
+fit3 &lt;-
+  brm(data = salamanders, 
+      family = poisson,
+      SALAMAN ~ 1 + (1 | SITE),
+      prior = c(prior(normal(log(3), 0.5), class = Intercept),
+                prior(exponential(1), class = sd)),
+      cores = 4, seed = 1,
+      # here&#39;s the new part
+      save_pars = save_pars(all = TRUE))
+
+# add the LOO
+fit3 &lt;- add_criterion(
+  fit3, criterion = &quot;loo&quot;, 
+  # this part is new, too
+  moment_match = TRUE
+)</code></pre>
+<p>Now we’re ready to compare the models with the LOO.</p>
+<pre class="r"><code>loo_compare(fit1, fit2, fit3, criterion = &quot;loo&quot;) %&gt;% 
+  print(simplify = F)</code></pre>
+<pre><code>##      elpd_diff se_diff elpd_loo se_elpd_loo p_loo  se_p_loo looic  se_looic
+## fit3    0.0       0.0   -89.8      6.6        20.2    1.4    179.6   13.2  
+## fit2   -8.2       2.3   -98.0      8.3         1.6    0.2    196.0   16.6  
+## fit1  -50.5      13.9  -140.4     17.4         4.3    1.2    280.7   34.8</code></pre>
+<p>Even after accounting for model complexity, the Poisson-lognormal model appears to be the best fit for the data. Nest we consider how, exactly, does one interprets the parameters of the Poisson-lognormal model.</p>
+</div>
+<div id="how-does-one-interpret-the-poisson-lognormal-model" class="section level3">
+<h3>How does one interpret the Poisson-lognormal model?</h3>
+<p>A nice quality of both the conventional Poisson model and the gamma-Poisson model is their intercept corresponds directly with the mean of the original data, after exponentiation. The mean of the <code>SALAMAN</code> variable, recall, was 2.5. Here are the summaries for their exponentiated intercepts.</p>
+<pre class="r"><code># conventional Poisson
+fixef(fit1)[, -2] %&gt;% exp() %&gt;% round(digits = 2)</code></pre>
+<pre><code>## Estimate     Q2.5    Q97.5 
+##     2.48     2.06     2.94</code></pre>
+<pre class="r"><code># gamma-Poisson
+fixef(fit2)[, -2] %&gt;% exp() %&gt;% round(digits = 2)</code></pre>
+<pre><code>## Estimate     Q2.5    Q97.5 
+##     2.58     1.72     3.89</code></pre>
+<p>Both are really close to the sample mean. Here’s the exponentiated intercept for the Poisson-lognormal model.</p>
+<pre class="r"><code>fixef(fit3)[, -2] %&gt;% exp() %&gt;% round(digits = 2)</code></pre>
+<pre><code>## Estimate     Q2.5    Q97.5 
+##     1.40     0.89     2.12</code></pre>
+<p>Wow, that’s not even close! What gives? Well, keep in mind that with the OLRE Poisson-lognormal model, the intercept is the <span class="math inline">\(\mu\)</span> parameter for the lognormal distribution of <span class="math inline">\(\lambda\)</span> parameters. In a similar way, the level-2 standard deviation (execute <code>posterior_summary(fit3)["sd_SITE__Intercept", ]</code>) is the <span class="math inline">\(\sigma\)</span> parameter for that lognormal distribution. Keeping things simple, for the moment, here’s what that lognormal distriubiton looks like if we use the posterior means for those parameters.</p>
+<pre class="r"><code>p1 &lt;-
+  tibble(lambda = seq(from = 0, to = 13, length.out = 500)) %&gt;% 
+  mutate(d = dlnorm(lambda, 
+                    meanlog = posterior_summary(fit3)[1, 1], 
+                    sdlog = posterior_summary(fit3)[2, 1])) %&gt;% 
+  
+  ggplot(aes(x = lambda, y = d)) +
+  geom_area(fill = &quot;grey50&quot;) +
+  scale_x_continuous(expression(lambda), breaks = 0:6 * 2, 
+                     expand = expansion(mult = c(0, 0.05))) +
+  scale_y_continuous(&quot;density&quot;, breaks = NULL, 
+                     expand = expansion(mult = c(0, 0.05))) +
+  coord_cartesian(xlim = c(0, 12),
+                  ylim = c(0, 0.8)) +
+  labs(title = &quot;Population lognormal distribution&quot;,
+       subtitle = &quot;The parameters are summarized by their posterior means.&quot;)
+
+p1</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-14-1.png" width="672" /></p>
+<p>Using just the posterior means for the parameters ignores the uncertainty in the distribution. To bring that into the plot, we’ll want to work with the posterior samples, themselves.</p>
+<pre class="r"><code># how many posterior ddraws would you like?
+n_draw &lt;- 100
+
+set.seed(1)
+
+p2 &lt;-
+  posterior_samples(fit3) %&gt;% 
+  slice_sample(n = n_draw) %&gt;% 
+  transmute(iter  = 1:n(),
+            mu    = b_Intercept,
+            sigma = sd_SITE__Intercept) %&gt;% 
+  expand(nesting(iter, mu, sigma),
+         lambda = seq(from = 0, to = 13, length.out = 500)) %&gt;% 
+  mutate(d = dlnorm(lambda, meanlog = mu, sdlog = sigma)) %&gt;% 
+  
+  ggplot(aes(x = lambda, y = d, group = iter)) +
+  geom_line(size = 1/6, alpha = 1/2) +
+  scale_x_continuous(expression(lambda), breaks = 0:6 * 2, 
+                     expand = expansion(mult = c(0, 0.05))) +
+  scale_y_continuous(&quot;density&quot;, breaks = NULL, 
+                     expand = expansion(mult = c(0, 0.05))) +
+  coord_cartesian(xlim = c(0, 12),
+                  ylim = c(0, 0.8)) +
+  labs(title = &quot;Population lognormal distribution&quot;,
+       subtitle = &quot;The parameters are summarized by 100 posterior draws.&quot;)
+
+p2</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-15-1.png" width="672" /></p>
+<p>These, recall, are several hundred credible lognormal distributions for the case-level <span class="math inline">\(\lambda_i\)</span> parameters, not for the data themselves. We’ll get to the data in a moment. Since we’re working with a multilevel model, we have posteriors for each of the case-level <span class="math inline">\(\lambda_i\)</span> parameters, too. Here they are in a dot plot.</p>
+<pre class="r"><code>p3 &lt;-
+  coef(fit3)$SITE[, &quot;Estimate&quot;, &quot;Intercept&quot;] %&gt;% 
+  exp() %&gt;% 
+  data.frame() %&gt;% 
+  set_names(&quot;lambda_i&quot;) %&gt;% 
+  
+  ggplot(aes(x = lambda_i)) +
+  geom_dots(fill = &quot;grey50&quot;, color = &quot;grey50&quot;) +
+  scale_x_continuous(expression(lambda[italic(i)]), breaks = 0:6 * 2, 
+                     expand = expansion(mult = c(0, 0.05))) +
+  scale_y_continuous(&quot;normalized density&quot;, breaks = NULL, 
+                     expand = expansion(mult = c(0, 0.05))) +
+  coord_cartesian(xlim = c(0, 12)) +
+  labs(title = expression(&quot;Dotplot of individual &quot;*lambda[italic(i)]*&quot; parameters&quot;),
+       subtitle = &quot;The parameters are summarized by their posterior means.&quot;)
+
+p3</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-16-1.png" width="672" /></p>
+<p>To reduce visual complexity, we just plotted the <span class="math inline">\(\lambda_i\)</span> parameters by their posterior means. But that might be frustrating the way it ignores uncertainty. A different way to look at them might be a rank-ordered coefficient plot.</p>
+<pre class="r"><code>p4 &lt;-
+  coef(fit3)$SITE[, -2, &quot;Intercept&quot;] %&gt;% 
+  exp() %&gt;% 
+  data.frame() %&gt;% 
+  arrange(Estimate) %&gt;% 
+  mutate(rank = 1:n()) %&gt;% 
+  
+  ggplot(aes(x = Estimate, xmin = Q2.5, xmax = Q97.5, y = rank)) +
+  geom_pointrange(fatten = 1, size = 1/2) +
+  scale_x_continuous(expression(lambda[italic(i)]), breaks = 0:6 * 2, 
+                     expand = expansion(mult = c(0, 0.05))) +
+  scale_y_continuous(breaks = NULL, expand = c(0.02, 0.02)) +
+  coord_cartesian(xlim = c(0, 12)) +
+  labs(title = expression(&quot;Ranked coefficient plot of individual &quot;*lambda[italic(i)]*&quot; parameters&quot;),
+       subtitle = &quot;The parameters are summarized by their posterior means and 95% CIs.&quot;)
+
+p4</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-17-1.png" width="672" /></p>
+<p>Since each <span class="math inline">\(\lambda_i\)</span> parameter is based in the data from a single case, it’s no surprise that their 95% intervals are all on the wide side. Just for kicks, here are the last four subplots all shown together.</p>
+<pre class="r"><code>p1 + p2 + p3 + p4 &amp; 
+  theme_classic(base_size = 8.25)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-18-1.png" width="768" /></p>
+<p>At this point, though, you may be wondering how this model, with all its lognormal <span class="math inline">\(\lambda_i\)</span> glory, can inform us about actual counts. You know, the kind of counts that allowed us to fut such a wacky model. We’ll want to work with the posterior draws for that, too.</p>
+<p>Before we extract the posterior draws, let’s save the posterior means for the <span class="math inline">\(\mu\)</span> and <span class="math inline">\(\sigma\)</span> parameters.</p>
+<pre class="r"><code>mu &lt;- posterior_summary(fit3)[&quot;b_Intercept&quot;, &quot;Estimate&quot;]
+sigma &lt;- posterior_summary(fit3)[&quot;sd_SITE__Intercept&quot;, &quot;Estimate&quot;]</code></pre>
+<p>Now extract all of the posterior draws for those parameters.</p>
+<pre class="r"><code>post &lt;-
+  posterior_samples(fit3) %&gt;% 
+  transmute(mu    = b_Intercept,
+            sigma = sd_SITE__Intercept)
+
+# what is this?
+glimpse(post)</code></pre>
+<pre><code>## Rows: 4,000
+## Columns: 2
+## $ mu    &lt;dbl&gt; 0.16424013, 0.07509823, 0.26418683, 0.22422613, 0.36427113, -0.1…
+## $ sigma &lt;dbl&gt; 1.4128424, 1.4236003, 1.2986505, 1.4523181, 1.2731463, 1.5761309…</code></pre>
+<p>The next code block is a little chunky, so I’ll try to explain what we’re doing before we dive in. Our goal is to use the posterior draws to make a posterior predictive check, by hand. My reasoning is doing this kind of check by hand, rather than relying on <code>pp_check()</code>, requires you to understand the guts of the model. In our check, we are going to compare the histogram of the original <code>SALAMAN</code> counts with the histograms of a few data sets simulated from the model. So first, we need to decide how many simulations we want. Since I want a facet plot of 12 histograms, that means we’ll need 11 simulations. We set that number with the opening <code>n_facet &lt;- 12</code> line. Next, we set our seed for reproducibility and took 11 random draws from the <code>post</code> data frame. In the first <code>mutate()</code> line, we added an iteration index. Then with the <code>purrr::map2()</code> function, we drew 47 <span class="math inline">\(\lambda\)</span> values (47 was the original <span class="math inline">\(N\)</span> in the <code>salamanders</code> data) based on the lognormal distribution defined by the <span class="math inline">\(\mu\)</span> and <span class="math inline">\(\sigma\)</span> values from each iteration. After <code>unnest()</code>-ing those results, we used <code>rpois()</code> within the next <code>mutate()</code> line to use those simulated <span class="math inline">\(\lambda\)</span> values to simulate actual counts. The remaining lines clean up the data format a bit and tack on the original <code>salamanders</code> data. Then we plot.</p>
+<p>Okay, here it is:</p>
+<pre class="r"><code># how many facets would you like?
+n_facet &lt;- 12
+
+set.seed(1)
+
+post %&gt;% 
+  # take 11 samples from the posterior iterations
+  slice_sample(n = n_facet - 1) %&gt;% 
+  # take 47 random draws from each iteration
+  mutate(iter   = 1:n(),
+         lambda = map2(mu, sigma, ~ rlnorm(n = 47, meanlog = mu, sdlog = sigma))) %&gt;% 
+  unnest(lambda) %&gt;% 
+  # use the lambdas to generate the counts
+  mutate(count = rpois(n(), lambda = lambda)) %&gt;% 
+  transmute(sample = str_c(&quot;sample #&quot;, iter),
+            SALAMAN = count) %&gt;% 
+  # combine the original data
+  bind_rows(
+    salamanders %&gt;% 
+      select(SALAMAN) %&gt;% 
+      mutate(sample = &quot;original data&quot;)
+  ) %&gt;% 
+  
+  # plot!
+  ggplot(aes(x = SALAMAN, fill = sample == &quot;original data&quot;)) +
+  geom_bar() +
+  scale_fill_viridis_d(option = &quot;A&quot;, begin = .15, end = .55, breaks = NULL) +
+  scale_y_continuous(NULL, breaks = NULL) +
+  coord_cartesian(xlim = c(0, 30)) +
+  labs(title = &quot;Handmade posterior predictive check&quot;) +
+  facet_wrap(~sample) +
+  theme(strip.background = element_rect(size = 0, fill = &quot;grey92&quot;))</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-21-1.png" width="672" /></p>
+<p>This, friends, is how you can use our intercepts-only Poisson-lognormal mixture model to simulate count data resembling the original count data. Data simulation is cool, but you might wonder how to compute the mean of the model-implied lognormal distribution. Recall that we can’t just exponentiate the model’s intercept. As it turns out, <span class="math inline">\(\exp \mu\)</span> returns the <strong>median</strong> for the lognormal distribution. The formula for the mean of the lognormal distribution is</p>
+<p><span class="math display">\[\text{mean} = \exp \left ( \mu + \frac{\sigma^2}{2}\right).\]</span></p>
+<p>So here’s how to work with the posterior draws to compute that value.</p>
+<pre class="r"><code>post %&gt;% 
+  mutate(mean = exp(mu + sigma^2 / 2)) %&gt;% 
+  
+  ggplot(aes(x = mean, y = 0)) +
+  stat_halfeye(.width = c(.5, .95)) +
+  geom_vline(xintercept = mean(salamanders$SALAMAN), 
+             color = &quot;purple4&quot;, linetype = 2) +
+  scale_y_continuous(NULL, breaks = NULL) +
+  coord_cartesian(xlim = c(0, 10)) +
+  xlab(expression(&quot;mean of the lognormal &quot;*lambda*&quot; distribution&quot;))</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-22-1.png" width="672" /></p>
+<p>For reference, we superimposed the mean of the <code>SALAMAN</code> data with a dashed line.</p>
+</div>
+</div>
+<div id="wrap-up" class="section level2">
+<h2>Wrap-up</h2>
+<p>Okay, this is about as far as I’d like to go with this one. To be honest, the Poisson-lognormal mixture is a weird model and I’m not sure if it’s a good fit for the kind of data I tend to work with. But exposure to new options seems valuable and I’m content to low-key chew on this one for a while.</p>
+<p>If you’d like to learn more, do check out Bulmer’s original <span class="citation">(<a href="#ref-bulmer1974OnFitting" role="doc-biblioref">1974</a>)</span> paper and the more recent OLRE paper by <span class="citation"><a href="#ref-harrison2014using" role="doc-biblioref">Harrison</a> (<a href="#ref-harrison2014using" role="doc-biblioref">2014</a>)</span>. The great <a href="https://twitter.com/bolkerb">Ben Bolker</a> wrote up a vignette (<a href="https://glmm.wdfiles.com/local--files/examples/overdispersion.pdf">here</a>) on how to fit the OLRE Poisson-lognormal with <strong>lme4</strong> <span class="citation">(<a href="#ref-R-lme4" role="doc-biblioref">Bates et al., 2015</a>)</span> and Michael Clark wrote up a very quick example of the model with <strong>brms</strong> <a href="https://m-clark.github.io/easy-bayes/posterior-predictive-checks.html">here</a>.</p>
+<p>Happy modeling.</p>
+</div>
+<div id="session-info" class="section level2">
+<h2>Session info</h2>
+<pre class="r"><code>sessionInfo()</code></pre>
+<pre><code>## R version 4.0.4 (2021-02-15)
+## Platform: x86_64-apple-darwin17.0 (64-bit)
+## Running under: macOS Catalina 10.15.7
+## 
+## Matrix products: default
+## BLAS:   /Library/Frameworks/R.framework/Versions/4.0/Resources/lib/libRblas.dylib
+## LAPACK: /Library/Frameworks/R.framework/Versions/4.0/Resources/lib/libRlapack.dylib
+## 
+## locale:
+## [1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+## 
+## attached base packages:
+## [1] stats     graphics  grDevices utils     datasets  methods   base     
+## 
+## other attached packages:
+##  [1] patchwork_1.1.1 tidybayes_2.3.1 forcats_0.5.1   stringr_1.4.0  
+##  [5] dplyr_1.0.6     purrr_0.3.4     readr_1.4.0     tidyr_1.1.3    
+##  [9] tibble_3.1.2    ggplot2_3.3.3   tidyverse_1.3.0 brms_2.15.0    
+## [13] Rcpp_1.0.6     
+## 
+## loaded via a namespace (and not attached):
+##   [1] readxl_1.3.1         backports_1.2.1      plyr_1.8.6          
+##   [4] igraph_1.2.6         svUnit_1.0.3         splines_4.0.4       
+##   [7] crosstalk_1.1.0.1    TH.data_1.0-10       rstantools_2.1.1    
+##  [10] inline_0.3.17        digest_0.6.27        htmltools_0.5.1.1   
+##  [13] rsconnect_0.8.16     fansi_0.4.2          magrittr_2.0.1      
+##  [16] modelr_0.1.8         RcppParallel_5.0.2   matrixStats_0.57.0  
+##  [19] xts_0.12.1           sandwich_3.0-0       prettyunits_1.1.1   
+##  [22] colorspace_2.0-0     rvest_0.3.6          ggdist_2.4.0.9000   
+##  [25] haven_2.3.1          xfun_0.23            callr_3.7.0         
+##  [28] crayon_1.4.1         jsonlite_1.7.2       lme4_1.1-25         
+##  [31] survival_3.2-10      zoo_1.8-8            glue_1.4.2          
+##  [34] gtable_0.3.0         emmeans_1.5.2-1      V8_3.4.0            
+##  [37] distributional_0.2.2 pkgbuild_1.2.0       rstan_2.21.2        
+##  [40] abind_1.4-5          scales_1.1.1         mvtnorm_1.1-1       
+##  [43] DBI_1.1.0            miniUI_0.1.1.1       viridisLite_0.4.0   
+##  [46] xtable_1.8-4         stats4_4.0.4         StanHeaders_2.21.0-7
+##  [49] DT_0.16              htmlwidgets_1.5.3    httr_1.4.2          
+##  [52] threejs_0.3.3        arrayhelpers_1.1-0   ellipsis_0.3.2      
+##  [55] farver_2.1.0         pkgconfig_2.0.3      loo_2.4.1           
+##  [58] sass_0.3.1           dbplyr_2.0.0         utf8_1.2.1          
+##  [61] labeling_0.4.2       tidyselect_1.1.1     rlang_0.4.11        
+##  [64] reshape2_1.4.4       later_1.2.0          munsell_0.5.0       
+##  [67] cellranger_1.1.0     tools_4.0.4          cli_2.5.0           
+##  [70] generics_0.1.0       broom_0.7.6          ggridges_0.5.3      
+##  [73] evaluate_0.14        fastmap_1.1.0        yaml_2.2.1          
+##  [76] processx_3.5.2       knitr_1.33           fs_1.5.0            
+##  [79] nlme_3.1-152         mime_0.10            projpred_2.0.2      
+##  [82] xml2_1.3.2           rstudioapi_0.13      compiler_4.0.4      
+##  [85] bayesplot_1.8.0      shinythemes_1.1.2    curl_4.3            
+##  [88] gamm4_0.2-6          reprex_0.3.0         statmod_1.4.35      
+##  [91] bslib_0.2.4          stringi_1.6.2        highr_0.9           
+##  [94] ps_1.6.0             blogdown_1.3         Brobdingnag_1.2-6   
+##  [97] lattice_0.20-41      Matrix_1.3-2         nloptr_1.2.2.2      
+## [100] markdown_1.1         shinyjs_2.0.0        vctrs_0.3.8         
+## [103] pillar_1.6.1         lifecycle_1.0.0      jquerylib_0.1.4     
+## [106] bridgesampling_1.0-0 estimability_1.3     httpuv_1.6.0        
+## [109] R6_2.5.0             bookdown_0.22        promises_1.2.0.1    
+## [112] gridExtra_2.3        codetools_0.2-18     boot_1.3-26         
+## [115] colourpicker_1.1.0   MASS_7.3-53          gtools_3.8.2        
+## [118] assertthat_0.2.1     withr_2.4.2          shinystan_2.5.0     
+## [121] multcomp_1.4-16      mgcv_1.8-33          parallel_4.0.4      
+## [124] hms_0.5.3            grid_4.0.4           coda_0.19-4         
+## [127] minqa_1.2.4          rmarkdown_2.8        shiny_1.6.0         
+## [130] lubridate_1.7.9.2    base64enc_0.1-3      dygraphs_1.1.1.6</code></pre>
+</div>
+<div id="references" class="section level2 unnumbered">
+<h2>References</h2>
+<div id="refs" class="references csl-bib-body hanging-indent" line-spacing="2">
+<div id="ref-R-lme4" class="csl-entry">
+Bates, D., Mächler, M., Bolker, B., &amp; Walker, S. (2015). Fitting linear mixed-effects models using <span class="nocase">lme4</span>. <em>Journal of Statistical Software</em>, <em>67</em>(1), 1–48. <a href="https://doi.org/10.18637/jss.v067.i01">https://doi.org/10.18637/jss.v067.i01</a>
+</div>
+<div id="ref-bulmer1974OnFitting" class="csl-entry">
+Bulmer, M. (1974). On fitting the <span>Poisson</span> lognormal distribution to species-abundance data. <em>Biometrics</em>, <em>30</em>(1), 101–110. <a href="https://doi.org/10.2307/2529621">https://doi.org/10.2307/2529621</a>
+</div>
+<div id="ref-Bürkner2021Distributional" class="csl-entry">
+Bürkner, P.-C. (2021a). <em>Estimating distributional models with brms</em>. <a href="https://CRAN.R-project.org/package=brms/vignettes/brms_distreg.html">https://CRAN.R-project.org/package=brms/vignettes/brms_distreg.html</a>
+</div>
+<div id="ref-Bürkner2021Parameterization" class="csl-entry">
+Bürkner, P.-C. (2021b). <em>Parameterization of response distributions in brms</em>. <a href="https://CRAN.R-project.org/package=brms/vignettes/brms_families.html">https://CRAN.R-project.org/package=brms/vignettes/brms_families.html</a>
+</div>
+<div id="ref-burknerBrmsPackageBayesian2017" class="csl-entry">
+Bürkner, P.-C. (2017). <span class="nocase">brms</span>: <span>An R</span> package for <span>Bayesian</span> multilevel models using <span>Stan</span>. <em>Journal of Statistical Software</em>, <em>80</em>(1), 1–28. <a href="https://doi.org/10.18637/jss.v080.i01">https://doi.org/10.18637/jss.v080.i01</a>
+</div>
+<div id="ref-burknerAdvancedBayesianMultilevel2018" class="csl-entry">
+Bürkner, P.-C. (2018). Advanced <span>Bayesian</span> multilevel modeling with the <span>R</span> package brms. <em>The R Journal</em>, <em>10</em>(1), 395–411. <a href="https://doi.org/10.32614/RJ-2018-017">https://doi.org/10.32614/RJ-2018-017</a>
+</div>
+<div id="ref-R-brms" class="csl-entry">
+Bürkner, P.-C. (2020). <em><span class="nocase">brms</span>: <span>Bayesian</span> regression models using ’<span>Stan</span>’</em>. <a href="https://CRAN.R-project.org/package=brms">https://CRAN.R-project.org/package=brms</a>
+</div>
+<div id="ref-cameron2013regression" class="csl-entry">
+Cameron, A. C., &amp; Trivedi, P. K. (2013). <em>Regression analysis of count data</em> (Second Edition). <span>Cambridge University Press</span>. <a href="https://doi.org/10.1017/CBO9781139013567">https://doi.org/10.1017/CBO9781139013567</a>
+</div>
+<div id="ref-gelmanDataAnalysisUsing2006" class="csl-entry">
+Gelman, A., &amp; Hill, J. (2006). <em>Data analysis using regression and multilevel/hierarchical models</em>. <span>Cambridge University Press</span>. <a href="https://doi.org/10.1017/CBO9780511790942">https://doi.org/10.1017/CBO9780511790942</a>
+</div>
+<div id="ref-harrison2014using" class="csl-entry">
+Harrison, X. A. (2014). Using observation-level random effects to model overdispersion in count data in ecology and evolution. <em>PeerJ</em>, <em>2</em>, e616. <a href="https://doi.org/10.7717/peerj.616">https://doi.org/10.7717/peerj.616</a>
+</div>
+<div id="ref-hilbeNegativeBinomialRegression2011" class="csl-entry">
+Hilbe, J. M. (2011). <em>Negative binomial regression</em> (Second Edition). <a href="https://doi.org/10.1017/CBO9780511973420">https://doi.org/10.1017/CBO9780511973420</a>
+</div>
+<div id="ref-R-tidybayes" class="csl-entry">
+Kay, M. (2020). <em><span class="nocase">tidybayes</span>: <span>Tidy</span> data and ’geoms’ for <span>Bayesian</span> models</em>. <a href="https://mjskay.github.io/tidybayes/">https://mjskay.github.io/tidybayes/</a>
+</div>
+<div id="ref-mcelreathStatisticalRethinkingBayesian2020" class="csl-entry">
+McElreath, R. (2020a). <em>Statistical rethinking: <span>A Bayesian</span> course with examples in <span>R</span> and <span>Stan</span></em> (Second Edition). <span>CRC Press</span>. <a href="https://xcelab.net/rm/statistical-rethinking/">https://xcelab.net/rm/statistical-rethinking/</a>
+</div>
+<div id="ref-R-rethinking" class="csl-entry">
+McElreath, R. (2020b). <em><span class="nocase">rethinking</span> <span>R</span> package</em>. <a href="https://xcelab.net/rm/software/">https://xcelab.net/rm/software/</a>
+</div>
+<div id="ref-R-patchwork" class="csl-entry">
+Pedersen, T. L. (2019). <em><span class="nocase">patchwork</span>: <span>The</span> composer of plots</em>. <a href="https://CRAN.R-project.org/package=patchwork">https://CRAN.R-project.org/package=patchwork</a>
+</div>
+<div id="ref-R-base" class="csl-entry">
+R Core Team. (2020). <em>R: <span>A</span> language and environment for statistical computing</em>. <span>R Foundation for Statistical Computing</span>. <a href="https://www.R-project.org/">https://www.R-project.org/</a>
+</div>
+<div id="ref-standevelopmentteamStanFunctionsReference2021" class="csl-entry">
+Stan Development Team. (2021). <em>Stan functions reference</em>. <a href="https://mc-stan.org/docs/2_26/functions-reference/index.html">https://mc-stan.org/docs/2_26/functions-reference/index.html</a>
+</div>
+<div id="ref-welsh1995habitat" class="csl-entry">
+Welsh Jr, H. H., &amp; Lind, A. J. (1995). Habitat correlates of the <span>Del Norte</span> salamander, <span>Plethodon</span> elongatus (<span>Caudata</span>: <span>Plethodontidae</span>), in northwestern <span>California</span>. <em>Journal of Herpetology</em>, <em>29</em>(2), 198–210. <a href="https://doi.org/10.2307/1564557">https://doi.org/10.2307/1564557</a>
+</div>
+<div id="ref-R-tidyverse" class="csl-entry">
+Wickham, H. (2019). <em><span class="nocase">tidyverse</span>: <span>Easily</span> install and load the ’tidyverse’</em>. <a href="https://CRAN.R-project.org/package=tidyverse">https://CRAN.R-project.org/package=tidyverse</a>
+</div>
+<div id="ref-wickhamWelcomeTidyverse2019" class="csl-entry">
+Wickham, H., Averick, M., Bryan, J., Chang, W., McGowan, L. D., François, R., Grolemund, G., Hayes, A., Henry, L., Hester, J., Kuhn, M., Pedersen, T. L., Miller, E., Bache, S. M., Müller, K., Ooms, J., Robinson, D., Seidel, D. P., Spinu, V., … Yutani, H. (2019). Welcome to the tidyverse. <em>Journal of Open Source Software</em>, <em>4</em>(43), 1686. <a href="https://doi.org/10.21105/joss.01686">https://doi.org/10.21105/joss.01686</a>
+</div>
+</div>
+</div>
+<div class="footnotes">
+<hr />
+<ol>
+<li id="fn1"><p>That’s a lie. There was no pop quiz, last week.<a href="#fnref1" class="footnote-back">↩︎</a></p></li>
+<li id="fn2"><p>I’m making this number up, too, but it’s probably not far off. ☕ ☕ ☕<a href="#fnref2" class="footnote-back">↩︎</a></p></li>
+<li id="fn3"><p>One could also, of course, express that model as <span class="math inline">\(y_i = \beta_0 + \beta_1 x_i + \epsilon_i\)</span>, where <span class="math inline">\(\epsilon_i \sim \operatorname{Normal}(0, \sigma)\)</span>. But come on. That’s weak sauce. For more on why, see page 84 in <span class="citation"><a href="#ref-mcelreathStatisticalRethinkingBayesian2020" role="doc-biblioref">McElreath</a> (<a href="#ref-mcelreathStatisticalRethinkingBayesian2020" role="doc-biblioref">2020a</a>)</span>.<a href="#fnref3" class="footnote-back">↩︎</a></p></li>
+<li id="fn4"><p>I say “suggests” because a simple Poisson model can be good enough IF you have a set of high-quality predictors which can “explain” all that extra-looking variability. We, however, will be fitting intercept-only models.<a href="#fnref4" class="footnote-back">↩︎</a></p></li>
+</ol>
+</div>
