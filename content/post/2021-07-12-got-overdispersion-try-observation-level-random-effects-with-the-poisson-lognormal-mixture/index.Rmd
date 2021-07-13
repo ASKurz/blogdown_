@@ -54,15 +54,15 @@ First, I should clarify a bit. Mahr's initial post and much of the thread to fol
 
 The Poisson distribution is named after the French mathematician [Siméon Denis Poisson](https://upload.wikimedia.org/wikipedia/commons/e/e8/E._Marcellot_Siméon-Denis_Poisson_1804.jpg), who lived and died about 200 years ago. Poisson's distribution is valid for non-negative integers, which is basically what counts are. It has just one parameter, $\lambda$, which controls both its mean and variance and imposes the assumption that the mean of your counts is the same as the variance. On the one hand, this is great because it keeps things simple--parsimony and all. On the other hand, assuming your mean and variance are always the same is a really restrictive assumption and it just doesn't match up well with a lot of real-world data.
 
-This assumption that the mean equals the variance is sometimes called *equidispersion*. Count data violate the equidispersion assumption with their variance is smaller than their mean (*underdispersion*) or when their variance is larger than their mean (*overdispersion*). In practice, overdispersion tends to crop up most often. Real-world count data are overdispersed so often that statisticians have had to come up with a mess of strategies to handle the problem. In the applied statistics that I'm familiar with, the two most common ways to handle overdispersed count data are with the negative-binomial model, or with random effects. We'll briefly cover both.
+This assumption that the mean equals the variance is sometimes called *equidispersion*. Count data violate the equidispersion assumption when their variance is smaller than their mean (*underdispersion*) or when their variance is larger than their mean (*overdispersion*). In practice, overdispersion tends to crop up most often. Real-world count data are overdispersed so often that statisticians have had to come up with a mess of strategies to handle the problem. In the applied statistics that I'm familiar with, the two most common ways to handle overdispersed count data are with the negative-binomial model, or with random effects. We'll briefly cover both.
 
 ### Negative-binomial counts.
 
-As it's name implies, the negative-binomial model has a deep relationship with the binomial model. I'm not going to go into those details, but Hilbe covered them in his well-named [-@hilbeNegativeBinomialRegression2011] textbook, if you're curious. But basically, the negative-binomial model adds a dispersion parameter to the Poisson. Different authors refer to it with different names. Hilbe, for example, called it both $r$ and $\nu$. @Bürkner2021Parameterization and the @standevelopmentteamStanFunctionsReference2021 both call it $\phi$. By which ever name, the negative-binomial overdispersion parameter helps disentangle the mean from the variance in a set of counts. The way it does it is by re-expressing the count data as coming from a mixture where each count is from it's own Poisson distribution with its own $\lambda$ parameter. Importantly, the $\lambda$'s in this mixture of Poissons follow a gamma distribution, which is why the negative binomial is also sometimes referred to as a gamma-Poisson model. @mcelreathStatisticalRethinkingBayesian2020, for example, generally prefers to speak in terms of the gamma-Poisson. 
+As its name implies, the negative-binomial model has a deep relationship with the binomial model. I'm not going to go into those details, but Hilbe covered them in his well-named [-@hilbeNegativeBinomialRegression2011] textbook, if you're curious. Basically, the negative-binomial model adds a dispersion parameter to the Poisson. Different authors refer to it with different names. Hilbe, for example, called it both $r$ and $\nu$. @Bürkner2021Parameterization and the @standevelopmentteamStanFunctionsReference2021 both call it $\phi$. By which ever name, the negative-binomial overdispersion parameter helps disentangle the mean from the variance in a set of counts. The way it does it is by re-expressing the count data as coming from a mixture where each count is from its own Poisson distribution with its own $\lambda$ parameter. Importantly, the $\lambda$'s in this mixture of Poissons follow a gamma distribution, which is why the negative binomial is also sometimes referred to as a gamma-Poisson model. @mcelreathStatisticalRethinkingBayesian2020, for example, generally prefers to speak in terms of the gamma-Poisson. 
 
 ### Poission counts with random intercepts.
 
-Another way to handle overdispersion is to ask whether the data are grouped. In my field, this naturally occurs when you collect longitudinal data. My counts, over time, will differ form your counts, over time, and we accommodate that by adding a multilevel structure to the model. This, then, takes us to the generalized linear mixed model (GLMM), which is covered in text books like @cameron2013regression; @gelmanDataAnalysisUsing2006; and @mcelreathStatisticalRethinkingBayesian2020. Say your data have $J$ groups. With a simple random-intercept Poisson model, each group of counts gets it's own $\lambda_j$ parameter and the population of those $\lambda_j$'s is described in terms of  a grand mean (an overall $\lambda$ intercept) and variation around that grand mean (typically a standard deviation or variance parameter). Thus, is your $y$ data are counts from $I$ cases clustered within $J$ groups, the random-intercept Poisson model can be expressed as
+Another way to handle overdispersion is to ask whether the data are grouped. In my field, this naturally occurs when you collect longitudinal data. My counts, over time, will differ form your counts, over time, and we accommodate that by adding a multilevel structure to the model. This, then, takes us to the generalized linear mixed model (GLMM), which is covered in text books like @cameron2013regression; @gelmanDataAnalysisUsing2006; and @mcelreathStatisticalRethinkingBayesian2020. Say your data have $J$ groups. With a simple random-intercept Poisson model, each group of counts gets its own $\lambda_j$ parameter and the population of those $\lambda_j$'s is described in terms of  a grand mean (an overall $\lambda$ intercept) and variation around that grand mean (typically a standard deviation or variance parameter). Thus, is your $y$ data are counts from $I$ cases clustered within $J$ groups, the random-intercept Poisson model can be expressed as
 
 $$
 \begin{align*}
@@ -88,7 +88,7 @@ $$
 
 ### There's a third option: The Poisson-lognormal.
 
-Now a typical condition for a random-intercept model (whether using the Poison, the negative-binomial, or any other likelihood function) is that at least some of the $J$ groups, if not most or all, contain two or more cases. For example, in a randomized controlled trial you might measure the outcome variable 3 or 5 or 10 times over the course of the trial. In a typical non-experimental experience-sampling study, you might get 10 or 50 or a few hundred measurements from each participant over the course of a few days, weeks, or months. Either way, there are multiple $I$'s within each level of $J$. As it turns out, you don't have to restrict yourself that way. With the observation-level random effects (OLRE) approach, each case (each level of $I$) gets its own random effect [see @harrison2014using].
+Now a typical condition for a random-intercept model (whether using the Poison, the negative-binomial, or any other likelihood function) is that at least some of the $J$ groups, if not most or all, contain two or more cases. For example, in a randomized controlled trial you might measure the outcome variable 3 or 5 or 10 times over the course of the trial. In a typical non-experimental experience-sampling study, you might get 10 or 50 or a few hundred measurements from each participant over the course of a few days, weeks, or months. Either way, we tend to have multiple $I$'s within each level of $J$. As it turns out, you don't have to restrict yourself that way. With the observation-level random effects (OLRE) approach, each case (each level of $I$) gets its own random effect [see @harrison2014using].
 
 *But why would you do that?*
 
@@ -110,7 +110,7 @@ y_i & \sim \operatorname{Poisson}(\lambda_i) \\
 \end{align*}
 $$
 
-doesn't have a residual-variance term. Rather, the variance in the data is deterministically controlled by the linear model on $\log(\lambda_i)$, which works great in the case of equidispersion, but fails when the data are overdispersed. Hence the negative-binomial and the random-intercept models. But what if we could tack on a residual variance term? It might take on a form like
+doesn't have a residual-variance term. Rather, the variance in the data is deterministically controlled by the linear model on $\log(\lambda_i)$, which works great in the case of equidispersion, but fails when the data are overdispersed. Hence the negative-binomial and the random-intercept models. But what if we *could* tack on a residual variance term? It might take on a form like
 
 $$
 \begin{align*}
@@ -131,7 +131,7 @@ y_i & \sim \operatorname{Poisson}(\lambda_i) \\
 \end{align*}
 $$
 
-In this case, $\zeta_{0i}$ now looks a lot like the $\epsilon_i$ term in a standard intercepts-only regression model. Further, since the linear model is defined for $\log \lambda_i$, that means the $\zeta_{0i}$ terms will be log-normally distributed in the exponentiated count space. In essence, the OLRE-Poisson model is a way to hack your multilevel regression software to fit a Poisson-lognormal model for overdispersed counts.
+In this case, $\zeta_{0i}$ now looks a lot like the $\epsilon_i$ term in a standard intercepts-only regression model. Further, since the linear model is defined for $\log(\lambda_i)$, that means the $\zeta_{0i}$ terms will be log-normally distributed in the exponentiated $\log(\lambda_i)$ space. In essence, the OLRE-Poisson model is a way to hack your multilevel regression software to fit a Poisson-lognormal model for overdispersed counts.
 
 Now we have a sense of the theory, it's time to fit some models.
 
@@ -139,7 +139,7 @@ Now we have a sense of the theory, it's time to fit some models.
 
 ### We need data.
 
-As per usual, we'll be working within **R** [@R-base]. We'll be fitting our models with **brms** [@R-brms; @burknerBrmsPackageBayesian2017; @burknerAdvancedBayesianMultilevel2018] and most of our data wrangling and plotting work will be done with aid from the **tidyverse** [@R-tidyverse; @wickhamWelcomeTidyverse2019] and friends (**patchwork** [@R-patchwork] and **tidybayes** [@R-tidybayes]). We'll take our data set from McElreath's [-@R-rethinking] **rethinking** package.
+As per usual, we'll be working within **R** [@R-base]. We'll be fitting our models with **brms** [@R-brms; @burknerBrmsPackageBayesian2017; @burknerAdvancedBayesianMultilevel2018] and most of our data wrangling and plotting work will be done with aid from the **tidyverse** [@R-tidyverse; @wickhamWelcomeTidyverse2019] and friends--**patchwork** [@R-patchwork] and **tidybayes** [@R-tidybayes]. We'll take our data set from McElreath's [-@R-rethinking] **rethinking** package.
 
 ```{r, warning = F, message = F}
 library(brms)
@@ -247,7 +247,7 @@ p3 <-
 p1 + p2 + p3 + plot_layout(guides = "collect")
 ```
 
-The conventional Poisson model seems like a disaster. Both the Gamma-Poisson and the Poisson-lognormal models seemed to capture the data much better. We also might want to compare the models with information criteria. Here we'll use the LOO.
+The conventional Poisson model seems like a disaster. Both the gamma-Poisson and the Poisson-lognormal models seemed to capture the data much better. We also might want to compare the models with information criteria. Here we'll use the LOO.
 
 ```{r, eval = F}
 fit1 <- add_criterion(fit1, criterion = "loo")
@@ -288,11 +288,11 @@ loo_compare(fit1, fit2, fit3, criterion = "loo") %>%
   print(simplify = F)
 ```
 
-Even after accounting for model complexity, the Poisson-lognormal model appears to be the best fit for the data. Nest we consider how, exactly, does one interprets the parameters of the Poisson-lognormal model. 
+Even after accounting for model complexity, the Poisson-lognormal model appears to be the best fit for the data. Next we consider how, exactly, does one interprets the parameters of the Poisson-lognormal model.
 
 ### How does one interpret the Poisson-lognormal model?
 
-A nice quality of both the conventional Poisson model and the gamma-Poisson model is their intercept corresponds directly with the mean of the original data, after exponentiation. The mean of the `SALAMAN` variable, recall, was `r round(mean(salamanders$SALAMAN), 1)`. Here are the summaries for their exponentiated intercepts.
+A nice quality of both the conventional Poisson model and the gamma-Poisson model is the intercept for each corresponds directly with the mean of the original data, after exponentiation. The mean of the `SALAMAN` variable, recall, was `r round(mean(salamanders$SALAMAN), 1)`. Here are the summaries for their exponentiated intercepts.
 
 ```{r}
 # conventional Poisson
@@ -307,7 +307,7 @@ Both are really close to the sample mean. Here's the exponentiated intercept for
 fixef(fit3)[, -2] %>% exp() %>% round(digits = 2)
 ```
 
-Wow, that's not even close! What gives? Well, keep in mind that with the OLRE Poisson-lognormal model, the intercept is the $\mu$ parameter for the lognormal distribution of $\lambda$ parameters. In a similar way, the level-2 standard deviation (execute `posterior_summary(fit3)["sd_SITE__Intercept", ]`) is the $\sigma$ parameter for that lognormal distribution. Keeping things simple, for the moment, here's what that lognormal distriubiton looks like if we use the posterior means for those parameters.
+Wow, that's not even close! What gives? Well, keep in mind that with the OLRE Poisson-lognormal model, the intercept is the $\mu$ parameter for the lognormal distribution of $\lambda$ parameters. In a similar way, the level-2 standard deviation (execute `posterior_summary(fit3)["sd_SITE__Intercept", ]`) is the $\sigma$ parameter for that lognormal distribution. Keeping things simple, for the moment, here's what that lognormal distribution looks like if we take the posterior means for those parameters and insert them into the parameter arguments of the `dlnorm()` function.
 
 ```{r}
 p1 <-
@@ -362,7 +362,7 @@ p2 <-
 p2
 ```
 
-These, recall, are several hundred credible lognormal distributions for the case-level $\lambda_i$ parameters, not for the data themselves. We'll get to the data in a moment. Since we're working with a multilevel model, we have posteriors for each of the case-level $\lambda_i$ parameters, too. Here they are in a dot plot.
+These, recall, are 100 credible lognormal distributions for the case-level $\lambda_i$ parameters, not for the data themselves. We'll get to the data in a moment. Since we're working with a multilevel model, we have posteriors for each of the case-level $\lambda_i$ parameters, too. Here they are in a dot plot.
 
 ```{r}
 p3 <-
