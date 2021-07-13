@@ -396,11 +396,7 @@ p4</code></pre>
 <pre class="r"><code>p1 + p2 + p3 + p4 &amp; 
   theme_classic(base_size = 8.25)</code></pre>
 <p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-18-1.png" width="768" /></p>
-<p>At this point, though, you may be wondering how this model, with all its lognormal <span class="math inline">\(\lambda_i\)</span> glory, can inform us about actual counts. You know, the kind of counts that allowed us to fut such a wacky model. We’ll want to work with the posterior draws for that, too.</p>
-<p>Before we extract the posterior draws, let’s save the posterior means for the <span class="math inline">\(\mu\)</span> and <span class="math inline">\(\sigma\)</span> parameters.</p>
-<pre class="r"><code>mu &lt;- posterior_summary(fit3)[&quot;b_Intercept&quot;, &quot;Estimate&quot;]
-sigma &lt;- posterior_summary(fit3)[&quot;sd_SITE__Intercept&quot;, &quot;Estimate&quot;]</code></pre>
-<p>Now extract all of the posterior draws for those parameters.</p>
+<p>At this point, though, you may be wondering how this model, with all its lognormal <span class="math inline">\(\lambda_i\)</span> glory, can inform us about actual counts. You know, the kind of counts that allowed us to fut such a wacky model. We’ll want to work with the posterior draws for that, too. First we extract all of the posterior draws for the population parameters.</p>
 <pre class="r"><code>post &lt;-
   posterior_samples(fit3) %&gt;% 
   transmute(mu    = b_Intercept,
@@ -446,7 +442,7 @@ post %&gt;%
   labs(title = &quot;Handmade posterior predictive check&quot;) +
   facet_wrap(~sample) +
   theme(strip.background = element_rect(size = 0, fill = &quot;grey92&quot;))</code></pre>
-<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-21-1.png" width="672" /></p>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-20-1.png" width="672" /></p>
 <p>This, friends, is how you can use our intercepts-only Poisson-lognormal mixture model to simulate count data resembling the original count data. Data simulation is cool, but you might wonder how to compute the mean of the model-implied lognormal distribution. Recall that we can’t just exponentiate the model’s intercept. As it turns out, <span class="math inline">\(\exp \mu\)</span> returns the <strong>median</strong> for the lognormal distribution. The formula for the mean of the lognormal distribution is</p>
 <p><span class="math display">\[\text{mean} = \exp \left ( \mu + \frac{\sigma^2}{2}\right).\]</span></p>
 <p>So here’s how to work with the posterior draws to compute that value.</p>
@@ -460,7 +456,7 @@ post %&gt;%
   scale_y_continuous(NULL, breaks = NULL) +
   coord_cartesian(xlim = c(0, 10)) +
   xlab(expression(&quot;mean of the lognormal &quot;*lambda*&quot; distribution&quot;))</code></pre>
-<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-22-1.png" width="672" /></p>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-21-1.png" width="672" /></p>
 <p>For reference, we superimposed the mean of the <code>SALAMAN</code> data with a dashed line.</p>
 </div>
 </div>

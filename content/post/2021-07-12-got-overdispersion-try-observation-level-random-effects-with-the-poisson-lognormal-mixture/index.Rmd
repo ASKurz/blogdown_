@@ -413,16 +413,7 @@ p1 + p2 + p3 + p4 &
   theme_classic(base_size = 8.25)
 ```
 
-At this point, though, you may be wondering how this model, with all its lognormal $\lambda_i$ glory, can inform us about actual counts. You know, the kind of counts that allowed us to fut such a wacky model. We'll want to work with the posterior draws for that, too.
-
-Before we extract the posterior draws, let's save the posterior means for the $\mu$ and $\sigma$ parameters.
-
-```{r}
-mu <- posterior_summary(fit3)["b_Intercept", "Estimate"]
-sigma <- posterior_summary(fit3)["sd_SITE__Intercept", "Estimate"]
-```
-
-Now extract all of the posterior draws for those parameters.
+At this point, though, you may be wondering how this model, with all its lognormal $\lambda_i$ glory, can inform us about actual counts. You know, the kind of counts that allowed us to fut such a wacky model. We'll want to work with the posterior draws for that, too. First we extract all of the posterior draws for the population parameters.
 
 ```{r}
 post <-
