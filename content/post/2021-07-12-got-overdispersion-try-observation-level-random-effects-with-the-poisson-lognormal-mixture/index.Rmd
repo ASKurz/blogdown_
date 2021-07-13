@@ -52,13 +52,13 @@ It turns out that you can use random effects on cross-sectional count data. Yes,
 
 First, I should clarify a bit. Mahr's initial post and much of the thread to follow primarily focused on counts within the context of binomial data. If you've ever read a book on the generalized linear model (GLM), you know that the two broad frameworks for modeling counts are as binomial or Poisson. The basic difference is if your counts are out of a known number of trials (e.g., I got 3 out of 5 questions correct in my pop quiz, last week[^1]), the binomial is generally the way to go. However, if your counts aren't out of a well-defined total (e.g., I drank 1497 cups of coffee[^2], last year), the Poisson distribution offers a great way to think about your data. In this post, we'll be focusing on Poisson-like counts.
 
-The Poisson distribution is named after the French mathematician [Siméon Denis Poisson](https://upload.wikimedia.org/wikipedia/commons/e/e8/E._Marcellot_Siméon-Denis_Poisson_1804.jpg), who lived and died about 200 years ago. Poisson's distribution is valid for non-negative integers, which is basically what counts are. It has just one parameter, $\lambda$, which controls both its mean and variance and imposes the assumption that the mean of your counts is the same as the variance. On the one hand, this is great because it keeps things simple--parsimony and all. On the other hand, assuming your mean and variance are always the same is a really restrictive assumption and it just doesn't match up well with a lot of real-world data.
+The Poisson distribution is named after the French mathematician [Siméon Denis Poisson](https://upload.wikimedia.org/wikipedia/commons/e/e8/E._Marcellot_Siméon-Denis_Poisson_1804.jpg), who lived and died about 200 years ago. Poisson's distribution is valid for non-negative integers, which is basically what counts are. The distribution has just one parameter, $\lambda$, which controls both its mean and variance and imposes the assumption that the mean of your counts is the same as the variance. On the one hand, this is great because it keeps things simple--parsimony and all. On the other hand, holding the mean and variance the same is a really restrictive assumption and it just doesn't match up well with a lot of real-world data.
 
-This assumption that the mean equals the variance is sometimes called *equidispersion*. Count data violate the equidispersion assumption when their variance is smaller than their mean (*underdispersion*) or when their variance is larger than their mean (*overdispersion*). In practice, overdispersion tends to crop up most often. Real-world count data are overdispersed so often that statisticians have had to come up with a mess of strategies to handle the problem. In the applied statistics that I'm familiar with, the two most common ways to handle overdispersed count data are with the negative-binomial model, or with random effects. We'll briefly cover both.
+This Poisson assumption that the mean equals the variance is sometimes called *equidispersion*. Count data violate the equidispersion assumption when their variance is smaller than their mean (*underdispersion*) or when their variance is larger than their mean (*overdispersion*). In practice, overdispersion tends to crop up most often. Real-world count data are overdispersed so often that statisticians have had to come up with a mess of strategies to handle the problem. In the applied statistics that I'm familiar with, the two most common ways to handle overdispersed count data are with the negative-binomial model, or with random effects. We'll briefly cover both.
 
 ### Negative-binomial counts.
 
-As its name implies, the negative-binomial model has a deep relationship with the binomial model. I'm not going to go into those details, but Hilbe covered them in his well-named [-@hilbeNegativeBinomialRegression2011] textbook, if you're curious. Basically, the negative-binomial model adds a dispersion parameter to the Poisson. Different authors refer to it with different names. Hilbe, for example, called it both $r$ and $\nu$. @Bürkner2021Parameterization and the @standevelopmentteamStanFunctionsReference2021 both call it $\phi$. By which ever name, the negative-binomial overdispersion parameter helps disentangle the mean from the variance in a set of counts. The way it does it is by re-expressing the count data as coming from a mixture where each count is from its own Poisson distribution with its own $\lambda$ parameter. Importantly, the $\lambda$'s in this mixture of Poissons follow a gamma distribution, which is why the negative binomial is also sometimes referred to as a gamma-Poisson model. @mcelreathStatisticalRethinkingBayesian2020, for example, generally prefers to speak in terms of the gamma-Poisson. 
+As its name implies, the negative-binomial model has a deep relationship with the binomial model. I'm not going to go into those details, but Hilbe covered them in his well-named [-@hilbeNegativeBinomialRegression2011] textbook, if you're curious. Basically, the negative-binomial model adds a dispersion parameter to the Poisson. Different authors refer to it with different names. Hilbe, for example, called it both $r$ and $\nu$. @Bürkner2021Parameterization and the @standevelopmentteamStanFunctionsReference2021 both call it $\phi$. By which ever name, the negative-binomial overdispersion parameter helps disentangle the mean from the variance in a set of counts. The way it does it is by re-expressing the count data as coming from a mixture where each count is from its own Poisson distribution with its own $\lambda$ parameter. Importantly, the $\lambda$'s in this mixture of Poissons follow a gamma distribution, which is why the negative binomial is also sometimes referred to as a gamma-Poisson model. @mcelreathStatisticalRethinkingBayesian2020, for example, generally prefers to speak in terms of the gamma-Poisson.
 
 ### Poission counts with random intercepts.
 
@@ -101,7 +101,7 @@ y_i & \sim \operatorname{Normal}(\mu_i, \sigma) \\
 \end{align*}
 $$
 
-where the residual variance not accounted for by $x$ is captured in $\sigma$[^3]. There's a residual-variance term. The conventional Poisson model,
+where the residual variance not accounted for by $x$ is captured in $\sigma$[^3]. Thus $\sigma$ can be seen as a residual-variance term. The conventional Poisson model,
 
 $$
 \begin{align*}
@@ -217,7 +217,7 @@ print(fit2)
 print(fit3)
 ```
 
-We might the `pp_check()` function to get a graphic sense of how well each model fit the data.
+We might use the `pp_check()` function to get a graphic sense of how well each model fit the data.
 
 ```{r, fig.width = 8, fig.height = 3, warning = F, message = F}
 p1 <-
