@@ -9,9 +9,9 @@ authors:
 - Shyam Pradheep
 - Jessica Heinzelman
 - Anne Nyanchoka
-- Daphine Achieng,
-- Siddhartha Goyal, 
-- Laura Cusson, 
+- Daphine Achieng
+- Siddhartha Goyal
+- Laura Cusson
 - admin
 - Benjamin Bellows
 
@@ -34,24 +34,15 @@ slides: ''
 summary: ''
 # `tags` are like keywords
 tags:
-- 'Chatbot'
-- 'Family planning'
-- 'Prediction model'
-- 'Stage of change'
-- 'Digital health'
 
 url_code: ""
 url_dataset: ""
-url_pdf: "pdf/Green et al (2021) Predicting healthcare-seeking behavior based on stated readiness to act_ Development and validation of a prediction model.pdf"
+url_pdf: ""
 url_poster: ""
 url_project: ""
 url_slides: ""
 url_source: ""
 url_video: ""
-
-links:
-  - name: GitHub
-    url: 'https://github.com/ericpgreen/readiness-2020/'
     
 abstract: 'A starting point of many digital health interventions informed by the Stages of Change Model of behavior change is assessing a person's readiness to change. In this paper, we use the concept of readiness to develop and validate a prediction model of health-seeking behavior in the context of family planning. We conducted a secondary analysis of routinely collected, anonymized health data submitted by 4,088 female users of a free health chatbot in Kenya. We developed a prediction model of (future) self-reported action by randomly splitting the data into training and test data sets (80/20, stratified by the outcome). We further split the training data into 10 folds for cross-validating the hyperparameter tuning step in model selection. We fit nine different classification models and selected the model that maximized the area under the receiver operator curve. We then fit the selected model to the full training dataset and evaluated the performance of this model on the holdout test data. The model predicted who will visit a family planning provider in the future with high precision (0.93) and moderate recall (0.75). Using the Stages of Change framework, we concluded that 29% of women were in the "Preparation" stage, 21% were in the "Contemplation" stage, and 50% were in the "Pre-Contemplation" stage. We demonstrated that it is possible to accurately predict future healthcare-seeking behavior based on information learned during the initial encounter. Models like this may help intervention developers to tailor strategies and content in real-time.'
 ---
