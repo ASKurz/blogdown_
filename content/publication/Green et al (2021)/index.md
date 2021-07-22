@@ -42,7 +42,7 @@ tags:
 
 url_code: ""
 url_dataset: ""
-url_pdf: https://academic.oup.com/tbm/advance-article/doi/10.1093/tbm/ibab096/6324644?guestAccessKey=6f64c277-5e65-4892-aeae-8ed0b4b8e43b
+url_pdf: "pdf/Green et al (2021) Predicting healthcare-seeking behavior based on stated readiness to act_ Development and validation of a prediction model.pdf"
 url_poster: ""
 url_project: ""
 url_slides: ""
