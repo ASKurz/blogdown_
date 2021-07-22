@@ -16,7 +16,7 @@ authors:
 - Benjamin Bellows
 
 date: '2021-07-22'
-doi: https://doi.org/10.1521/jscp.2020.39.10.923
+doi: https://doi.org/10.1093/tbm/ibab096
 featured: false
 # To use the `image` argument, add an image named `featured.jpg/png` to your page's folder.
 # focal_point: Smart, Center, TopLeft, Top, TopRight, Left, Right, BottomLeft, Bottom, BottomRight.
@@ -26,7 +26,7 @@ image:
   preview_only: false
 # `projects` can associate this post with one or more of your projects
 projects: []
-publication: '*Journal of Social and Clinical Psychology*'
+publication: '*Translational Behavioral Medicine*'
 publication_types:
 - 2
 publishDate: '2021-07-20'
