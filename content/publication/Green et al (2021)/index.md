@@ -34,11 +34,11 @@ slides: ''
 summary: ''
 # `tags` are like keywords
 tags:
-- Chatbot
-- Family planning
-- Prediction model
-- Stage of change
-- Digital health
+- 'Chatbot'
+- 'Family planning'
+- 'Prediction model'
+- 'Stage of change'
+- 'Digital health'
 
 url_code: ""
 url_dataset: ""
