@@ -42,7 +42,7 @@ tags:
 
 url_code: ""
 url_dataset: ""
-url_pdf: ""
+url_pdf: "pdf/Green et al (2021) Predicting healthcare-seeking behavior based on stated readiness to act_ Development and validation of a prediction model.pdf"
 url_poster: ""
 url_project: ""
 url_slides: ""
