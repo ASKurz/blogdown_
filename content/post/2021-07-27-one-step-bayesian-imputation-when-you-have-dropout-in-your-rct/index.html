@@ -1,0 +1,471 @@
+---
+title: One-step Bayesian imputation when you have dropout in your RCT
+author: A. Solomon Kurz
+date: '2021-07-27'
+slug: ''
+categories: []
+tags:
+  - brms
+  - effect size
+  - longitudinal
+  - missing data
+  - R
+  - RCT
+  - tidyverse
+  - tutorial
+subtitle: ''
+summary: ''
+authors: []
+lastmod: '2021-07-27T11:32:52-05:00'
+featured: no
+image:
+  caption: ''
+  focal_point: ''
+  preview_only: no
+projects: []
+bibliography: /Users/solomonkurz/Dropbox/blogdown/content/post/my_blog.bib
+biblio-style: apalike
+csl: /Users/solomonkurz/Dropbox/blogdown/content/post/apa.csl  
+link-citations: yes
+---
+
+<script src="{{< blogdown/postref >}}index_files/header-attrs/header-attrs.js"></script>
+
+
+<div id="preamble" class="section level2">
+<h2>Preamble</h2>
+<p>Suppose you’ve got data from a randomized controlled trial (RCT) where participants received either treatment or control. Further suppose you only collected data at two time points, pre- and post-treatment. Even in the best of scenarios, you’ll probably have some dropout in those post-treatment data. To get the full benefit of your data, you can use one-step Bayesian imputation when you compute your effect sizes. In this post, I’ll show you how.</p>
+<div id="i-make-assumptions." class="section level3">
+<h3>I make assumptions.</h3>
+<p>For this post, I’m presuming you have a passing familiarity with the following:</p>
+<ul>
+<li><p>You should be familiar with effect sizes, particularly with standardized mean differences. If you need to brush up, consider Cohen’s <span class="citation">(<a href="#ref-cohenStatisticalPowerAnalysis1988a" role="doc-biblioref">1988</a>)</span> authoritative text, or Cummings newer <span class="citation">(<a href="#ref-cummingUnderstandingTheNewStatistics2012" role="doc-biblioref">2012</a>)</span> text. For nice conceptual overview, I also recommend Kelley and Preacher’s <span class="citation">(<a href="#ref-kelley2012effect" role="doc-biblioref">2012</a>)</span> paper, <a href="https://www3.nd.edu/~kkelley/publications/articles/Kelley_and_Preacher_Psychological_Methods_2012.pdf"><em>On effect size</em></a>.</p></li>
+<li><p>You should be familiar with Bayesian regression. For thorough introductions, I recommend either edition of McElreath’s text <span class="citation">(<a href="#ref-mcelreathStatisticalRethinkingBayesian2020" role="doc-biblioref">2020</a>, <a href="#ref-mcelreathStatisticalRethinkingBayesian2015" role="doc-biblioref">2015</a>)</span>; Kruschke’s <span class="citation">(<a href="#ref-kruschkeDoingBayesianData2015" role="doc-biblioref">2015</a>)</span> text; or Gelman, Hill, and Vehtari’s <span class="citation">(<a href="#ref-gelmanRegressionOtherStories2020" role="doc-biblioref">2020</a>)</span> text. If you go with McElreath, he has a fine series of freely-available lectures <a href="https://www.youtube.com/channel/UCNJK6_DZvcMqNSzQdEkzvzA/playlists">here</a>.</p></li>
+<li><p>Though we won’t be diving deep into it, here, you’ll want to have some familiarity with contemporary missing data theory. You can find brief overviews in the texts by McElreath and Gelman et al, above. For a deeper dive, I recommend <span class="citation"><a href="#ref-enders2010applied" role="doc-biblioref">Enders</a> (<a href="#ref-enders2010applied" role="doc-biblioref">2010</a>)</span> or <span class="citation"><a href="#ref-little2019statistical" role="doc-biblioref">Little &amp; Rubin</a> (<a href="#ref-little2019statistical" role="doc-biblioref">2019</a>)</span>. Also, heads up: <a href="https://twitter.com/AmandaKMontoya/status/1341936335301406722">word on the street</a> is Enders is working on a second edition of his book.</p></li>
+<li><p>All code is in <strong>R</strong> <span class="citation">(<a href="#ref-R-base" role="doc-biblioref">R Core Team, 2020</a>)</span>. Data wrangling and plotting were done with help from the <strong>tidyverse</strong> <span class="citation">(<a href="#ref-R-tidyverse" role="doc-biblioref">Wickham, 2019</a>; <a href="#ref-wickhamWelcomeTidyverse2019" role="doc-biblioref">Wickham et al., 2019</a>)</span> and <a href="https://mjskay.github.io/tidybayes/"><strong>tidybayes</strong></a> <span class="citation">(<a href="#ref-R-tidybayes" role="doc-biblioref">Kay, 2020</a>)</span>. The data were simulated with help from the <a href="https://github.com/debruine/faux"><strong>faux</strong> package</a> <span class="citation">(<a href="#ref-R-faux" role="doc-biblioref">DeBruine, 2021</a>)</span> and the Bayesian models were fit using <a href="https://github.com/paul-buerkner/brms"><strong>brms</strong></a> <span class="citation">(<a href="#ref-burknerBrmsPackageBayesian2017" role="doc-biblioref">Bürkner, 2017</a>, <a href="#ref-burknerAdvancedBayesianMultilevel2018" role="doc-biblioref">2018</a>, <a href="#ref-R-brms" role="doc-biblioref">2020</a>)</span>.</p></li>
+</ul>
+<p>Here we load our primary <strong>R</strong> packages and adjust the global plotting theme defaults.</p>
+<pre class="r"><code>library(tidyverse)
+library(faux)
+library(tidybayes)
+library(brms)
+
+# adjust the global plotting theme
+theme_set(
+  theme_tidybayes() +
+    theme(axis.line.x = element_blank(),
+          axis.line.y = element_blank(),
+          panel.border = element_rect(color = &quot;grey85&quot;, size = 1, fill = NA))
+)</code></pre>
+</div>
+<div id="we-need-data." class="section level3">
+<h3>We need data.</h3>
+<p>For this post, we’ll be simulating our data with help from the handy <code>faux::rnorm_multi()</code> function. To start out, we’ll make two data sets, one for treatment (<code>d_treatment</code>) and one for control (<code>d_control</code>). Each will contain outcomes at <code>pre</code> and <code>post</code> treatment, with the population parameters for both conditions at <code>pre</code> being <span class="math inline">\(\operatorname{Normal}(5, 1)\)</span>. Whereas those parameters stay the same at <code>post</code> for those in the control condition, the population parameters for those in the treatment condition will raise at <code>post</code> to <span class="math inline">\(\operatorname{Normal}(5.7, 1)\)</span>. Notice that not only did their mean value increase, but their standard deviation increased a bit, too, which is not uncommon in treatment data. Importantly, the correlation between <code>pre</code> and <code>post</code> is <span class="math inline">\(.75\)</span> for both conditions.</p>
+<pre class="r"><code># how many per group?
+n &lt;- 100
+
+set.seed(1)
+
+d_treatment &lt;- rnorm_multi(
+  n = n,
+  mu = c(5, 5.7),
+  sd = c(1, 1.1), 
+  r = .75, 
+  varnames = list(&quot;pre&quot;, &quot;post&quot;)
+)
+
+d_control &lt;- rnorm_multi(
+  n = n,
+  mu = c(5, 5),
+  sd = c(1, 1), 
+  r = .75, 
+  varnames = list(&quot;pre&quot;, &quot;post&quot;)
+)</code></pre>
+<p>Next we combine the two data sets and make an explicit <code>tx</code> variable to distinguish the conditions. Then we simulate missingness in the <code>post</code> variable in two steps: We use the <code>rbinom()</code> function to simulate whether a case will be missing and then use a little <code>ifelse()</code> to make a <code>post_observed</code> variable that is the same as <code>post</code> except that the vales are missing in every row for which <code>missing == 1</code>.</p>
+<pre class="r"><code>set.seed(1)
+
+d &lt;- bind_rows(
+  d_control,
+  d_treatment
+) %&gt;% 
+  mutate(tx = rep(c(&quot;control&quot;, &quot;treatment&quot;), each = n)) %&gt;% 
+  mutate(tx = factor(tx, levels = c(&quot;treatment&quot;, &quot;control&quot;))) %&gt;% 
+  mutate(missing = rbinom(n(), size = 1, prob = 0.3)) %&gt;%
+  mutate(post_observed = ifelse(missing == 1, NA, post))
+
+head(d)</code></pre>
+<pre><code>##        pre     post      tx missing post_observed
+## 1 5.066999 5.698922 control       0      5.698922
+## 2 6.950072 6.209520 control       0      6.209520
+## 3 5.787145 7.181091 control       0      7.181091
+## 4 4.826099 4.554830 control       1            NA
+## 5 2.277529 3.447187 control       0      3.447187
+## 6 6.801701 7.870996 control       1            NA</code></pre>
+<p>To get a sense for the data, here’s a scatter plot of <code>pre</code> versus <code>post</code>, by <code>tx</code> and <code>missing</code>.</p>
+<pre class="r"><code>d %&gt;% 
+  mutate(missing = factor(missing,
+                          levels = 1:0,
+                          labels = c(&quot;yes&quot;, &quot;no&quot;))) %&gt;% 
+  
+  ggplot(aes(x = pre, y = post, color = missing, shape = missing)) +
+  geom_point() +
+  scale_color_viridis_d(option = &quot;D&quot;, begin = .35, end = .75, direction = -1) +
+  scale_shape_manual(values = 17:16) +
+  coord_equal(xlim = c(1.5, 8.5),
+              ylim = c(1.5, 8.5)) +
+  facet_wrap(~ tx)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/geom_point-1.png" width="672" style="display: block; margin: auto;" /></p>
+<p>You can see that high correlation between <code>pre</code> and <code>post</code> in the shapes of the data clouds. To look at the data in another way, here are a few summary statistics.</p>
+<pre class="r"><code>d %&gt;% 
+  pivot_longer(starts_with(&quot;p&quot;), names_to = &quot;time&quot;) %&gt;% 
+  mutate(time = factor(time, levels = c(&quot;pre&quot;, &quot;post&quot;, &quot;post_observed&quot;))) %&gt;% 
+  group_by(tx, time) %&gt;% 
+  summarise(mean = mean(value, na.rm = T),
+            sd = sd(value, na.rm = T),
+            min = min(value, na.rm = T),
+            max = max(value, na.rm = T)) %&gt;% 
+  mutate_if(is.double, round, digits = 2)</code></pre>
+<pre><code>## # A tibble: 6 x 6
+## # Groups:   tx [2]
+##   tx        time           mean    sd   min   max
+##   &lt;fct&gt;     &lt;fct&gt;         &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;
+## 1 treatment pre            5.11  0.91  3.22  7.24
+## 2 treatment post           5.8   0.99  3.16  8.35
+## 3 treatment post_observed  5.74  1.05  3.16  8.35
+## 4 control   pre            5.01  0.99  2.28  7.5 
+## 5 control   post           5.05  1.06  1.74  7.87
+## 6 control   post_observed  5.1   1.04  1.74  7.45</code></pre>
+</div>
+</div>
+<div id="statistical-models" class="section level2">
+<h2>Statistical models</h2>
+<p>We’ll be analyzing the RCT data in two ways. First, we’ll fit a model on the version of the data with no missingness in <code>post</code>. That will be our benchmark. Then we’ll practice fitting the model with one-step Bayesian imputation and the <code>post_observed</code> variable. Once we’ve fit and evaluated our models, we’ll then walk out how to compute the effect sizes.</p>
+<div id="fit-the-models." class="section level3">
+<h3>Fit the models.</h3>
+<p>There are a lot of ways to analyze pre/post RCT data. To get a sense of the various strategies, see <a href="https://www.middleprofessor.com/files/applied-biostatistics_bookdown/_book/models-for-longitudinal-experiments-pre-post-designs.html">this chapter</a> in Jeffrey Walker’s free <span class="citation">(<a href="#ref-walkerElementsOfStatisticalModeling2018" role="doc-biblioref">2018</a>)</span> text and my <a href="https://solomonkurz.netlify.app/post/2020-12-29-regression-models-for-2-timepoint-non-experimental-data/">complimentary blog post</a> on pre/post non-experimental data. In this post, we’ll be taking the multivariate approach where we simultaneously model <code>pre</code> and <code>post</code> as bivariate normal, such that both the mean and standard deviation parameters for both vary depending on the experimental condition (<code>tx</code>). Importantly, the correlation between <code>pre</code> and <code>post</code> is captured in the residual standard deviation parameter.</p>
+<p>Here’s how to fit the model to the full data with <strong>brms</strong>.</p>
+<pre class="r"><code>fit1 &lt;- brm(
+  data = d,
+  family = gaussian,
+  bf(pre ~ 0 + tx, sigma ~ 0 + tx) +
+    bf(post ~ 0 + tx, sigma ~ 0 + tx) +
+    set_rescor(rescor = TRUE),
+  prior = c(prior(normal(5, 1), class = b, resp = pre),
+            prior(normal(5, 1), class = b, resp = post),
+            prior(normal(log(1), 1), class = b, dpar = sigma, resp = pre),
+            prior(normal(log(1), 1), class = b, dpar = sigma, resp = post),
+            prior(lkj(2), class = rescor)),
+  cores = 4,
+  seed = 1
+)</code></pre>
+<p>The priors in this post follow the weakly-regularizing approach McElreath advocated for in thie second edition of this text. Also note that because we are allowing the residual standard deviation parameter to vary by <code>tx</code>, the <strong>brms</strong> default is to use the log link, which will become important for interpretation and post processing. Here’s the parameter summary.</p>
+<pre class="r"><code>print(fit1)</code></pre>
+<pre><code>##  Family: MV(gaussian, gaussian) 
+##   Links: mu = identity; sigma = log
+##          mu = identity; sigma = log 
+## Formula: pre ~ 0 + tx 
+##          sigma ~ 0 + tx
+##          post ~ 0 + tx 
+##          sigma ~ 0 + tx
+##    Data: d (Number of observations: 200) 
+## Samples: 4 chains, each with iter = 2000; warmup = 1000; thin = 1;
+##          total post-warmup samples = 4000
+## 
+## Population-Level Effects: 
+##                        Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+## pre_txtreatment            5.00      0.10     4.81     5.19 1.00     2802     3091
+## pre_txcontrol              5.11      0.09     4.93     5.29 1.00     3300     2885
+## sigma_pre_txtreatment     -0.03      0.06    -0.15     0.09 1.00     3700     3273
+## sigma_pre_txcontrol       -0.08      0.07    -0.21     0.06 1.00     3536     3105
+## post_txtreatment           5.74      0.11     5.52     5.96 1.00     3027     2940
+## post_txcontrol             5.08      0.09     4.90     5.26 1.00     3305     2758
+## sigma_post_txtreatment     0.14      0.06     0.02     0.27 1.00     3555     3230
+## sigma_post_txcontrol      -0.08      0.07    -0.21     0.05 1.00     3607     2764
+## 
+## Residual Correlations: 
+##                  Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+## rescor(pre,post)     0.73      0.03     0.67     0.79 1.00     3475     3305
+## 
+## Samples were drawn using sampling(NUTS). For each parameter, Bulk_ESS
+## and Tail_ESS are effective sample size measures, and Rhat is the potential
+## scale reduction factor on split chains (at convergence, Rhat = 1).</code></pre>
+<p>After exponentiating the standard deviations, all the parameter summaries look close to the data generating values from our <code>faux::rnorm_multi()</code> code. This, however, is all just a warm-up. Our goal was to use one-step Bayesian imputation for when we have missing data at post-intervention time point. From a syntax perspective, that involves a few minor changes to our <code>fit1</code> code. First, we replace the <code>post</code> variable with <code>post_observed</code>, which had about <span class="math inline">\(30\%\)</span> of the values missing. In a similar way, we have to adjust a few of the <code>resp</code> arguments within the <code>prior()</code> statements. Finally and most crucially, we have to include the <code>| mi()</code> syntax when defining the linear model for <code>post_observed</code>. Otherwise, <strong>brms</strong> will simply drop all the cases with missingness on <code>post_observed</code>.</p>
+<p>Here’s the code.</p>
+<pre class="r"><code>fit2 &lt;- brm(
+  data = d,
+  family = gaussian,
+  bf(pre ~ 0 + tx,
+     sigma ~ 0 + tx) +
+    # notice the changes in this line
+    bf(post_observed | mi() ~ 0 + tx,
+       sigma ~ 0 + tx) +
+    set_rescor(rescor = TRUE),
+  prior = c(prior(normal(5, 1), class = b, resp = pre),
+            # notice the changes in the `resp` argument
+            prior(normal(5, 1), class = b, resp = postobserved),
+            prior(normal(log(1), 1), class = b, dpar = sigma, resp = pre),
+            # notice the changes in the `resp` argument
+            prior(normal(log(1), 1), class = b, dpar = sigma, resp = postobserved),
+            prior(lkj(2), class = rescor)),
+  cores = 4,
+  seed = 1
+)</code></pre>
+<p>Instead of looking at the <code>print()</code> output, it might be more informative if we compare the results of our two models in a coefficient plot.</p>
+<pre class="r"><code># define the parameter names
+parameters &lt;- c(
+  &quot;mu[treatment]^pre&quot;, &quot;mu[control]^pre&quot;, &quot;sigma[treatment]^pre&quot;, &quot;sigma[control]^pre&quot;,
+  &quot;mu[treatment]^post&quot;, &quot;mu[control]^post&quot;, &quot;sigma[treatment]^post&quot;, &quot;sigma[control]^post&quot;, 
+  &quot;rho&quot;
+  )
+
+# define the deisred order for the parameter names
+levels &lt;- c(
+  &quot;mu[treatment]^pre&quot;, &quot;mu[control]^pre&quot;, &quot;mu[treatment]^post&quot;, &quot;mu[control]^post&quot;, 
+  &quot;sigma[treatment]^pre&quot;, &quot;sigma[control]^pre&quot;, &quot;sigma[treatment]^post&quot;, &quot;sigma[control]^post&quot;, 
+  &quot;rho&quot;
+  )
+
+# combine the posterior summaries for the two models
+rbind(
+  posterior_summary(fit1)[1:9, -2],
+  posterior_summary(fit2)[1:9, -2]
+  ) %&gt;% 
+  # wrangle
+  data.frame() %&gt;% 
+  mutate(data = rep(c(&quot;complete data&quot;, &quot;30% missing&quot;), each = n() / 2),
+         par  = rep(parameters, times = 2)) %&gt;% 
+  mutate(par      = factor(par, levels = levels),
+         Estimate = ifelse(str_detect(par, &quot;sigma&quot;), exp(Estimate), Estimate),
+         Q2.5     = ifelse(str_detect(par, &quot;sigma&quot;), exp(Q2.5), Q2.5),
+         Q97.5    = ifelse(str_detect(par, &quot;sigma&quot;), exp(Q97.5), Q97.5)) %&gt;% 
+  
+  # plot!
+  ggplot(aes(x = Estimate, xmin = Q2.5, xmax = Q97.5, y = data)) +
+  geom_pointrange(fatten = 1.1) +
+  labs(x = &quot;marginal posterior&quot;,
+       y = NULL) +
+  xlim(0, NA) +
+  facet_wrap(~ par, labeller = label_parsed, ncol = 1)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/coefficient_plot-1.png" width="576" style="display: block; margin: auto;" /></p>
+<p>Since the <code>post_observed</code> data were missing completely at random (MCAR<a href="#fn1" class="footnote-ref" id="fnref1"><sup>1</sup></a>), it should be no surprise the coefficients are nearly the same between the two models. This, however, will not always (ever?) be the case with your real-world RCT data. Friends, don’t let your friends drop cases or carry the last value forward. Use the <strong>brms</strong> <code>mi()</code> syntax, instead.</p>
+</div>
+<div id="effect-sizes." class="section level3">
+<h3>Effect sizes.</h3>
+<p>At this point, you may be wondering why I didn’t use the familiar dummy-variable approach in either of the models and you might be further wondering why I bothered to allow the standard deviation parameters to vary. One of the sub-goals of this post is to show how to compute the model output into standardized effect sizes. My go-to standardized effect size is good old Cohen’s <span class="math inline">\(d\)</span>, of which there are many variations. In the case of our pre/post RCT with two conditions, we actually have three <span class="math inline">\(d\)</span>’s of interest:</p>
+<ul>
+<li>the standardized mean difference for the treatment condition (which we hope is large),</li>
+<li>the standardized mean difference for the control condition (which we hope is near zero), and</li>
+<li>the difference in those first two standardized mean differences (which we also hope is large).</li>
+</ul>
+<p>As with all standardized mean differences, it’s a big deal to choose a good value to standardize with. With data like ours, a good default choice is the pooled standard deviation between the two conditions at baseline, which we might define as</p>
+<p><span class="math display">\[\sigma_p^\text{pre} = \sqrt{\frac{ \left (\sigma_\text{treatment}^\text{pre} \right )^2 + \left (\sigma_\text{control}^\text{pre} \right)^2}{2}},\]</span></p>
+<p>where the notation is admittedly a little verbose. My hope, however, is this notation will make it easier to map the terms onto the model parameters from above. Anyway, with our definition of <span class="math inline">\(\sigma_p^\text{pre}\)</span> in hand, we’re in good shape to define our three effect sizes of interest as</p>
+<p><span class="math display">\[
+\begin{align*}
+d_\text{treatment} &amp; = \frac{\mu_\text{treatment}^\text{post} - \mu_\text{treatment}^\text{pre}}{\sigma_p^\text{pre}}, \\
+d_\text{control}   &amp; = \frac{\mu_\text{control}^\text{post} - \mu_\text{control}^\text{pre}}{\sigma_p^\text{pre}}, \; \text{and} \\
+d_\text{treatment - control} &amp; = \frac{\left ( \mu_\text{treatment}^\text{post} - \mu_\text{treatment}^\text{pre} \right ) - \left ( \mu_\text{control}^\text{post} - \mu_\text{control}^\text{pre} \right )}{\sigma_p^\text{pre}} \\
+&amp; = \left (\frac{\mu_\text{treatment}^\text{post} - \mu_\text{treatment}^\text{pre}}{\sigma_p^\text{pre}} \right ) - \left ( \frac{\mu_\text{control}^\text{post} - \mu_\text{control}^\text{pre}}{\sigma_p^\text{pre}} \right ) \\
+&amp; = \left ( d_\text{treatment} \right ) - \left ( d_\text{control} \right ).
+\end{align*}
+\]</span></p>
+<p>The reason we analyzed the RCT data with a bivariate model with varying means and standard deviations was because the parameter values from that model correspond directly with the various <span class="math inline">\(\mu\)</span> and <span class="math inline">\(\sigma\)</span> terms in the equations for <span class="math inline">\(\sigma_p^\text{pre}\)</span> and our three <span class="math inline">\(d\)</span>’s. This insight comes from <span class="citation"><a href="#ref-kruschkeDoingBayesianData2015" role="doc-biblioref">Kruschke</a> (<a href="#ref-kruschkeDoingBayesianData2015" role="doc-biblioref">2015</a>)</span>, particularly Section 16.3. For a walk-through of that section with a <strong>brms</strong> + <strong>tidyverse</strong> workflow, see <a href="https://bookdown.org/content/3686/metric-predicted-variable-on-one-or-two-groups.html#two-groups">this section</a> of my ebook translation of his text <span class="citation">(<a href="#ref-kurzDoingBayesianData2021" role="doc-biblioref">Kurz, 2020a</a>)</span>. The approach we’re taking, here, is a direct bivariate generalization of the material in Kruschke’s text.</p>
+<p>Okay, here’s how to work with the posterior samples from our missing-data model, <code>fit2</code>, to compute those effects.</p>
+<pre class="r"><code>post &lt;- posterior_samples(fit2) %&gt;% 
+  # exponentiate the log sd parameters
+  mutate(`sigma[treatment]^pre` = exp(b_sigma_pre_txtreatment),
+         `sigma[control]^pre`   = exp(b_sigma_pre_txcontrol)) %&gt;% 
+  # pooled standard deviation (at pre)
+  mutate(`sigma[italic(p)]^pre` = sqrt((`sigma[treatment]^pre`^2 + `sigma[control]^pre`^2) / 2)) %&gt;% 
+  # within-condition pre/post effect sizes
+  mutate(`italic(d)[treatment]` = (b_postobserved_txtreatment - b_pre_txtreatment) / `sigma[italic(p)]^pre`,
+         `italic(d)[control]`   = (b_postobserved_txcontrol   - b_pre_txcontrol)   / `sigma[italic(p)]^pre`) %&gt;%
+  # between-condition effect size (i.e., difference in differences)
+  mutate(`italic(d)[&#39;treatment - control&#39;]` = `italic(d)[treatment]` - `italic(d)[control]`) </code></pre>
+<p>Now inspect the posteriors for our three <span class="math inline">\(d\)</span>’s and the <span class="math inline">\(\sigma_p^\text{pre}\)</span> in a coefficient plot.</p>
+<pre class="r"><code>levels &lt;- c(
+  &quot;sigma[italic(p)]^pre&quot;, &quot;italic(d)[&#39;treatment - control&#39;]&quot;, 
+  &quot;italic(d)[control]&quot;, &quot;italic(d)[treatment]&quot;
+  )
+
+post %&gt;% 
+  # wrangle
+  pivot_longer(`sigma[italic(p)]^pre`:`italic(d)[&#39;treatment - control&#39;]`) %&gt;% 
+  mutate(parameter = factor(name, levels = levels)) %&gt;% 
+  
+  # plot
+ggplot(aes(x = value, y = parameter)) +
+  stat_pointinterval(.width = .95, size = 1/2) +
+  scale_y_discrete(labels = ggplot2:::parse_safe) +
+  labs(x = &quot;marginal posterior&quot;,
+       y = NULL) +
+  theme(axis.text.y = element_text(hjust = 0),
+        axis.ticks.y = element_blank())</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/d_plot-1.png" width="576" style="display: block; margin: auto;" /></p>
+<p>If you look back at the data-generating values from above, they’re where we’d hope them to be.</p>
+</div>
+<div id="but-what-about-that-one-step-imputation" class="section level3">
+<h3>But what about that one-step imputation?</h3>
+<p>From a practical standpoint, one-step Bayesian imputation is a lot like full-information maximum likelihood or multiple imputation–it’s a way to use all of your data that allows you to avoid the biases that come with older methods such as mean imputation or last observation carried forward. In short, one-step Bayesian imputation fits a joint model that expresses both the uncertainty in the model parameters and the uncertainty in the missing data. When we use MCMC methods, the uncertainty in our model parameters is expressed in the samples from the posterior. We worked with those with our <code>posterior_samples()</code> code, above. In the same way, one-step Bayesian imputation with MCMC also gives us posterior samples for the missing data, too.</p>
+<pre class="r"><code>posterior_samples(fit2) %&gt;% 
+  glimpse()</code></pre>
+<p>For the sake of space, I’m not going to show the results of the code block, above. If you were to execute it yourself, you’d see there were a bunch of <code>Ymi_postobserved[i]</code> columns. Those columns contain the posterior samples for the missing values. The <code>i</code> part of their names indexes the row number from the original data which had the missing <code>post_observed</code> value. Just like with the posterior samples of our parameters, we can examine the posterior samples for our missing data with plots, summaries, and so on. Here instead of using the <code>posterior_samples()</code> output, we’ll use the <code>posterior_summary()</code> function, instead. This will summarize each parameter and imputed value by its mean, standard deviation, and percentile-based 95% interval. After a little wrangling, we’ll display the results in a plot.</p>
+<pre class="r"><code>posterior_summary(fit2) %&gt;% 
+  data.frame() %&gt;% 
+  rownames_to_column(&quot;par&quot;) %&gt;% 
+  # isolate the imputed values
+  filter(str_detect(par, &quot;Ymi&quot;)) %&gt;% 
+  mutate(row = str_extract(par, &quot;\\d+&quot;) %&gt;% as.integer()) %&gt;% 
+  # join the original data
+  left_join(
+    d %&gt;% mutate(row = 1:n()),
+    by = &quot;row&quot;
+  ) %&gt;% 
+
+  # plot!
+  ggplot(aes(x = pre, y = Estimate, ymin = Q2.5, ymax = Q97.5, color = tx)) +
+  geom_pointrange(fatten = 1, size = 1/4) +
+  scale_color_viridis_d(NULL, option = &quot;F&quot;, begin = .2, end = .6, direction = -1) +
+  ylab(&quot;post (imputed)&quot;) +
+  coord_equal(xlim = c(1.5, 8.5),
+              ylim = c(1.5, 8.5))</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-7-1.png" width="672" style="display: block; margin: auto;" /></p>
+<p>We ended up with something of a mash-up of a scatter plot and a coefficient plot. The <span class="math inline">\(y\)</span>-axis shows the summaries for the imputed values, summarized by their posterior means (dots) and 95% intervals (vertical lines). In the <span class="math inline">\(x\)</span>-axis, we’ve connected them with their original <code>pre</code> values. Notice the strong correlation between the two axes. That’s the consequence of fitting a bivariate model where <code>pre</code> has a residual correlation with <code>post_observed</code>. That original data-generating value, recall, was <span class="math inline">\(.75\)</span>. Here’s the summary of the residual correlation from <code>fit2</code>.</p>
+<pre class="r"><code>posterior_summary(fit2)[&quot;rescor__pre__postobserved&quot;, ] %&gt;% 
+  round(digits = 2)</code></pre>
+<pre><code>##  Estimate Est.Error      Q2.5     Q97.5 
+##      0.71      0.04      0.63      0.78</code></pre>
+<p>Using language perhaps more familiar to those from a structural equation modeling background, the <code>pre</code> values acted like a missing data covariate for the missing <code>post_observed</code> values. Had that residual correlation been lower, the relation in the two axes of our plot would have been less impressive, too. Anyway, the point is that one-step Bayesian imputation gives users a nice way to explore the missing data assumptions they’ve imposed in their models, which I think is pretty cool.</p>
+</div>
+</div>
+<div id="would-you-like-more" class="section level2">
+<h2>Would you like more?</h2>
+<p>To my knowledge, the introductory material on applied missing data analysis seems awash with full-information maximum likelihood and multiple imputation. One-step Bayesian imputation methods haven’t made it into the mainstream, yet. McElreath covered the one-step approach in both editions of his text and since the way he covered the material was quite different in the two editions, I really recommend you check out both <span class="citation">(<a href="#ref-mcelreathStatisticalRethinkingBayesian2020" role="doc-biblioref">McElreath, 2020</a>, <a href="#ref-mcelreathStatisticalRethinkingBayesian2015" role="doc-biblioref">2015</a>)</span>. My ebook translations of McElreath’s texts covered that material from a <strong>brms</strong> + <strong>tidyverse</strong> perspective <span class="citation">(<a href="#ref-kurzStatisticalRethinkingSecondEd2021" role="doc-biblioref">Kurz, 2021</a>, <a href="#ref-kurzStatisticalRethinkingBrms2020" role="doc-biblioref">2020b</a>)</span>. Otherwise, you should check out Bürkner’s <span class="citation">(<a href="#ref-Bürkner2021HandleMissingValues" role="doc-biblioref">2021</a>)</span> vignette, <a href="https://CRAN.R-project.org/package=brms/vignettes/brms_missings.html"><em>Handle missing values with brms</em></a>.</p>
+</div>
+<div id="session-info" class="section level2">
+<h2>Session info</h2>
+<pre class="r"><code>sessionInfo()</code></pre>
+<pre><code>## R version 4.0.4 (2021-02-15)
+## Platform: x86_64-apple-darwin17.0 (64-bit)
+## Running under: macOS Catalina 10.15.7
+## 
+## Matrix products: default
+## BLAS:   /Library/Frameworks/R.framework/Versions/4.0/Resources/lib/libRblas.dylib
+## LAPACK: /Library/Frameworks/R.framework/Versions/4.0/Resources/lib/libRlapack.dylib
+## 
+## locale:
+## [1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+## 
+## attached base packages:
+## [1] stats     graphics  grDevices utils     datasets  methods   base     
+## 
+## other attached packages:
+##  [1] brms_2.15.0     Rcpp_1.0.6      tidybayes_3.0.0 faux_1.0.0      forcats_0.5.1   stringr_1.4.0   dplyr_1.0.6    
+##  [8] purrr_0.3.4     readr_1.4.0     tidyr_1.1.3     tibble_3.1.2    ggplot2_3.3.5   tidyverse_1.3.1
+## 
+## loaded via a namespace (and not attached):
+##   [1] readxl_1.3.1         backports_1.2.1      plyr_1.8.6           igraph_1.2.6         svUnit_1.0.3        
+##   [6] splines_4.0.4        crosstalk_1.1.0.1    TH.data_1.0-10       rstantools_2.1.1     inline_0.3.17       
+##  [11] digest_0.6.27        htmltools_0.5.1.1    rsconnect_0.8.16     fansi_0.4.2          checkmate_2.0.0     
+##  [16] magrittr_2.0.1       modelr_0.1.8         RcppParallel_5.0.2   matrixStats_0.57.0   xts_0.12.1          
+##  [21] sandwich_3.0-0       prettyunits_1.1.1    colorspace_2.0-0     rvest_1.0.1          ggdist_3.0.0        
+##  [26] haven_2.3.1          xfun_0.23            callr_3.7.0          crayon_1.4.1         jsonlite_1.7.2      
+##  [31] lme4_1.1-25          survival_3.2-10      zoo_1.8-8            glue_1.4.2           gtable_0.3.0        
+##  [36] emmeans_1.5.2-1      V8_3.4.0             distributional_0.2.2 pkgbuild_1.2.0       rstan_2.21.2        
+##  [41] abind_1.4-5          scales_1.1.1         mvtnorm_1.1-1        DBI_1.1.0            miniUI_0.1.1.1      
+##  [46] viridisLite_0.4.0    xtable_1.8-4         stats4_4.0.4         StanHeaders_2.21.0-7 DT_0.16             
+##  [51] htmlwidgets_1.5.3    httr_1.4.2           threejs_0.3.3        arrayhelpers_1.1-0   posterior_1.0.1     
+##  [56] ellipsis_0.3.2       farver_2.1.0         pkgconfig_2.0.3      loo_2.4.1            sass_0.3.1          
+##  [61] dbplyr_2.1.1         utf8_1.2.1           labeling_0.4.2       tidyselect_1.1.1     rlang_0.4.11        
+##  [66] reshape2_1.4.4       later_1.2.0          munsell_0.5.0        cellranger_1.1.0     tools_4.0.4         
+##  [71] cli_3.0.1            generics_0.1.0       broom_0.7.6          ggridges_0.5.3       evaluate_0.14       
+##  [76] fastmap_1.1.0        yaml_2.2.1           fs_1.5.0             processx_3.5.2       knitr_1.33          
+##  [81] nlme_3.1-152         mime_0.10            projpred_2.0.2       xml2_1.3.2           compiler_4.0.4      
+##  [86] bayesplot_1.8.0      shinythemes_1.1.2    rstudioapi_0.13      curl_4.3             gamm4_0.2-6         
+##  [91] reprex_2.0.0         statmod_1.4.35       bslib_0.2.4          stringi_1.6.2        highr_0.9           
+##  [96] ps_1.6.0             blogdown_1.3         Brobdingnag_1.2-6    lattice_0.20-41      Matrix_1.3-2        
+## [101] nloptr_1.2.2.2       markdown_1.1         tensorA_0.36.2       shinyjs_2.0.0        vctrs_0.3.8         
+## [106] pillar_1.6.1         lifecycle_1.0.0      jquerylib_0.1.4      bridgesampling_1.0-0 estimability_1.3    
+## [111] httpuv_1.6.0         R6_2.5.0             bookdown_0.22        promises_1.2.0.1     gridExtra_2.3       
+## [116] codetools_0.2-18     boot_1.3-26          colourpicker_1.1.0   MASS_7.3-53          gtools_3.8.2        
+## [121] assertthat_0.2.1     withr_2.4.2          shinystan_2.5.0      multcomp_1.4-16      mgcv_1.8-33         
+## [126] parallel_4.0.4       hms_1.1.0            grid_4.0.4           coda_0.19-4          minqa_1.2.4         
+## [131] rmarkdown_2.8        shiny_1.6.0          lubridate_1.7.10     base64enc_0.1-3      dygraphs_1.1.1.6</code></pre>
+</div>
+<div id="references" class="section level2 unnumbered">
+<h2>References</h2>
+<div id="refs" class="references csl-bib-body hanging-indent" line-spacing="2">
+<div id="ref-Bürkner2021HandleMissingValues" class="csl-entry">
+Bürkner, P.-C. (2021). <em>Handle missing values with brms</em>. <a href="https://CRAN.R-project.org/package=brms/vignettes/brms_missings.html">https://CRAN.R-project.org/package=brms/vignettes/brms_missings.html</a>
+</div>
+<div id="ref-burknerBrmsPackageBayesian2017" class="csl-entry">
+Bürkner, P.-C. (2017). <span class="nocase">brms</span>: <span>An R</span> package for <span>Bayesian</span> multilevel models using <span>Stan</span>. <em>Journal of Statistical Software</em>, <em>80</em>(1), 1–28. <a href="https://doi.org/10.18637/jss.v080.i01">https://doi.org/10.18637/jss.v080.i01</a>
+</div>
+<div id="ref-burknerAdvancedBayesianMultilevel2018" class="csl-entry">
+Bürkner, P.-C. (2018). Advanced <span>Bayesian</span> multilevel modeling with the <span>R</span> package brms. <em>The R Journal</em>, <em>10</em>(1), 395–411. <a href="https://doi.org/10.32614/RJ-2018-017">https://doi.org/10.32614/RJ-2018-017</a>
+</div>
+<div id="ref-R-brms" class="csl-entry">
+Bürkner, P.-C. (2020). <em><span class="nocase">brms</span>: <span>Bayesian</span> regression models using ’<span>Stan</span>’</em>. <a href="https://CRAN.R-project.org/package=brms">https://CRAN.R-project.org/package=brms</a>
+</div>
+<div id="ref-cohenStatisticalPowerAnalysis1988a" class="csl-entry">
+Cohen, J. (1988). <em>Statistical power analysis for the behavioral sciences</em>. <span>L. Erlbaum Associates</span>. <a href="https://www.worldcat.org/title/statistical-power-analysis-for-the-behavioral-sciences/oclc/17877467">https://www.worldcat.org/title/statistical-power-analysis-for-the-behavioral-sciences/oclc/17877467</a>
+</div>
+<div id="ref-cummingUnderstandingTheNewStatistics2012" class="csl-entry">
+Cumming, G. (2012). <em>Understanding the new statistics: <span>Effect</span> sizes, confidence intervals, and meta-analysis</em>. <span>Routledge</span>. <a href="https://www.routledge.com/Understanding-The-New-Statistics-Effect-Sizes-Confidence-Intervals-and/Cumming/p/book/9780415879682">https://www.routledge.com/Understanding-The-New-Statistics-Effect-Sizes-Confidence-Intervals-and/Cumming/p/book/9780415879682</a>
+</div>
+<div id="ref-R-faux" class="csl-entry">
+DeBruine, L. (2021). <em><span class="nocase">faux</span>: <span>Simulation</span> for factorial designs</em> [Manual]. <a href="https://github.com/debruine/faux">https://github.com/debruine/faux</a>
+</div>
+<div id="ref-enders2010applied" class="csl-entry">
+Enders, C. K. (2010). <em>Applied missing data analysis</em>. <span>Guilford press</span>. <a href="http://www.appliedmissingdata.com/">http://www.appliedmissingdata.com/</a>
+</div>
+<div id="ref-gelmanRegressionOtherStories2020" class="csl-entry">
+Gelman, A., Hill, J., &amp; Vehtari, A. (2020). <em>Regression and other stories</em>. <span>Cambridge University Press</span>. <a href="https://doi.org/10.1017/9781139161879">https://doi.org/10.1017/9781139161879</a>
+</div>
+<div id="ref-R-tidybayes" class="csl-entry">
+Kay, M. (2020). <em><span class="nocase">tidybayes</span>: <span>Tidy</span> data and ’geoms’ for <span>Bayesian</span> models</em>. <a href="https://mjskay.github.io/tidybayes/">https://mjskay.github.io/tidybayes/</a>
+</div>
+<div id="ref-kelley2012effect" class="csl-entry">
+Kelley, K., &amp; Preacher, K. J. (2012). On effect size. <em>Psychological Methods</em>, <em>17</em>(2), 137. <a href="https://doi.org/10.1037/a0028086">https://doi.org/10.1037/a0028086</a>
+</div>
+<div id="ref-kruschkeDoingBayesianData2015" class="csl-entry">
+Kruschke, J. K. (2015). <em>Doing <span>Bayesian</span> data analysis: <span>A</span> tutorial with <span>R</span>, <span>JAGS</span>, and <span>Stan</span></em>. <span>Academic Press</span>. <a href="https://sites.google.com/site/doingbayesiandataanalysis/">https://sites.google.com/site/doingbayesiandataanalysis/</a>
+</div>
+<div id="ref-kurzStatisticalRethinkingSecondEd2021" class="csl-entry">
+Kurz, A. S. (2021). <em>Statistical rethinking with brms, <span class="nocase">ggplot2</span>, and the tidyverse: <span>Second Edition</span></em> (version 0.2.0). <a href="https://bookdown.org/content/4857/">https://bookdown.org/content/4857/</a>
+</div>
+<div id="ref-kurzDoingBayesianData2021" class="csl-entry">
+Kurz, A. S. (2020a). <em>Doing <span>Bayesian</span> data analysis in brms and the tidyverse</em> (version 0.4.0). <a href="https://bookdown.org/content/3686/">https://bookdown.org/content/3686/</a>
+</div>
+<div id="ref-kurzStatisticalRethinkingBrms2020" class="csl-entry">
+Kurz, A. S. (2020b). <em>Statistical rethinking with brms, <span class="nocase">ggplot2</span>, and the tidyverse</em> (version 1.2.0). <a href="https://doi.org/10.5281/zenodo.3693202">https://doi.org/10.5281/zenodo.3693202</a>
+</div>
+<div id="ref-little2019statistical" class="csl-entry">
+Little, R. J., &amp; Rubin, D. B. (2019). <em>Statistical analysis with missing data</em> (third, Vol. 793). <span>John Wiley &amp; Sons</span>. <a href="https://www.wiley.com/en-us/Statistical+Analysis+with+Missing+Data%2C+3rd+Edition-p-9780470526798">https://www.wiley.com/en-us/Statistical+Analysis+with+Missing+Data%2C+3rd+Edition-p-9780470526798</a>
+</div>
+<div id="ref-mcelreathStatisticalRethinkingBayesian2020" class="csl-entry">
+McElreath, R. (2020). <em>Statistical rethinking: <span>A Bayesian</span> course with examples in <span>R</span> and <span>Stan</span></em> (Second Edition). <span>CRC Press</span>. <a href="https://xcelab.net/rm/statistical-rethinking/">https://xcelab.net/rm/statistical-rethinking/</a>
+</div>
+<div id="ref-mcelreathStatisticalRethinkingBayesian2015" class="csl-entry">
+McElreath, R. (2015). <em>Statistical rethinking: <span>A Bayesian</span> course with examples in <span>R</span> and <span>Stan</span></em>. <span>CRC press</span>. <a href="https://xcelab.net/rm/statistical-rethinking/">https://xcelab.net/rm/statistical-rethinking/</a>
+</div>
+<div id="ref-R-base" class="csl-entry">
+R Core Team. (2020). <em>R: <span>A</span> language and environment for statistical computing</em>. <span>R Foundation for Statistical Computing</span>. <a href="https://www.R-project.org/">https://www.R-project.org/</a>
+</div>
+<div id="ref-walkerElementsOfStatisticalModeling2018" class="csl-entry">
+Walker, J. A. (2018). <em>Elements of statistical modeling for experimental biology</em> ("2020–11th–22" ed.). <a href="https://www.middleprofessor.com/files/applied-biostatistics_bookdown/_book/">https://www.middleprofessor.com/files/applied-biostatistics_bookdown/_book/</a>
+</div>
+<div id="ref-R-tidyverse" class="csl-entry">
+Wickham, H. (2019). <em><span class="nocase">tidyverse</span>: <span>Easily</span> install and load the ’tidyverse’</em>. <a href="https://CRAN.R-project.org/package=tidyverse">https://CRAN.R-project.org/package=tidyverse</a>
+</div>
+<div id="ref-wickhamWelcomeTidyverse2019" class="csl-entry">
+Wickham, H., Averick, M., Bryan, J., Chang, W., McGowan, L. D., François, R., Grolemund, G., Hayes, A., Henry, L., Hester, J., Kuhn, M., Pedersen, T. L., Miller, E., Bache, S. M., Müller, K., Ooms, J., Robinson, D., Seidel, D. P., Spinu, V., … Yutani, H. (2019). Welcome to the tidyverse. <em>Journal of Open Source Software</em>, <em>4</em>(43), 1686. <a href="https://doi.org/10.21105/joss.01686">https://doi.org/10.21105/joss.01686</a>
+</div>
+</div>
+</div>
+<div class="footnotes">
+<hr />
+<ol>
+<li id="fn1"><p>As has been noted by others <span class="citation">(e.g., <a href="#ref-mcelreathStatisticalRethinkingBayesian2020" role="doc-biblioref">McElreath, 2020</a>)</span> missing-data jargon is generally awful. I’m so sorry you have to content with acronyms like MCAR, MAR (missing at random) and MNAR (missing not at random), but that’s just the way it is. If you’re not sure about the difference between the three, do consider spending some time with one of the missing data texts I recommended, above.<a href="#fnref1" class="footnote-back">↩︎</a></p></li>
+</ol>
+</div>
