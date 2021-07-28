@@ -178,7 +178,7 @@ fit1 <- brm(
 )
 ```
 
-The priors in this post follow the weakly-regularizing approach McElreath advocated for in thie second edition of this text. Also note that because we are allowing the residual standard deviation parameter to vary by `tx`, the **brms** default is to use the log link, which will become important for interpretation and post processing. Here's the parameter summary.
+The priors in this post follow the weakly-regularizing approach McElreath advocated for in the second edition of this text. Also note that because we are allowing the residual standard deviation parameter to vary by `tx`, the **brms** default is to use the log link, which will become important for interpretation and post processing. Here's the parameter summary.
 
 ```{r}
 print(fit1)
@@ -317,7 +317,7 @@ ggplot(aes(x = value, y = parameter)) +
         axis.ticks.y = element_blank())
 ```
 
-If you look back at the data-generating values from above, they're where we'd hope them to be.
+If you look back at the data-generating values from above, our effect sizes are about where we'd hope them to be.
 
 ### But what about that one-step imputation?
 

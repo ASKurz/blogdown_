@@ -158,7 +158,7 @@ head(d)</code></pre>
   cores = 4,
   seed = 1
 )</code></pre>
-<p>The priors in this post follow the weakly-regularizing approach McElreath advocated for in thie second edition of this text. Also note that because we are allowing the residual standard deviation parameter to vary by <code>tx</code>, the <strong>brms</strong> default is to use the log link, which will become important for interpretation and post processing. Here’s the parameter summary.</p>
+<p>The priors in this post follow the weakly-regularizing approach McElreath advocated for in the second edition of this text. Also note that because we are allowing the residual standard deviation parameter to vary by <code>tx</code>, the <strong>brms</strong> default is to use the log link, which will become important for interpretation and post processing. Here’s the parameter summary.</p>
 <pre class="r"><code>print(fit1)</code></pre>
 <pre><code>##  Family: MV(gaussian, gaussian) 
 ##   Links: mu = identity; sigma = log
@@ -302,7 +302,7 @@ ggplot(aes(x = value, y = parameter)) +
   theme(axis.text.y = element_text(hjust = 0),
         axis.ticks.y = element_blank())</code></pre>
 <p><img src="{{< blogdown/postref >}}index_files/figure-html/d_plot-1.png" width="576" style="display: block; margin: auto;" /></p>
-<p>If you look back at the data-generating values from above, they’re where we’d hope them to be.</p>
+<p>If you look back at the data-generating values from above, our effect sizes are about where we’d hope them to be.</p>
 </div>
 <div id="but-what-about-that-one-step-imputation" class="section level3">
 <h3>But what about that one-step imputation?</h3>
