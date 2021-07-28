@@ -373,5 +373,5 @@ sessionInfo()
 
 ## References
 
-[^1]: As has been noted by others [e.g., @mcelreathStatisticalRethinkingBayesian2020] missing-data jargon is generally awful. I'm so sorry you have to content with acronyms like MCAR, MAR (missing at random) and MNAR (missing not at random), but that's just the way it is. If you're not sure about the difference between the three, do consider spending some time with one of the missing data texts I recommended, above.
+[^1]: As has been noted by others [e.g., @mcelreathStatisticalRethinkingBayesian2020] missing-data jargon is generally awful. I'm so sorry you have to contend with acronyms like MCAR, MAR (missing at random) and MNAR (missing not at random), but that's just the way it is. If you're not sure about the difference between the three, do consider spending some time with one of the missing data texts I recommended, above.
 
