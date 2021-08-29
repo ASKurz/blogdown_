@@ -36,11 +36,10 @@ interests:
 organizations:
 - name: VISN 17 Center of Excellence
   url: https://www.mirecc.va.gov/visn17/
-role: Clinical Research Psychologist
-- name: The
-Chicago School of Professional Psychology
+  role: Clinical Research Psychologist
+- name: The Chicago School of Professional Psychology
   url: https://www.thechicagoschool.edu/learn/los-angeles/?utm_campus=105
-role: Adjunct Faculty
+  role: Adjunct Faculty
 
 social:
 # - icon: envelope
