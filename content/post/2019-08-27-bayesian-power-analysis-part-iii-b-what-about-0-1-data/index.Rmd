@@ -6,7 +6,9 @@ slug: bayesian-power-analysis-part-iii-b
 categories: []
 tags:
   - Bayesian
+  - binomial
   - brms
+  - logistic regression
   - power
   - R
   - tidyverse
