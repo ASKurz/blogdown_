@@ -262,10 +262,11 @@ p %>%
               mutate(binary = factor(binary, levels = c("PASS", "FAIL"))),
             aes(y = pass, 
                 side = ifelse(pass == 0, "top", "bottom"),
-                fill = binary),
+                fill = binary, color = binary),
             slab_type = "histogram",
-            scale = 0.4, breaks = 30) +
-  scale_fill_manual("Bechdel test", values = c("#009E73", "#D55E00")) +
+            scale = 0.4, breaks = 40, size = 1/2) +
+  scale_fill_manual("Bechdel test", values = c(alpha("#009E73", .7), alpha("#D55E00", .7))) +
+  scale_color_manual("Bechdel test", values = c("#009E73", "#D55E00")) +
   scale_x_continuous("budget (in 2013 dollars)",
                      breaks = c(0, 1e8, 2e8, 3e8, 4e8),
                      labels = c(0, str_c(1:4 * 100, " mill")),

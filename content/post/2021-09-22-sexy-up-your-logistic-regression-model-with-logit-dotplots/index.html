@@ -273,10 +273,11 @@ glimpse(p)</code></pre>
               mutate(binary = factor(binary, levels = c(&quot;PASS&quot;, &quot;FAIL&quot;))),
             aes(y = pass, 
                 side = ifelse(pass == 0, &quot;top&quot;, &quot;bottom&quot;),
-                fill = binary),
+                fill = binary, color = binary),
             slab_type = &quot;histogram&quot;,
-            scale = 0.4, breaks = 30) +
-  scale_fill_manual(&quot;Bechdel test&quot;, values = c(&quot;#009E73&quot;, &quot;#D55E00&quot;)) +
+            scale = 0.4, breaks = 40, size = 1/2) +
+  scale_fill_manual(&quot;Bechdel test&quot;, values = c(alpha(&quot;#009E73&quot;, .7), alpha(&quot;#D55E00&quot;, .7))) +
+  scale_color_manual(&quot;Bechdel test&quot;, values = c(&quot;#009E73&quot;, &quot;#D55E00&quot;)) +
   scale_x_continuous(&quot;budget (in 2013 dollars)&quot;,
                      breaks = c(0, 1e8, 2e8, 3e8, 4e8),
                      labels = c(0, str_c(1:4 * 100, &quot; mill&quot;)),
