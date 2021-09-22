@@ -1,0 +1,380 @@
+---
+title: Sexy up your logistic regression model with logit dotplots
+author: A. Solomon Kurz
+date: '2021-09-22'
+slug: ''
+categories: []
+tags:
+  - binomial
+  - ggdist
+  - logistic regression
+  - plot
+  - R
+  - tidyverse
+  - tutorial
+subtitle: ''
+summary: ''
+authors: []
+lastmod: '2021-09-22T09:40:23-05:00'
+featured: no
+image:
+  caption: ''
+  focal_point: ''
+  preview_only: no
+projects: []
+bibliography: /Users/solomonkurz/Dropbox/blogdown/content/post/my_blog.bib
+biblio-style: apalike
+csl: /Users/solomonkurz/Dropbox/blogdown/content/post/apa.csl  
+link-citations: yes
+---
+
+<script src="{{< blogdown/postref >}}index_files/header-attrs/header-attrs.js"></script>
+
+
+<div id="what" class="section level2">
+<h2>What</h2>
+<p>When you fit a logistic regression model, there are a lot of ways to display the results. One of the least inspiring ways is to report a summary of the coefficients in prose or within a table. A more artistic approach is to show the fitted line in a plot, which often looks nice due to the curvy nature of logistic regression lines. The major shortcoming in typical logistic regression line plots is they usually don’t show the data due to overplottong across the <span class="math inline">\(y\)</span>-axis. Happily, new developments with Matthew Kay’s <span class="citation">(<a href="#ref-R-ggdist" role="doc-biblioref">2021</a>)</span> <a href="https://mjskay.github.io/ggdist/"><strong>ggdist</strong> package</a> make it easy to show your data when you plot your logistic regression curves. In this post I’ll show you how.</p>
+<div id="i-make-assumptions." class="section level3">
+<h3>I make assumptions.</h3>
+<p>For this post, I’m presuming some background knowledge:</p>
+<ul>
+<li><p>You should be familiar with logistic regression. For introductions, I recommend Roback and Legler’s <span class="citation">(<a href="#ref-roback2021beyond" role="doc-biblioref">2021</a>)</span> online text or James, Witten, Hastie, and Tibshirani’s <span class="citation">(<a href="#ref-james2021AnIntroduction" role="doc-biblioref">2021</a>)</span> online text. Both texts are written from a frequentist perspective, which is also the framework we’ll be using in this blog post. For Bayesian introductions to logistic regression, I recommend either edition of McElreath’s text <span class="citation">(<a href="#ref-mcelreathStatisticalRethinkingBayesian2020" role="doc-biblioref">2020</a>, <a href="#ref-mcelreathStatisticalRethinkingBayesian2015" role="doc-biblioref">2015</a>)</span>; Kruschke’s <span class="citation">(<a href="#ref-kruschkeDoingBayesianData2015" role="doc-biblioref">2015</a>)</span> text; or Gelman, Hill, and Vehtari’s <span class="citation">(<a href="#ref-gelmanRegressionOtherStories2020" role="doc-biblioref">2020</a>)</span> text.</p></li>
+<li><p>All code is in <strong>R</strong> <span class="citation">(<a href="#ref-R-base" role="doc-biblioref">R Core Team, 2020</a>)</span>. Data wrangling and plotting were done with help from the <strong>tidyverse</strong> <span class="citation">(<a href="#ref-R-tidyverse" role="doc-biblioref">Wickham, 2019</a>; <a href="#ref-wickhamWelcomeTidyverse2019" role="doc-biblioref">Wickham et al., 2019</a>)</span> and <strong>broom</strong> <span class="citation">(<a href="#ref-R-broom" role="doc-biblioref">Robinson et al., 2021</a>)</span>. The data are from the <a href="https://github.com/debruine/faux"><strong>fivethirtyeight</strong> package</a> <span class="citation">(<a href="#ref-fivethirtyeight2018" role="doc-biblioref">Kim et al., 2018</a>, <a href="#ref-R-fivethirtyeight" role="doc-biblioref">2020</a>)</span>.</p></li>
+</ul>
+<p>Here we load our primary <strong>R</strong> packages.</p>
+<pre class="r"><code>library(tidyverse)
+library(fivethirtyeight)
+library(broom)
+library(ggdist)</code></pre>
+</div>
+<div id="we-need-data." class="section level3">
+<h3>We need data.</h3>
+<p>In this post, we’ll be working with the <code>bechdel</code> data set. From the documentation, we read these are “the raw data behind the story ‘<a href="https://fivethirtyeight.com/features/the-dollar-and-cents-case-against-hollywoods-exclusion-of-women/">The Dollar-And-Cents Case Against Hollywood’s Exclusion of Women</a>.’”</p>
+<pre class="r"><code>data(bechdel)
+
+glimpse(bechdel)</code></pre>
+<pre><code>## Rows: 1,794
+## Columns: 15
+## $ year          &lt;int&gt; 2013, 2012, 2013, 2013, 2013, 2013, 2013, 2013, 2013, 20…
+## $ imdb          &lt;chr&gt; &quot;tt1711425&quot;, &quot;tt1343727&quot;, &quot;tt2024544&quot;, &quot;tt1272878&quot;, &quot;tt0…
+## $ title         &lt;chr&gt; &quot;21 &amp; Over&quot;, &quot;Dredd 3D&quot;, &quot;12 Years a Slave&quot;, &quot;2 Guns&quot;, &quot;…
+## $ test          &lt;chr&gt; &quot;notalk&quot;, &quot;ok-disagree&quot;, &quot;notalk-disagree&quot;, &quot;notalk&quot;, &quot;m…
+## $ clean_test    &lt;ord&gt; notalk, ok, notalk, notalk, men, men, notalk, ok, ok, no…
+## $ binary        &lt;chr&gt; &quot;FAIL&quot;, &quot;PASS&quot;, &quot;FAIL&quot;, &quot;FAIL&quot;, &quot;FAIL&quot;, &quot;FAIL&quot;, &quot;FAIL&quot;, …
+## $ budget        &lt;int&gt; 13000000, 45000000, 20000000, 61000000, 40000000, 225000…
+## $ domgross      &lt;dbl&gt; 25682380, 13414714, 53107035, 75612460, 95020213, 383624…
+## $ intgross      &lt;dbl&gt; 42195766, 40868994, 158607035, 132493015, 95020213, 1458…
+## $ code          &lt;chr&gt; &quot;2013FAIL&quot;, &quot;2012PASS&quot;, &quot;2013FAIL&quot;, &quot;2013FAIL&quot;, &quot;2013FAI…
+## $ budget_2013   &lt;int&gt; 13000000, 45658735, 20000000, 61000000, 40000000, 225000…
+## $ domgross_2013 &lt;dbl&gt; 25682380, 13611086, 53107035, 75612460, 95020213, 383624…
+## $ intgross_2013 &lt;dbl&gt; 42195766, 41467257, 158607035, 132493015, 95020213, 1458…
+## $ period_code   &lt;int&gt; 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,…
+## $ decade_code   &lt;int&gt; 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,…</code></pre>
+<p>The data were collected on Hollywood movies made between 1970 and 2013.</p>
+<pre class="r"><code>bechdel %&gt;% 
+  pull(year) %&gt;% 
+  range()</code></pre>
+<pre><code>## [1] 1970 2013</code></pre>
+<p>Our focal variable will be <code>binary</code>, which indicates whether a given movie passed the Bechdel test. Of the <span class="math inline">\(1{,}794\)</span> movies in the data set, just under half of them passed.</p>
+<pre class="r"><code>bechdel %&gt;% 
+  count(binary) %&gt;% 
+  mutate(percent = 100 * n / sum(n))</code></pre>
+<pre><code>## # A tibble: 2 × 3
+##   binary     n percent
+##   &lt;chr&gt;  &lt;int&gt;   &lt;dbl&gt;
+## 1 FAIL     991    55.2
+## 2 PASS     803    44.8</code></pre>
+<p>Our sole predictor variable will be <code>budget_2013</code>, each movie’s budget as expressed in 2013 dollars.</p>
+<pre class="r"><code>bechdel %&gt;% 
+  ggplot(aes(x = budget_2013)) +
+  geom_histogram() +
+  facet_wrap(~ binary, ncol = 1)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-5-1.png" width="672" /></p>
+<p>To make our lives a little easier, we’ll convert the character variable <code>binary</code> into a conventional <span class="math inline">\(0/1\)</span> numeric variable called <code>pass</code>.</p>
+<pre class="r"><code># compute
+bechdel &lt;- bechdel  %&gt;% 
+  mutate(pass = ifelse(binary == &quot;FAIL&quot;, 0, 1)) 
+
+# compare
+bechdel %&gt;% 
+  select(binary, pass) %&gt;% 
+  head()</code></pre>
+<pre><code>## # A tibble: 6 × 2
+##   binary  pass
+##   &lt;chr&gt;  &lt;dbl&gt;
+## 1 FAIL       0
+## 2 PASS       1
+## 3 FAIL       0
+## 4 FAIL       0
+## 5 FAIL       0
+## 6 FAIL       0</code></pre>
+</div>
+</div>
+<div id="model" class="section level2">
+<h2>Model</h2>
+<p>We can express our statistical model in formal notation as</p>
+<p><span class="math display">\[
+\begin{align*}
+\text{pass}_i &amp; \sim \operatorname{Binomial}(n = 1, p_i) \\
+\operatorname{logit}(p_i) &amp; = \beta_0 + \beta_1 \text{budget_2013}_i,
+\end{align*}
+\]</span></p>
+<p>where we use the conventional logit link to ensure the binomial probabilities are restricted within the bounds of zero and one. We can fit such a model with the base <strong>R</strong> <code>glm()</code> function like so.</p>
+<pre class="r"><code>fit &lt;- glm(
+  data = bechdel,
+  family = binomial,
+  pass ~ 1 + budget_2013)</code></pre>
+<p>A conventional way to present the results would in a coefficient table, the rudiments of which we can get from the <code>broom::tidy()</code> function.</p>
+<pre class="r"><code>tidy(fit) %&gt;% 
+  knitr::kable()</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="left">term</th>
+<th align="right">estimate</th>
+<th align="right">std.error</th>
+<th align="right">statistic</th>
+<th align="right">p.value</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">(Intercept)</td>
+<td align="right">0.1113148</td>
+<td align="right">0.0689661</td>
+<td align="right">1.614051</td>
+<td align="right">0.1065163</td>
+</tr>
+<tr class="even">
+<td align="left">budget_2013</td>
+<td align="right">0.0000000</td>
+<td align="right">0.0000000</td>
+<td align="right">-6.249724</td>
+<td align="right">0.0000000</td>
+</tr>
+</tbody>
+</table>
+<p>Because of the scale of the <code>budget_2013</code> variable, its point estimate and standard errors are both very small. To give a little perspective, here is the expected decrease in log-odds for a budget increase in <span class="math inline">\(\$100{,}000{,}000\)</span>.</p>
+<pre class="r"><code>c(coef(fit)[2], confint(fit)[2, ]) * 1e8</code></pre>
+<pre><code>## budget_2013       2.5 %      97.5 % 
+##  -0.5972374  -0.7875178  -0.4126709</code></pre>
+<p>Note how we added in the 95% confidence intervals for good measure.</p>
+</div>
+<div id="line-plots" class="section level2">
+<h2>Line plots</h2>
+<p>Now we have interpreted the model in the dullest way possible, with a table and in prose, let’s practice plotting the results. First, we’ll use the widely-used method of displaying only the fitted line.</p>
+<div id="fitted-line-wo-data." class="section level3">
+<h3>Fitted line w/o data.</h3>
+<p>We can use the <code>predict()</code> function along with some post-processing strategies from <a href="https://twitter.com/ucfagls">Gavin Simpson</a>’s fine blog post, <a href="https://fromthebottomoftheheap.net/2018/12/10/confidence-intervals-for-glms/"><em>Confidence intervals for GLMs</em></a>, to prepare the data necessary for making our plot.</p>
+<pre class="r"><code># define the new data
+nd &lt;- tibble(budget_2013 = seq(from = 0, to = 500000000, length.out = 100))
+
+p &lt;-
+  # compute the fitted lines and SE&#39;s
+  predict(fit,
+          newdata = nd,
+          type = &quot;link&quot;,
+          se.fit = TRUE) %&gt;% 
+  # wrangle
+  data.frame() %&gt;% 
+  mutate(ll = fit - 1.96 * se.fit,
+         ul = fit + 1.96 * se.fit) %&gt;% 
+  select(-residual.scale, -se.fit) %&gt;% 
+  mutate_all(plogis) %&gt;%
+  bind_cols(nd)
+
+# what have we done?
+glimpse(p)</code></pre>
+<pre><code>## Rows: 100
+## Columns: 4
+## $ fit         &lt;dbl&gt; 0.5278000, 0.5202767, 0.5127442, 0.5052059, 0.4976652, 0.4…
+## $ ll          &lt;dbl&gt; 0.4940356, 0.4881515, 0.4821772, 0.4760998, 0.4699043, 0.4…
+## $ ul          &lt;dbl&gt; 0.5613120, 0.5522351, 0.5432161, 0.5342767, 0.5254405, 0.5…
+## $ budget_2013 &lt;dbl&gt; 0, 5050505, 10101010, 15151515, 20202020, 25252525, 303030…</code></pre>
+<p>Here’s a conventional line plot for our logistic regression model.</p>
+<pre class="r"><code>p %&gt;% 
+  ggplot(aes(x = budget_2013, y = fit)) +
+  geom_ribbon(aes(ymin = ll, ymax = ul),
+              alpha = 1/2) +
+  geom_line() +
+  scale_y_continuous(&quot;probability of passing&quot;, 
+                     expand = c(0, 0), limits = 0:1)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-11-1.png" width="672" /></p>
+<p>The fitted line is in black and the semitransparent grey ribbon marks of the 95% confidence intervals. The plot does a nice job showing how movies with larger budgets tend to do a worse job passing the Bechdel test.</p>
+</div>
+<div id="improve-the-visualization-by-adding-data." class="section level3">
+<h3>Improve the visualization by adding data.</h3>
+<p>If you wanted to add the data to our plot, a naïve approach might be to use <code>geom_point()</code>.</p>
+<pre class="r"><code>p %&gt;% 
+  ggplot(aes(x = budget_2013, y = fit)) +
+  geom_ribbon(aes(ymin = ll, ymax = ul),
+              alpha = 1/2) +
+  geom_line() +
+  geom_point(data = bechdel,
+             aes(y = pass),
+             alpha = 1/2) +
+  scale_y_continuous(&quot;probability of passing&quot;, 
+                     expand = expansion(mult = 0.01))</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-12-1.png" width="672" /></p>
+<p>Even by making the dots semitransparent with the <code>alpha</code> parameter, the overplotting issue makes it very difficult to make sense of the data. One of the approaches favored by Gelman and colleagues <span class="citation">(<a href="#ref-gelmanRegressionOtherStories2020" role="doc-biblioref">2020</a>)</span> is to add a little horizontal jittering. We can do that with <code>geom_jitter()</code>.</p>
+<pre class="r"><code>p %&gt;% 
+  ggplot(aes(x = budget_2013, y = fit)) +
+  geom_ribbon(aes(ymin = ll, ymax = ul),
+              alpha = 1/2) +
+  geom_line() +
+  geom_jitter(data = bechdel,
+              aes(y = pass),
+              size = 1/4, alpha = 1/2, height = 0.05) +
+  scale_y_continuous(&quot;probability of passing&quot;, 
+                     expand = c(0, 0))</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-13-1.png" width="672" /></p>
+<p>Though a big improvement, this approach still doesn’t do the best job depicting the distribution of the <code>budget_2013</code> values. If possible, it would be better to explicitly depict the <code>budget_2013</code> distributions for each level of <code>pass</code> with something more like histograms. In his blogpost, <a href="https://www.barelysignificant.com/post/glm/"><em>Using R to make sense of the generalised linear model</em></a>, <a href="https://twitter.com/lnalborczyk">Ladislas Nalborczyk</a> showed how you could do so with a custom function he named <code>logit_dotplot()</code>, the source code for which you can find <a href="https://github.com/lnalborczyk/lnalborczyk.github.io/blob/master/code/logit_dotplot.R">here</a> on his GitHub. Since Nalborczyk’s post, this kind of functionality has since been built into Kay’s <strong>ggdist</strong> package. Here’s what it looks like.</p>
+<pre class="r"><code>p %&gt;% 
+  ggplot(aes(x = budget_2013)) +
+  geom_ribbon(aes(ymin = ll, ymax = ul),
+              alpha = 1/2) +
+  geom_line(aes(y = fit)) +
+  stat_dots(data = bechdel,
+            aes(y = pass, side = ifelse(pass == 0, &quot;top&quot;, &quot;bottom&quot;)),
+            scale = 1/3) +
+  scale_y_continuous(&quot;probability of passing&quot;,
+                     expand = c(0, 0))</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-14-1.png" width="672" /></p>
+<p>With the <code>stat_dots()</code> function, we added dotplots, which are nifty alternatives to histograms which display each data value as an individual dot. With the <code>side</code> argument, we used a conditional statement to tell <code>stat_dots()</code> we wanted some of the <code>budget_2013</code> to be displayed on the bottom and other of those values to be displayed on the top. With the <code>scale</code> argument, we indicated how much of the total space within the range of the <span class="math inline">\(y\)</span>-axis we wanted the dot plot distributions to take up.</p>
+<p>For kicks and giggles, here’s a more polished version of what such a plot could look like.</p>
+<pre class="r"><code>p %&gt;% 
+  ggplot(aes(x = budget_2013)) +
+  geom_ribbon(aes(ymin = ll, ymax = ul),
+              alpha = 1/2) +
+  geom_line(aes(y = fit)) +
+  stat_dots(data = bechdel %&gt;% 
+              mutate(binary = factor(binary, levels = c(&quot;PASS&quot;, &quot;FAIL&quot;))),
+            aes(y = pass, 
+                side = ifelse(pass == 0, &quot;top&quot;, &quot;bottom&quot;),
+                color = binary),
+            scale = 0.4, shape = 19) +
+  scale_color_manual(&quot;Bechdel test&quot;, values = c(&quot;#009E73&quot;, &quot;#D55E00&quot;)) +
+  scale_x_continuous(&quot;budget (in 2013 dollars)&quot;,
+                     breaks = c(0, 1e8, 2e8, 3e8, 4e8),
+                     labels = c(0, str_c(1:4 * 100, &quot; mill&quot;)),
+                     expand = c(0, 0), limits = c(0, 48e7)) +
+  scale_y_continuous(&quot;probability of passing&quot;,
+                     expand = c(0, 0)) +
+  theme(panel.grid = element_blank())</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-15-1.png" width="672" /></p>
+<p>Other distributional forms are possible, too. For example, here we set <code>slab_type = "histogram"</code> within the <code>stat_slab()</code> function to swap out the dotplots for histograms.</p>
+<pre class="r"><code>p %&gt;% 
+  ggplot(aes(x = budget_2013)) +
+  geom_ribbon(aes(ymin = ll, ymax = ul),
+              alpha = 1/2) +
+  geom_line(aes(y = fit)) +
+  # the magic lives here
+  stat_slab(data = bechdel %&gt;% 
+              mutate(binary = factor(binary, levels = c(&quot;PASS&quot;, &quot;FAIL&quot;))),
+            aes(y = pass, 
+                side = ifelse(pass == 0, &quot;top&quot;, &quot;bottom&quot;),
+                fill = binary),
+            slab_type = &quot;histogram&quot;,
+            scale = 0.4, breaks = 30) +
+  scale_fill_manual(&quot;Bechdel test&quot;, values = c(&quot;#009E73&quot;, &quot;#D55E00&quot;)) +
+  scale_x_continuous(&quot;budget (in 2013 dollars)&quot;,
+                     breaks = c(0, 1e8, 2e8, 3e8, 4e8),
+                     labels = c(0, str_c(1:4 * 100, &quot; mill&quot;)),
+                     expand = c(0, 0), limits = c(0, 48e7)) +
+  scale_y_continuous(&quot;probability of passing&quot;,
+                     expand = c(0, 0)) +
+  theme(panel.grid = element_blank())</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-16-1.png" width="672" /></p>
+<p>That’s a wrap, friends. No more lonely logistic curves absent data. Flaunt those sexy data with <strong>ggdist</strong>.</p>
+</div>
+</div>
+<div id="session-info" class="section level2">
+<h2>Session info</h2>
+<pre class="r"><code>sessionInfo()</code></pre>
+<pre><code>## R version 4.1.1 (2021-08-10)
+## Platform: x86_64-apple-darwin17.0 (64-bit)
+## Running under: macOS Catalina 10.15.7
+## 
+## Matrix products: default
+## BLAS:   /Library/Frameworks/R.framework/Versions/4.1/Resources/lib/libRblas.0.dylib
+## LAPACK: /Library/Frameworks/R.framework/Versions/4.1/Resources/lib/libRlapack.dylib
+## 
+## locale:
+## [1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+## 
+## attached base packages:
+## [1] stats     graphics  grDevices utils     datasets  methods   base     
+## 
+## other attached packages:
+##  [1] ggdist_3.0.0          broom_0.7.9           fivethirtyeight_0.6.1
+##  [4] forcats_0.5.1         stringr_1.4.0         dplyr_1.0.7          
+##  [7] purrr_0.3.4           readr_2.0.1           tidyr_1.1.3          
+## [10] tibble_3.1.4          ggplot2_3.3.5         tidyverse_1.3.1      
+## 
+## loaded via a namespace (and not attached):
+##  [1] Rcpp_1.0.7           lubridate_1.7.10     assertthat_0.2.1    
+##  [4] digest_0.6.27        utf8_1.2.2           R6_2.5.1            
+##  [7] cellranger_1.1.0     backports_1.2.1      reprex_2.0.1        
+## [10] evaluate_0.14        highr_0.9            httr_1.4.2          
+## [13] blogdown_1.5         pillar_1.6.2         rlang_0.4.11        
+## [16] readxl_1.3.1         rstudioapi_0.13      jquerylib_0.1.4     
+## [19] rmarkdown_2.10       labeling_0.4.2       munsell_0.5.0       
+## [22] compiler_4.1.1       modelr_0.1.8         xfun_0.25           
+## [25] pkgconfig_2.0.3      htmltools_0.5.2      tidyselect_1.1.1    
+## [28] bookdown_0.23        fansi_0.5.0          crayon_1.4.1        
+## [31] tzdb_0.1.2           dbplyr_2.1.1         withr_2.4.2         
+## [34] MASS_7.3-54          grid_4.1.1           distributional_0.2.2
+## [37] jsonlite_1.7.2       gtable_0.3.0         lifecycle_1.0.0     
+## [40] DBI_1.1.1            magrittr_2.0.1       scales_1.1.1        
+## [43] cli_3.0.1            stringi_1.7.4        farver_2.1.0        
+## [46] fs_1.5.0             xml2_1.3.2           bslib_0.3.0         
+## [49] ellipsis_0.3.2       generics_0.1.0       vctrs_0.3.8         
+## [52] tools_4.1.1          glue_1.4.2           hms_1.1.0           
+## [55] fastmap_1.1.0        yaml_2.2.1           colorspace_2.0-2    
+## [58] rvest_1.0.1          knitr_1.33           haven_2.4.3         
+## [61] sass_0.4.0</code></pre>
+</div>
+<div id="references" class="section level2 unnumbered">
+<h2>References</h2>
+<div id="refs" class="references csl-bib-body hanging-indent" line-spacing="2">
+<div id="ref-gelmanRegressionOtherStories2020" class="csl-entry">
+Gelman, A., Hill, J., &amp; Vehtari, A. (2020). <em>Regression and other stories</em>. <span>Cambridge University Press</span>. <a href="https://doi.org/10.1017/9781139161879">https://doi.org/10.1017/9781139161879</a>
+</div>
+<div id="ref-james2021AnIntroduction" class="csl-entry">
+James, G., Witten, D., Hastie, T., &amp; Tibshirani, R. (2021). <em>An introduction to statistical learning with applications in <span>R</span></em> (Second Edition). <span>Springer</span>. <a href="https://web.stanford.edu/~hastie/ISLRv2_website.pdf">https://web.stanford.edu/~hastie/ISLRv2_website.pdf</a>
+</div>
+<div id="ref-R-ggdist" class="csl-entry">
+Kay, M. (2021). <em><span class="nocase">ggdist</span>: <span>Visualizations</span> of distributions and uncertainty</em> [Manual]. <a href="https://CRAN.R-project.org/package=ggdist">https://CRAN.R-project.org/package=ggdist</a>
+</div>
+<div id="ref-fivethirtyeight2018" class="csl-entry">
+Kim, A. Y., Ismay, C., &amp; Chunn, J. (2018). The fivethirtyeight <span>R</span> package: ’Tame data’ principles for introductory statistics and data science courses. <em>Technology Innovations in Statistics Education</em>, <em>11</em>(1). <a href="https://escholarship.org/uc/item/0rx1231m">https://escholarship.org/uc/item/0rx1231m</a>
+</div>
+<div id="ref-R-fivethirtyeight" class="csl-entry">
+Kim, A. Y., Ismay, C., &amp; Chunn, J. (2020). <em><span class="nocase">fivethirtyeight</span>: <span>Data</span> and code behind the stories and interactives at <span>FiveThirtyEight</span></em> [Manual]. <a href="https://github.com/rudeboybert/fivethirtyeight">https://github.com/rudeboybert/fivethirtyeight</a>
+</div>
+<div id="ref-kruschkeDoingBayesianData2015" class="csl-entry">
+Kruschke, J. K. (2015). <em>Doing <span>Bayesian</span> data analysis: <span>A</span> tutorial with <span>R</span>, <span>JAGS</span>, and <span>Stan</span></em>. <span>Academic Press</span>. <a href="https://sites.google.com/site/doingbayesiandataanalysis/">https://sites.google.com/site/doingbayesiandataanalysis/</a>
+</div>
+<div id="ref-mcelreathStatisticalRethinkingBayesian2020" class="csl-entry">
+McElreath, R. (2020). <em>Statistical rethinking: <span>A Bayesian</span> course with examples in <span>R</span> and <span>Stan</span></em> (Second Edition). <span>CRC Press</span>. <a href="https://xcelab.net/rm/statistical-rethinking/">https://xcelab.net/rm/statistical-rethinking/</a>
+</div>
+<div id="ref-mcelreathStatisticalRethinkingBayesian2015" class="csl-entry">
+McElreath, R. (2015). <em>Statistical rethinking: <span>A Bayesian</span> course with examples in <span>R</span> and <span>Stan</span></em>. <span>CRC press</span>. <a href="https://xcelab.net/rm/statistical-rethinking/">https://xcelab.net/rm/statistical-rethinking/</a>
+</div>
+<div id="ref-R-base" class="csl-entry">
+R Core Team. (2020). <em>R: <span>A</span> language and environment for statistical computing</em>. <span>R Foundation for Statistical Computing</span>. <a href="https://www.R-project.org/">https://www.R-project.org/</a>
+</div>
+<div id="ref-roback2021beyond" class="csl-entry">
+Roback, P., &amp; Legler, J. (2021). <em>Beyond multiple linear regression: <span>Applied</span> generalized linear models and multilevel models in <span>R</span></em>. <span>CRC Press</span>. <a href="https://bookdown.org/roback/bookdown-BeyondMLR/">https://bookdown.org/roback/bookdown-BeyondMLR/</a>
+</div>
+<div id="ref-R-broom" class="csl-entry">
+Robinson, D., Hayes, A., &amp; Couch, S. (2021). <em><span class="nocase">broom</span>: <span>Convert</span> statistical objects into tidy tibbles</em> [Manual]. <a href="https://CRAN.R-project.org/package=broom">https://CRAN.R-project.org/package=broom</a>
+</div>
+<div id="ref-R-tidyverse" class="csl-entry">
+Wickham, H. (2019). <em><span class="nocase">tidyverse</span>: <span>Easily</span> install and load the ’tidyverse’</em>. <a href="https://CRAN.R-project.org/package=tidyverse">https://CRAN.R-project.org/package=tidyverse</a>
+</div>
+<div id="ref-wickhamWelcomeTidyverse2019" class="csl-entry">
+Wickham, H., Averick, M., Bryan, J., Chang, W., McGowan, L. D., François, R., Grolemund, G., Hayes, A., Henry, L., Hester, J., Kuhn, M., Pedersen, T. L., Miller, E., Bache, S. M., Müller, K., Ooms, J., Robinson, D., Seidel, D. P., Spinu, V., … Yutani, H. (2019). Welcome to the tidyverse. <em>Journal of Open Source Software</em>, <em>4</em>(43), 1686. <a href="https://doi.org/10.21105/joss.01686">https://doi.org/10.21105/joss.01686</a>
+</div>
+</div>
+</div>
