@@ -193,7 +193,7 @@ p %>%
                      expand = expansion(mult = 0.01))
 ```
 
-Even by making the dots semitransparent with the `alpha` parameter, the overplotting issue makes it very difficult to make sense of the data. One of the approaches favored by Gelman and colleagues [-@gelmanRegressionOtherStories2020] is to add a little horizontal jittering. We can do that with `geom_jitter()`.
+Even by making the dots semitransparent with the `alpha` parameter, the overplotting issue makes it very difficult to make sense of the data. One of the approaches favored by Gelman and colleagues [-@gelmanRegressionOtherStories2020] is to add a little vertical jittering. We can do that with `geom_jitter()`.
 
 ```{r}
 p %>% 
