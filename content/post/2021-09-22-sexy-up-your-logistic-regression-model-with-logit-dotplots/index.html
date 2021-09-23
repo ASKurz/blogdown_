@@ -216,7 +216,7 @@ glimpse(p)</code></pre>
   scale_y_continuous(&quot;probability of passing&quot;, 
                      expand = expansion(mult = 0.01))</code></pre>
 <p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-12-1.png" width="672" /></p>
-<p>Even by making the dots semitransparent with the <code>alpha</code> parameter, the overplotting issue makes it very difficult to make sense of the data. One of the approaches favored by Gelman and colleagues <span class="citation">(<a href="#ref-gelmanRegressionOtherStories2020" role="doc-biblioref">2020</a>)</span> is to add a little horizontal jittering. We can do that with <code>geom_jitter()</code>.</p>
+<p>Even by making the dots semitransparent with the <code>alpha</code> parameter, the overplotting issue makes it very difficult to make sense of the data. One of the approaches favored by Gelman and colleagues <span class="citation">(<a href="#ref-gelmanRegressionOtherStories2020" role="doc-biblioref">2020</a>)</span> is to add a little vertical jittering. We can do that with <code>geom_jitter()</code>.</p>
 <pre class="r"><code>p %&gt;% 
   ggplot(aes(x = budget_2013, y = fit)) +
   geom_ribbon(aes(ymin = ll, ymax = ul),
