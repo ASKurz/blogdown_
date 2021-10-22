@@ -363,7 +363,7 @@ fitted_lines %&gt;%
 ##  9  -6.74  -0.835 0.100  3.42e-32 0.100  0.316
 ## 10  -5.49  -0.681 0.0908 5.48e-33 0.0908 0.301
 ## # … with 20 more rows</code></pre>
-<p>Now we finally have both <span class="math inline">\(\bar p\)</span> and <span class="math inline">\(V_{\bar p}\)</span> for each desired level of <code>ses</code>, we can use the conventional normal-theory approach to compute 95% confidence intervals.</p>
+<p>Now we finally have both <span class="math inline">\(\bar p\)</span> and <span class="math inline">\(V_{\bar p}\)</span> for each desired level of <code>ses</code>, we can use the conventional normal-theory approach to compute the pooled 95% confidence intervals.</p>
 <pre class="r"><code># this time we&#39;ll save the results
 fitted_lines &lt;- fitted_lines %&gt;% 
   group_by(ses) %&gt;% 
@@ -372,6 +372,7 @@ fitted_lines &lt;- fitted_lines %&gt;%
             v_b     = sum(fit - fit_bar)^2 / (m - 1),
             v_p     = v_w + v_b * (1 + (1 / m)),
             se_p    = sqrt(v_p)) %&gt;% 
+  # use the _p suffix to indicate these are pooled
   mutate(lwr_p = fit_bar - se_p * 1.96,
          upr_p = fit_bar + se_p * 1.96) 
 
@@ -400,7 +401,9 @@ glimpse(fitted_lines)</code></pre>
   # add the observed data for good measure
   geom_point(data = b_small,
              aes(y = iqv)) +
-  ylab(&quot;iqv&quot;)</code></pre>
+  labs(title = &quot;Pooled fitted line from a model fit to multiply-imputed data&quot;,
+       subtitle = expression(&quot;The pooled conditional mean line &quot;*(bar(italic(p)))*&quot; sits atop the pooled confidence interval &quot;*(95*&#39;%&#39;*~CI[bar(italic(p))])*&#39; band.&#39;),
+       y = &quot;iqv&quot;)</code></pre>
 <p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-20-1.png" width="672" /></p>
 <p>There it is, friends. We have the pooled fitted line and its pooled 95% confidence interval band from our model fit to multiply-imputed data. Until the day that Stef van Buuren and friends get around to building this functionality into <strong>mice</strong>, our realization in <strong>R</strong> code of Andrew Miles’s <em>Predict Then Combine</em> (PC) approach has you covered.</p>
 </div>

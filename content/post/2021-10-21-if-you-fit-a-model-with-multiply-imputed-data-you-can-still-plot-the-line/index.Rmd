@@ -318,7 +318,7 @@ fitted_lines %>%
             se_p    = sqrt(v_p))
 ```
 
-Now we finally have both $\bar p$ and $V_{\bar p}$ for each desired level of `ses`, we can use the conventional normal-theory approach to compute 95% confidence intervals.
+Now we finally have both $\bar p$ and $V_{\bar p}$ for each desired level of `ses`, we can use the conventional normal-theory approach to compute the pooled 95% confidence intervals.
 
 ```{r}
 # this time we'll save the results
@@ -329,6 +329,7 @@ fitted_lines <- fitted_lines %>%
             v_b     = sum(fit - fit_bar)^2 / (m - 1),
             v_p     = v_w + v_b * (1 + (1 / m)),
             se_p    = sqrt(v_p)) %>% 
+  # use the _p suffix to indicate these are pooled
   mutate(lwr_p = fit_bar - se_p * 1.96,
          upr_p = fit_bar + se_p * 1.96) 
 
@@ -350,7 +351,9 @@ fitted_lines %>%
   # add the observed data for good measure
   geom_point(data = b_small,
              aes(y = iqv)) +
-  ylab("iqv")
+  labs(title = "Pooled fitted line from a model fit to multiply-imputed data",
+       subtitle = expression("The pooled conditional mean line "*(bar(italic(p)))*" sits atop the pooled confidence interval "*(95*'%'*~CI[bar(italic(p))])*' band.'),
+       y = "iqv")
 ```
 
 There it is, friends. We have the pooled fitted line and its pooled 95% confidence interval band from our model fit to multiply-imputed data. Until the day that Stef van Buuren and friends get around to building this functionality into **mice**, our realization in **R** code of Andrew Miles's *Predict Then Combine* (PC) approach has you covered.
