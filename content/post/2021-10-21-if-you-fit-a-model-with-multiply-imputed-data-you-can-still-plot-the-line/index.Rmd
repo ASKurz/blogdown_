@@ -214,7 +214,7 @@ Fortunately for us, we have a principled and peer-reviewed solution, instead.
 
 In his [-@miles2016obtaining] paper, *Obtaining predictions from models fit to multiply imputed data*, [Andrew Miles](https://www.andrewamiles.com/) presented two methods for, well, doing what his title said he'd do. Miles called these two methods *Predict Then Combine* (PC) and *Combine Then Predict* (CP). The CP approach invokes first derivatives in a way I'm not prepared to implement on my own. Fortunately for us, the PC approach just requires a little iteration, a few lines within a grouped `summarise()`, and a tiny bit of wrangling. In my world, that's cake. `r emo::ji("cake")`
 
-#### Fist: iteration.
+#### First: iteration.
 
 For our first step, we'll use `predict()` again for each of our individual versions of the model. This time, however, we'll use thriftier code and iterate with help from `purrr::map()`.
 

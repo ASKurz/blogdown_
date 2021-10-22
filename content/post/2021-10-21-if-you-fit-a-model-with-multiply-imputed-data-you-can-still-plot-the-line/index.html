@@ -218,8 +218,8 @@ rbind(
 <div id="level-up-with-miles." class="section level3">
 <h3>Level up with Miles.</h3>
 <p>In his <span class="citation">(<a href="#ref-miles2016obtaining" role="doc-biblioref">2016</a>)</span> paper, <em>Obtaining predictions from models fit to multiply imputed data</em>, <a href="https://www.andrewamiles.com/">Andrew Miles</a> presented two methods for, well, doing what his title said he’d do. Miles called these two methods <em>Predict Then Combine</em> (PC) and <em>Combine Then Predict</em> (CP). The CP approach invokes first derivatives in a way I’m not prepared to implement on my own. Fortunately for us, the PC approach just requires a little iteration, a few lines within a grouped <code>summarise()</code>, and a tiny bit of wrangling. In my world, that’s cake. 🍰</p>
-<div id="fist-iteration." class="section level4">
-<h4>Fist: iteration.</h4>
+<div id="first-iteration." class="section level4">
+<h4>First: iteration.</h4>
 <p>For our first step, we’ll use <code>predict()</code> again for each of our individual versions of the model. This time, however, we’ll use thriftier code and iterate with help from <code>purrr::map()</code>.</p>
 <pre class="r"><code>fitted_lines &lt;-
   tibble(.imp = 1:10) %&gt;% 
