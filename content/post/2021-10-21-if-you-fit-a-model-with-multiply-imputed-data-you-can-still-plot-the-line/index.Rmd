@@ -212,7 +212,7 @@ Fortunately for us, we have a principled and peer-reviewed solution, instead.
 
 ### Level up with Miles.
 
-In his [-@miles2016obtaining] paper, *Obtaining predictions from models fit to multiply imputed data*, [Andrew Miles](https://www.andrewamiles.com/) presented two methods for, well, doing what his title said he'd do. Miles called these two methods *Predict Then Combine* (PC) and *Combine Then Predict* (CP). The CP approach invokes first derivatives in a way I'm not prepared to implement on my own. Fortunately for us, the PC approach just requires a little iteration, a few `mutate()` lines, and a `summarise()`. In my world, that's cake. `r emo::ji("cake")`
+In his [-@miles2016obtaining] paper, *Obtaining predictions from models fit to multiply imputed data*, [Andrew Miles](https://www.andrewamiles.com/) presented two methods for, well, doing what his title said he'd do. Miles called these two methods *Predict Then Combine* (PC) and *Combine Then Predict* (CP). The CP approach invokes first derivatives in a way I'm not prepared to implement on my own. Fortunately for us, the PC approach just requires a little iteration, a few lines within a grouped `summarise()` lines, and a tiny bit of wrangling. In my world, that's cake. `r emo::ji("cake")`
 
 #### Fist: iteration.
 
@@ -231,7 +231,9 @@ fitted_lines <-
 fitted_lines
 ```
 
-We have a nested tibble where the results of all 10 `predict()` operations are waiting for us in the `p` column and each is conveniently indexed by `.imp`. Here's how we unnest the results.
+We have a nested tibble where the results of all 10 `predict()` operations are waiting for us in the `p` column and each is conveniently indexed by `.imp`. Note also how we did not request confidence intervals in the output, but we did set `se.fit = TRUE`. We'll be all about those standard errors in just a bit.
+
+Here's how we unnest the results and then augment a little.
 
 ```{r}
 fitted_lines <- fitted_lines %>% 
@@ -327,8 +329,8 @@ fitted_lines <- fitted_lines %>%
             v_b     = sum(fit - fit_bar)^2 / (m - 1),
             v_p     = v_w + v_b * (1 + (1 / m)),
             se_p    = sqrt(v_p)) %>% 
-  mutate(lwr = fit_bar - se_p * 1.96,
-         upr = fit_bar + se_p * 1.96) 
+  mutate(lwr_p = fit_bar - se_p * 1.96,
+         upr_p = fit_bar + se_p * 1.96) 
 
 # what do we have?
 glimpse(fitted_lines)
@@ -341,7 +343,7 @@ Now the hard part is over, we're finally ready to plot.
 ```{r, warning = F}
 fitted_lines %>% 
   ggplot(aes(x = ses)) +
-  geom_ribbon(aes(ymin = lwr, ymax = upr),
+  geom_ribbon(aes(ymin = lwr_p, ymax = upr_p),
               alpha = 1/2) +
   geom_line(aes(y = fit_bar), 
             size = 1/2) +
@@ -351,7 +353,7 @@ fitted_lines %>%
   ylab("iqv")
 ```
 
-There it is, friends. We have the pooled fitted line and its pooled 95% confidence interval band from our model fit to multiply-imputed data. Until the day that Stef van Buuren and friends get around to building this functionality into **mice**, Andrew Miles's *Predict Then Combine* (PC) approach has you covered.
+There it is, friends. We have the pooled fitted line and its pooled 95% confidence interval band from our model fit to multiply-imputed data. Until the day that Stef van Buuren and friends get around to building this functionality into **mice**, our realization in **R** code of Andrew Miles's *Predict Then Combine* (PC) approach has you covered.
 
 ## Session info
 
