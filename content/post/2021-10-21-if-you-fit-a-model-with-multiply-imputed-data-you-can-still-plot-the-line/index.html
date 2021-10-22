@@ -217,7 +217,7 @@ rbind(
 </div>
 <div id="level-up-with-miles." class="section level3">
 <h3>Level up with Miles.</h3>
-<p>In his <span class="citation">(<a href="#ref-miles2016obtaining" role="doc-biblioref">2016</a>)</span> paper, <em>Obtaining predictions from models fit to multiply imputed data</em>, <a href="https://www.andrewamiles.com/">Andrew Miles</a> presented two methods for, well, doing what his title said he’d do. Miles called these two methods <em>Predict Then Combine</em> (PC) and <em>Combine Then Predict</em> (CP). The CP approach invokes first derivatives in a way I’m not prepared to implement on my own. Fortunately for us, the PC approach just requires a little iteration, a few lines within a grouped <code>summarise()</code> lines, and a tiny bit of wrangling. In my world, that’s cake. 🍰</p>
+<p>In his <span class="citation">(<a href="#ref-miles2016obtaining" role="doc-biblioref">2016</a>)</span> paper, <em>Obtaining predictions from models fit to multiply imputed data</em>, <a href="https://www.andrewamiles.com/">Andrew Miles</a> presented two methods for, well, doing what his title said he’d do. Miles called these two methods <em>Predict Then Combine</em> (PC) and <em>Combine Then Predict</em> (CP). The CP approach invokes first derivatives in a way I’m not prepared to implement on my own. Fortunately for us, the PC approach just requires a little iteration, a few lines within a grouped <code>summarise()</code>, and a tiny bit of wrangling. In my world, that’s cake. 🍰</p>
 <div id="fist-iteration." class="section level4">
 <h4>Fist: iteration.</h4>
 <p>For our first step, we’ll use <code>predict()</code> again for each of our individual versions of the model. This time, however, we’ll use thriftier code and iterate with help from <code>purrr::map()</code>.</p>
@@ -272,8 +272,8 @@ glimpse(fitted_lines)</code></pre>
 be calculated by applying some type of transformation <span class="math inline">\(t()\)</span> to the vector of coefficients from a fitted model <span class="math inline">\((\hat \beta)\)</span>.</p>
 <p><span class="math display">\[\hat p = t(\hat \beta)\]</span></p>
 </blockquote>
-<p>In our case, <span class="math inline">\(\hat p\)</span> covers the values in our <code>fit</code> column. Well, technically we should refer to those <code>fit</code> values as <span class="math inline">\(\hat p_j\)</span>, where <span class="math inline">\(j\)</span> is the index for a given imputed data set, <span class="math inline">\(j = 1, \dots, m\)</span>, and <span class="math inline">\(m\)</span> is the total number of imputations. In our <code>fitted_lines</code> tibble, we have called Miles’s <span class="math inline">\(m\)</span> index <code>.imp</code>.</p>
-<p>Anyway, Miles showed we can compute the pooled point estimate <span class="math inline">\(\bar p\)</span> by</p>
+<p>In our case, <span class="math inline">\(\hat p\)</span> covers the values in our <code>fit</code> column and the <span class="math inline">\(t(\hat \beta)\)</span> part is what we did with <code>predict()</code>. Well, technically we should refer to those <code>fit</code> values as <span class="math inline">\(\hat p_j\)</span>, where <span class="math inline">\(j\)</span> is the index for a given imputed data set, <span class="math inline">\(j = 1, \dots, m\)</span>, and <span class="math inline">\(m\)</span> is the total number of imputations. In our <code>fitted_lines</code> tibble, we have called Miles’s <span class="math inline">\(m\)</span> index <code>.imp</code><a href="#fn2" class="footnote-ref" id="fnref2"><sup>2</sup></a>.</p>
+<p>Anyway, Miles showed we can compute the conditional pooled point estimate <span class="math inline">\(\bar p\)</span> by</p>
 <p><span class="math display">\[\bar p = \frac{1}{m} \sum_{j=1}^m \hat p_j,\]</span></p>
 <p>which is a formal way of saying we simply average across the <span class="math inline">\(m\)</span> imputed solutions. Here’s that in code.</p>
 <pre class="r"><code>fitted_lines %&gt;% 
@@ -510,5 +510,6 @@ Wickham, H., Averick, M., Bryan, J., Chang, W., McGowan, L. D., François, R., G
 <hr />
 <ol>
 <li id="fn1"><p>Be warned that “full-luxury Bayesian …” isn’t a real term. Rather, it’s a playful descriptor coined by the great Richard McElreath. To hear him use it in action, check out his <a href="https://www.youtube.com/watch?v=KNPYUVmY3NM">nifty talk</a> on causal inference. One-step Bayesian imputation is a real thing, though. McElreath covered it in both editions of his text and I’ve even blogged about it <a href="https://solomonkurz.netlify.app/post/2021-07-27-one-step-bayesian-imputation-when-you-have-dropout-in-your-rct/">here</a>.<a href="#fnref1" class="footnote-back">↩︎</a></p></li>
+<li id="fn2"><p>When you do this on your own, you might instead name the <code>.imp</code> column as <code>m</code>, which goes nicely with Miles’s notation. In this post and in some of my personal work, I used <code>.imp</code> because it lines up nicely with the output from some of the <strong>mice</strong> functions.<a href="#fnref2" class="footnote-back">↩︎</a></p></li>
 </ol>
 </div>

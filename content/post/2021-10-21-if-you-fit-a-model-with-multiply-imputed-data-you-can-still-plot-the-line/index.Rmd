@@ -212,7 +212,7 @@ Fortunately for us, we have a principled and peer-reviewed solution, instead.
 
 ### Level up with Miles.
 
-In his [-@miles2016obtaining] paper, *Obtaining predictions from models fit to multiply imputed data*, [Andrew Miles](https://www.andrewamiles.com/) presented two methods for, well, doing what his title said he'd do. Miles called these two methods *Predict Then Combine* (PC) and *Combine Then Predict* (CP). The CP approach invokes first derivatives in a way I'm not prepared to implement on my own. Fortunately for us, the PC approach just requires a little iteration, a few lines within a grouped `summarise()` lines, and a tiny bit of wrangling. In my world, that's cake. `r emo::ji("cake")`
+In his [-@miles2016obtaining] paper, *Obtaining predictions from models fit to multiply imputed data*, [Andrew Miles](https://www.andrewamiles.com/) presented two methods for, well, doing what his title said he'd do. Miles called these two methods *Predict Then Combine* (PC) and *Combine Then Predict* (CP). The CP approach invokes first derivatives in a way I'm not prepared to implement on my own. Fortunately for us, the PC approach just requires a little iteration, a few lines within a grouped `summarise()`, and a tiny bit of wrangling. In my world, that's cake. `r emo::ji("cake")`
 
 #### Fist: iteration.
 
@@ -258,9 +258,9 @@ be calculated by applying some type of transformation $t()$ to the vector of coe
 >
 > $$\hat p = t(\hat \beta)$$
 
-In our case, $\hat p$ covers the values in our `fit` column. Well, technically we should refer to those `fit` values as $\hat p_j$, where $j$ is the index for a given imputed data set, $j = 1, \dots, m$, and $m$ is the total number of imputations. In our `fitted_lines` tibble, we have called Miles's $m$ index `.imp`.
+In our case, $\hat p$ covers the values in our `fit` column and the $t(\hat \beta)$ part is what we did with `predict()`. Well, technically we should refer to those `fit` values as $\hat p_j$, where $j$ is the index for a given imputed data set, $j = 1, \dots, m$, and $m$ is the total number of imputations. In our `fitted_lines` tibble, we have called Miles's $m$ index `.imp`[^2].
 
-Anyway, Miles showed we can compute the pooled point estimate $\bar p$ by
+Anyway, Miles showed we can compute the conditional pooled point estimate $\bar p$ by
 
 $$\bar p = \frac{1}{m} \sum_{j=1}^m \hat p_j,$$
 
@@ -367,4 +367,6 @@ sessionInfo()
 ## References
 
 [^1]: Be warned that "full-luxury Bayesian ..." isn't a real term. Rather, it's a playful descriptor coined by the great Richard McElreath. To hear him use it in action, check out his [nifty talk](https://www.youtube.com/watch?v=KNPYUVmY3NM) on causal inference. One-step Bayesian imputation is a real thing, though. McElreath covered it in both editions of his text and I've even blogged about it [here](https://solomonkurz.netlify.app/post/2021-07-27-one-step-bayesian-imputation-when-you-have-dropout-in-your-rct/).
+
+[^2]: When you do this on your own, you might instead name the `.imp` column as `m`, which goes nicely with Miles's notation. In this post and in some of my personal work, I used `.imp` because it lines up nicely with the output from some of the **mice** functions.
 
