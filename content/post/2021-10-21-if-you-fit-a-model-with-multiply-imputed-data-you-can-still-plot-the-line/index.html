@@ -1,0 +1,510 @@
+---
+title: If you fit a model with multiply imputed data, you can still plot the line.
+author: A. Solomon Kurz
+date: '2021-10-21'
+slug: ''
+categories: []
+tags:
+  - mice
+  - missing data
+  - multiple imputation
+  - plot
+  - R
+  - tidyverse
+  - tutorial
+subtitle: ''
+summary: ''
+authors: []
+lastmod: '2021-10-21T16:12:29-05:00'
+featured: no
+image:
+  caption: ''
+  focal_point: ''
+  preview_only: no
+projects: []
+bibliography: /Users/solomonkurz/Dropbox/blogdown/content/post/my_blog.bib
+biblio-style: apalike
+csl: /Users/solomonkurz/Dropbox/blogdown/content/post/apa.csl  
+link-citations: yes
+---
+
+<script src="{{< blogdown/postref >}}index_files/header-attrs/header-attrs.js"></script>
+
+
+<div id="what" class="section level2">
+<h2>What?</h2>
+<p>If you’re in the know, you know there are three major ways to handle missing data:</p>
+<ul>
+<li>full-information maximum likelihood,</li>
+<li>multiple imputation, and</li>
+<li>one-step full-luxury<a href="#fn1" class="footnote-ref" id="fnref1"><sup>1</sup></a> Bayesian imputation.</li>
+</ul>
+<p>If you’re a frequentist, you only have the first two options. If you’re an <strong>R</strong> <span class="citation">(<a href="#ref-R-base" role="doc-biblioref">R Core Team, 2020</a>)</span> user and like multiple imputation, you probably know all about the <strong>mice</strong> package <span class="citation">(<a href="#ref-mice2011" role="doc-biblioref">van Buuren &amp; Groothuis-Oudshoorn, 2011</a>, <a href="#ref-R-mice" role="doc-biblioref">2021</a>)</span>, which generally works great. The bummer is there are no built-in ways to plot the fitted lines from models fit from multiply-imputed data using van Buuren’s <strong>mice</strong>-oriented workflow (see <a href="https://github.com/amices/mice/issues/82">GitHub issue #82</a>). However, there is a way to plot your fitted lines by hand and in this blog post I’ll show you how.</p>
+<div id="i-make-assumptions." class="section level3">
+<h3>I make assumptions.</h3>
+<p>For this post, I’m presuming some background knowledge:</p>
+<ul>
+<li><p>You should be familiar with regression. For frequentist introductions, I recommend Roback and Legler’s <span class="citation">(<a href="#ref-roback2021beyond" role="doc-biblioref">2021</a>)</span> online text or James, Witten, Hastie, and Tibshirani’s <span class="citation">(<a href="#ref-james2021AnIntroduction" role="doc-biblioref">2021</a>)</span> online text. For Bayesian introductions, I recommend either edition of McElreath’s text <span class="citation">(<a href="#ref-mcelreathStatisticalRethinkingBayesian2020" role="doc-biblioref">2020</a>, <a href="#ref-mcelreathStatisticalRethinkingBayesian2015" role="doc-biblioref">2015</a>)</span>; Kruschke’s <span class="citation">(<a href="#ref-kruschkeDoingBayesianData2015" role="doc-biblioref">2015</a>)</span> text; or Gelman, Hill, and Vehtari’s <span class="citation">(<a href="#ref-gelmanRegressionOtherStories2020" role="doc-biblioref">2020</a>)</span> text.</p></li>
+<li><p>You should be familiar with contemporary missing data theory. You can find brief overviews in the texts by McElreath and Gelman et al, above. For a deeper dive, I recommend <span class="citation"><a href="#ref-enders2010applied" role="doc-biblioref">Enders</a> (<a href="#ref-enders2010applied" role="doc-biblioref">2010</a>)</span>, <span class="citation"><a href="#ref-little2019statistical" role="doc-biblioref">Little &amp; Rubin</a> (<a href="#ref-little2019statistical" role="doc-biblioref">2019</a>)</span>, or <span class="citation"><a href="#ref-vanbuurenFlexibleImputationMissing2018" role="doc-biblioref">van Buuren</a> (<a href="#ref-vanbuurenFlexibleImputationMissing2018" role="doc-biblioref">2018</a>)</span>. Also, heads up: <a href="https://twitter.com/AmandaKMontoya/status/1341936335301406722">word on the street</a> is Enders is working on the second edition of his book.</p></li>
+<li><p>All code is in <strong>R</strong>. Data wrangling and plotting were done with help from the <strong>tidyverse</strong> <span class="citation">(<a href="#ref-R-tidyverse" role="doc-biblioref">Wickham, 2019</a>; <a href="#ref-wickhamWelcomeTidyverse2019" role="doc-biblioref">Wickham et al., 2019</a>)</span> and <strong>GGally</strong> <span class="citation">(<a href="#ref-R-GGally" role="doc-biblioref">Schloerke et al., 2021</a>)</span>. The data and multiple-imputation workflow are from the <a href="https://CRAN.R-project.org/package=mice"><strong>mice</strong> package</a>.</p></li>
+</ul>
+<p>Here we load our primary <strong>R</strong> packages.</p>
+<pre class="r"><code>library(tidyverse)
+library(GGally)
+library(mice)</code></pre>
+</div>
+<div id="we-need-data." class="section level3">
+<h3>We need data.</h3>
+<p>In this post we’ll focus on a subset of the <code>brandsma</code> data set <span class="citation">(<a href="#ref-brandsma1989effects" role="doc-biblioref">Brandsma &amp; Knuver, 1989</a>)</span>. The goal, here, is to take a small enough subset that there will be noticeable differences across the imputed data sets.</p>
+<pre class="r"><code>set.seed(201)
+
+b_small &lt;-
+  brandsma %&gt;% 
+  filter(!complete.cases(.)) %&gt;% 
+  slice_sample(n = 50) %&gt;% 
+  select(ses, iqv, iqp)
+
+glimpse(b_small)</code></pre>
+<pre><code>## Rows: 50
+## Columns: 3
+## $ ses &lt;dbl&gt; -12.6666667, NA, -4.6666667, 19.3333333, NA, NA, 0.3333333, -4.666…
+## $ iqv &lt;dbl&gt; NA, -0.8535094, -0.3535094, 1.1464906, 1.1464906, -0.3535094, -0.3…
+## $ iqp &lt;dbl&gt; -1.72274979, -4.05608313, 2.61058354, 3.94391687, 1.61058354, -1.3…</code></pre>
+<p>Here are our three variables.</p>
+<pre class="r"><code>ggpairs(b_small)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-3-1.png" width="672" /></p>
+<p>We’ll be focusing on the relation between socioeconomic status (<code>ses</code>) and verbal IQ (<code>iqv</code>) and performance IQ (<code>iqp</code>) will be a missing data covariate.</p>
+<p>Here’s what the missing data patterns look like.</p>
+<pre class="r"><code>b_small %&gt;% 
+  mutate_all(.funs = ~ ifelse(is.na(.), 0, 1)) %&gt;% 
+  count(ses, iqv, iqp, sort = TRUE) %&gt;% 
+  mutate(percent = 100 * n / sum(n))</code></pre>
+<pre><code>##   ses iqv iqp  n percent
+## 1   1   1   1 36      72
+## 2   0   1   1 11      22
+## 3   1   0   1  2       4
+## 4   1   0   0  1       2</code></pre>
+<p>Here <code>1</code> means the value was observed and <code>0</code> means the value was missing. Twenty-eight percent of the cases have missingness on one of the two focal variables. The bulk of the missingness is in <code>ses</code>.</p>
+</div>
+</div>
+<div id="impute" class="section level2">
+<h2>Impute</h2>
+<p>We’ll use the <code>mice()</code> function to impute. By setting <code>m = 10</code>, we’ll get back 10 multiply-imputed data sets. By setting <code>method = "norm"</code>, we will be using Bayesian linear regression with the Gaussian likelihood to compute the imputed values.</p>
+<pre class="r"><code>imp &lt;- mice(b_small, seed = 540, m = 10, method = &quot;norm&quot;, print = FALSE)</code></pre>
+</div>
+<div id="model" class="section level2">
+<h2>Model</h2>
+<p>Our statistical model will be</p>
+<p><span class="math display">\[
+\begin{align*}
+\text{iqv}_i &amp; \sim \mathcal N(\mu_i, \sigma) \\
+\mu_i &amp; = \beta_0 + \beta_1 \text{ses}_i.
+\end{align*}
+\]</span></p>
+<p>With the <code>mice::with()</code> function, we fit that model once to each of the 10 imputed data sets.</p>
+<pre class="r"><code>fit &lt;- with(imp, lm(iqv ~ 1 + ses))</code></pre>
+<p>There’s a lot of information packed into our <code>fit</code> object. Within the <code>analyses</code> section we can find the results of all 10 models.</p>
+<pre class="r"><code>fit$analyses %&gt;% str(max.level = 1)</code></pre>
+<pre><code>## List of 10
+##  $ :List of 12
+##   ..- attr(*, &quot;class&quot;)= chr &quot;lm&quot;
+##  $ :List of 12
+##   ..- attr(*, &quot;class&quot;)= chr &quot;lm&quot;
+##  $ :List of 12
+##   ..- attr(*, &quot;class&quot;)= chr &quot;lm&quot;
+##  $ :List of 12
+##   ..- attr(*, &quot;class&quot;)= chr &quot;lm&quot;
+##  $ :List of 12
+##   ..- attr(*, &quot;class&quot;)= chr &quot;lm&quot;
+##  $ :List of 12
+##   ..- attr(*, &quot;class&quot;)= chr &quot;lm&quot;
+##  $ :List of 12
+##   ..- attr(*, &quot;class&quot;)= chr &quot;lm&quot;
+##  $ :List of 12
+##   ..- attr(*, &quot;class&quot;)= chr &quot;lm&quot;
+##  $ :List of 12
+##   ..- attr(*, &quot;class&quot;)= chr &quot;lm&quot;
+##  $ :List of 12
+##   ..- attr(*, &quot;class&quot;)= chr &quot;lm&quot;</code></pre>
+<p>This insight will come in handy in just a bit.</p>
+</div>
+<div id="we-want-lines" class="section level2">
+<h2>We want lines!</h2>
+<div id="start-naïve." class="section level3">
+<h3>Start naïve.</h3>
+<p>If you wanted to plot the fitted line for a simple linear model, you’d probably use the <code>fitted()</code> or <code>predict()</code> function. But when you have fit that model to your multiply-imputed data sets, that just won’t work. For example:</p>
+<pre class="r"><code>predict(fit)</code></pre>
+<p>If you try executing that line, you’ll get a nasty error message reading:</p>
+<blockquote>
+<p>Error in UseMethod(“predict”) : no applicable method for ‘predict’ applied to an object of class “c(‘mira,’ ‘matrix’)”</p>
+</blockquote>
+<p>Our <code>fit</code> object is not a regular fit object. It’s an object of class <code>"mira"</code> and <code>"matrix"</code>, which means it’s fancy and temperamental.</p>
+<pre class="r"><code>class(fit)</code></pre>
+<pre><code>## [1] &quot;mira&quot;   &quot;matrix&quot;</code></pre>
+<p>At the time of this writing, the <strong>mice</strong> package does not have a built-in solution to this problem. If you’re willing to put in a little work, you can do the job yourself.</p>
+</div>
+<div id="off-label." class="section level3">
+<h3>Off label.</h3>
+<p>Remember how we showed how our <code>fit$analyses</code> is a list of all 10 of our individual model fits? Turns out we can leverage that. For example, here’s the model summary for the model fit to the seventh imputed data set.</p>
+<pre class="r"><code>fit$analyses[[7]] %&gt;% 
+  summary()</code></pre>
+<pre><code>## 
+## Call:
+## lm(formula = iqv ~ 1 + ses)
+## 
+## Residuals:
+##     Min      1Q  Median      3Q     Max 
+## -4.1947 -1.0600  0.1209  0.9678  5.5680 
+## 
+## Coefficients:
+##             Estimate Std. Error t value Pr(&gt;|t|)    
+## (Intercept)  0.26981    0.29403   0.918 0.363405    
+## ses          0.11479    0.02732   4.201 0.000115 ***
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## 
+## Residual standard error: 2.024 on 48 degrees of freedom
+## Multiple R-squared:  0.2689, Adjusted R-squared:  0.2536 
+## F-statistic: 17.65 on 1 and 48 DF,  p-value: 0.0001146</code></pre>
+<p>All we needed to do was use the double-bracket indexing. If you’re not up on how to do that, Hadley Wickham has a <a href="https://twitter.com/hadleywickham/status/643381054758363136">famous tweet</a> on the subject and Jenny Bryan has a <a href="https://www.youtube.com/watch?v=4MfUCX_KpdE&amp;t=615s&amp;frags=pl%2Cwn">great talk</a> discussing the role of lists within data wrangling. With the double-bracket indexing trick, you can use <code>fitted()</code> or <code>predict()</code> one model iteration at a time. E.g.,</p>
+<pre class="r"><code>fit$analyses[[1]] %&gt;% 
+  fitted() %&gt;% 
+  str()</code></pre>
+<pre><code>##  Named num [1:50] -1.341 0.135 -0.512 1.975 -0.794 ...
+##  - attr(*, &quot;names&quot;)= chr [1:50] &quot;1&quot; &quot;2&quot; &quot;3&quot; &quot;4&quot; ...</code></pre>
+<p>Building, here’s what that can look like if we use <code>predict()</code> for all 10 of our models, bind the individual results, and plot them all at once.</p>
+<pre class="r"><code># define the sequence of predictor values
+ses_min &lt;- min(b_small$ses, na.rm = T)
+ses_max &lt;- max(b_small$ses, na.rm = T)
+
+ses_length &lt;- 30
+
+nd &lt;- tibble(ses = seq(from = ses_min, to = ses_max, length.out = ses_length))
+
+# use `predict()` for each separate model
+rbind(
+  predict(fit$analyses[[1]], newdata = nd, interval = &quot;confidence&quot;),
+  predict(fit$analyses[[2]], newdata = nd, interval = &quot;confidence&quot;),
+  predict(fit$analyses[[3]], newdata = nd, interval = &quot;confidence&quot;),
+  predict(fit$analyses[[4]], newdata = nd, interval = &quot;confidence&quot;),
+  predict(fit$analyses[[5]], newdata = nd, interval = &quot;confidence&quot;),
+  predict(fit$analyses[[6]], newdata = nd, interval = &quot;confidence&quot;),
+  predict(fit$analyses[[7]], newdata = nd, interval = &quot;confidence&quot;),
+  predict(fit$analyses[[8]], newdata = nd, interval = &quot;confidence&quot;),
+  predict(fit$analyses[[9]], newdata = nd, interval = &quot;confidence&quot;),
+  predict(fit$analyses[[10]], newdata = nd, interval = &quot;confidence&quot;)
+) %&gt;%
+  # wrangle a bit
+  data.frame() %&gt;% 
+  bind_cols(
+    bind_rows(replicate(10, nd, simplify = FALSE))
+    ) %&gt;% 
+  mutate(.imp = rep(1:10, each = ses_length)) %&gt;% 
+  
+  # plot!
+  ggplot(aes(x = ses)) +
+  geom_ribbon(aes(ymin = lwr, ymax = upr, group = .imp),
+              alpha = 1/10) +
+  geom_line(aes(y = fit, group = .imp), 
+            size = 1/4) +
+  # add the observed data for good measure
+  geom_point(data = b_small,
+             aes(y = iqv)) +
+  ylab(&quot;iqv&quot;)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-12-1.png" width="672" /></p>
+<p>I kinda like this visualization approach. It has a certain Bayesian flair and it does an okay job displaying the stochasticity built in to the multiple imputation framework. However, this approach is totally off label and will probably get shot down by any self-respecting Reviewer #2.</p>
+<p>Fortunately for us, we have a principled and peer-reviewed solution, instead.</p>
+</div>
+<div id="level-up-with-miles." class="section level3">
+<h3>Level up with Miles.</h3>
+<p>In his <span class="citation">(<a href="#ref-miles2016obtaining" role="doc-biblioref">2016</a>)</span> paper, <em>Obtaining predictions from models fit to multiply imputed data</em>, <a href="https://www.andrewamiles.com/">Andrew Miles</a> presented two methods for, well, doing what his title said he’d do. Miles called these two methods <em>Predict Then Combine</em> (PC) and <em>Combine Then Predict</em> (CP). The CP approach invokes first derivatives in a way I’m not prepared to implement on my own. Fortunately for us, the PC approach just requires a little iteration, a few <code>mutate()</code> lines, and a <code>summarise()</code>. In my world, that’s cake. 🍰</p>
+<div id="fist-iteration." class="section level4">
+<h4>Fist: iteration.</h4>
+<p>For our first step, we’ll use <code>predict()</code> again for each of our individual versions of the model. This time, however, we’ll use thriftier code and iterate with help from <code>purrr::map()</code>.</p>
+<pre class="r"><code>fitted_lines &lt;-
+  tibble(.imp = 1:10) %&gt;% 
+  mutate(p = map(.imp, ~ predict(fit$analyses[[.]], 
+                                 newdata = nd, 
+                                 se.fit = TRUE) %&gt;% 
+                   data.frame())
+         )
+
+# what have we done?
+fitted_lines</code></pre>
+<pre><code>## # A tibble: 10 × 2
+##     .imp p            
+##    &lt;int&gt; &lt;list&gt;       
+##  1     1 &lt;df [30 × 4]&gt;
+##  2     2 &lt;df [30 × 4]&gt;
+##  3     3 &lt;df [30 × 4]&gt;
+##  4     4 &lt;df [30 × 4]&gt;
+##  5     5 &lt;df [30 × 4]&gt;
+##  6     6 &lt;df [30 × 4]&gt;
+##  7     7 &lt;df [30 × 4]&gt;
+##  8     8 &lt;df [30 × 4]&gt;
+##  9     9 &lt;df [30 × 4]&gt;
+## 10    10 &lt;df [30 × 4]&gt;</code></pre>
+<p>We have a nested tibble where the results of all 10 <code>predict()</code> operations are waiting for us in the <code>p</code> column and each is conveniently indexed by <code>.imp</code>. Here’s how we unnest the results.</p>
+<pre class="r"><code>fitted_lines &lt;- fitted_lines %&gt;% 
+  unnest(p) %&gt;% 
+  # add in the nd predictor data
+  bind_cols(
+    bind_rows(replicate(10, nd, simplify = FALSE))
+    ) %&gt;% 
+  # drop two unneeded columns
+  select(-df, -residual.scale)
+
+# now what did we do?
+glimpse(fitted_lines)</code></pre>
+<pre><code>## Rows: 300
+## Columns: 4
+## $ .imp   &lt;int&gt; 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, …
+## $ fit    &lt;dbl&gt; -1.75590067, -1.62725529, -1.49860992, -1.36996455, -1.24131917…
+## $ se.fit &lt;dbl&gt; 0.5285145, 0.4991145, 0.4705449, 0.4429666, 0.4165764, 0.391614…
+## $ ses    &lt;dbl&gt; -16.6666667, -15.4252874, -14.1839080, -12.9425287, -11.7011494…</code></pre>
+</div>
+<div id="second-equations-and-the-implied-code." class="section level4">
+<h4>Second: equations and the implied code.</h4>
+<p>In his paper (p. 176), Miles’s used <em>predictions</em></p>
+<blockquote>
+<p>as a blanket term for any value <span class="math inline">\(\hat p\)</span> that can
+be calculated by applying some type of transformation <span class="math inline">\(t()\)</span> to the vector of coefficients from a fitted model <span class="math inline">\((\hat \beta)\)</span>.</p>
+<p><span class="math display">\[\hat p = t(\hat \beta)\]</span></p>
+</blockquote>
+<p>In our case, <span class="math inline">\(\hat p\)</span> covers the values in our <code>fit</code> column. Well, technically we should refer to those <code>fit</code> values as <span class="math inline">\(\hat p_j\)</span>, where <span class="math inline">\(j\)</span> is the index for a given imputed data set, <span class="math inline">\(j = 1, \dots, m\)</span>, and <span class="math inline">\(m\)</span> is the total number of imputations. In our <code>fitted_lines</code> tibble, we have called Miles’s <span class="math inline">\(m\)</span> index <code>.imp</code>.</p>
+<p>Anyway, Miles showed we can compute the pooled point estimate <span class="math inline">\(\bar p\)</span> by</p>
+<p><span class="math display">\[\bar p = \frac{1}{m} \sum_{j=1}^m \hat p_j,\]</span></p>
+<p>which is a formal way of saying we simply average across the <span class="math inline">\(m\)</span> imputed solutions. Here’s that in code.</p>
+<pre class="r"><code>fitted_lines %&gt;% 
+  group_by(ses) %&gt;% 
+  summarise(fit_bar = mean(fit))</code></pre>
+<pre><code>## # A tibble: 30 × 2
+##       ses fit_bar
+##     &lt;dbl&gt;   &lt;dbl&gt;
+##  1 -16.7   -2.07 
+##  2 -15.4   -1.91 
+##  3 -14.2   -1.76 
+##  4 -12.9   -1.60 
+##  5 -11.7   -1.45 
+##  6 -10.5   -1.30 
+##  7  -9.22  -1.14 
+##  8  -7.98  -0.989
+##  9  -6.74  -0.835
+## 10  -5.49  -0.681
+## # … with 20 more rows</code></pre>
+<p>Though the expected values are pretty easy to compute, it’ll take a little more effort to express the uncertainty around those expectations because we have to account for both within- and between-imputation variance. We can define the within-imputation variance <span class="math inline">\(V_W\)</span> as</p>
+<p><span class="math display">\[V_W = \frac{1}{m} \sum_{j=1}^m \widehat{SE}_j^2,\]</span></p>
+<p>which is a formal way of saying we simply average the squared standard errors across the <span class="math inline">\(m\)</span> imputed solutions, for each fitted value. Here’s that in code.</p>
+<pre class="r"><code>fitted_lines %&gt;% 
+  group_by(ses) %&gt;% 
+  summarise(fit_bar = mean(fit),
+            v_w     = mean(se.fit^2))</code></pre>
+<pre><code>## # A tibble: 30 × 3
+##       ses fit_bar    v_w
+##     &lt;dbl&gt;   &lt;dbl&gt;  &lt;dbl&gt;
+##  1 -16.7   -2.07  0.260 
+##  2 -15.4   -1.91  0.232 
+##  3 -14.2   -1.76  0.206 
+##  4 -12.9   -1.60  0.182 
+##  5 -11.7   -1.45  0.161 
+##  6 -10.5   -1.30  0.142 
+##  7  -9.22  -1.14  0.126 
+##  8  -7.98  -0.989 0.112 
+##  9  -6.74  -0.835 0.100 
+## 10  -5.49  -0.681 0.0908
+## # … with 20 more rows</code></pre>
+<p>We can define the between imputation variance <span class="math inline">\(V_B\)</span> as</p>
+<p><span class="math display">\[V_B = \frac{1}{m - 1} \sum_{j=1}^m (\hat p_j - \bar p_j)^2,\]</span></p>
+<p>where we’re no longer quite averaging across the <span class="math inline">\(m\)</span> imputations because our denominator is now the corrected value <span class="math inline">\((m - 1)\)</span>. What can I say? Variances are tricky. Here’s the code.</p>
+<pre class="r"><code># define the total number of imputations
+m &lt;- 10
+
+fitted_lines %&gt;% 
+  group_by(ses) %&gt;% 
+  summarise(fit_bar = mean(fit),
+            v_w     = mean(se.fit^2),
+            v_b     = sum(fit - fit_bar)^2 / (m - 1))</code></pre>
+<pre><code>## # A tibble: 30 × 4
+##       ses fit_bar    v_w      v_b
+##     &lt;dbl&gt;   &lt;dbl&gt;  &lt;dbl&gt;    &lt;dbl&gt;
+##  1 -16.7   -2.07  0.260  2.68e-31
+##  2 -15.4   -1.91  0.232  8.77e-32
+##  3 -14.2   -1.76  0.206  4.93e-32
+##  4 -12.9   -1.60  0.182  8.77e-32
+##  5 -11.7   -1.45  0.161  4.93e-32
+##  6 -10.5   -1.30  0.142  1.37e-33
+##  7  -9.22  -1.14  0.126  0       
+##  8  -7.98  -0.989 0.112  1.23e-32
+##  9  -6.74  -0.835 0.100  3.42e-32
+## 10  -5.49  -0.681 0.0908 5.48e-33
+## # … with 20 more rows</code></pre>
+<p>We can define the total variance of the prediction <span class="math inline">\(V_{\bar p}\)</span> as</p>
+<p><span class="math display">\[V_{\bar p} = V_W + V_B \left ( 1 + \frac{1}{m} \right ),\]</span></p>
+<p>where the pooled standard error is just <span class="math inline">\(\sqrt{V_{\bar p}}\)</span>. Here are those in code.</p>
+<pre class="r"><code>fitted_lines %&gt;% 
+  group_by(ses) %&gt;% 
+  summarise(fit_bar = mean(fit),
+            v_w     = mean(se.fit^2),
+            v_b     = sum(fit - fit_bar)^2 / (m - 1),
+            v_p     = v_w + v_b * (1 + (1 / m)),
+            se_p    = sqrt(v_p))</code></pre>
+<pre><code>## # A tibble: 30 × 6
+##       ses fit_bar    v_w      v_b    v_p  se_p
+##     &lt;dbl&gt;   &lt;dbl&gt;  &lt;dbl&gt;    &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt;
+##  1 -16.7   -2.07  0.260  2.68e-31 0.260  0.510
+##  2 -15.4   -1.91  0.232  8.77e-32 0.232  0.481
+##  3 -14.2   -1.76  0.206  4.93e-32 0.206  0.453
+##  4 -12.9   -1.60  0.182  8.77e-32 0.182  0.427
+##  5 -11.7   -1.45  0.161  4.93e-32 0.161  0.401
+##  6 -10.5   -1.30  0.142  1.37e-33 0.142  0.377
+##  7  -9.22  -1.14  0.126  0        0.126  0.354
+##  8  -7.98  -0.989 0.112  1.23e-32 0.112  0.334
+##  9  -6.74  -0.835 0.100  3.42e-32 0.100  0.316
+## 10  -5.49  -0.681 0.0908 5.48e-33 0.0908 0.301
+## # … with 20 more rows</code></pre>
+<p>Now we finally have both <span class="math inline">\(\bar p\)</span> and <span class="math inline">\(V_{\bar p}\)</span> for each desired level of <code>ses</code>, we can use the conventional normal-theory approach to compute 95% confidence intervals.</p>
+<pre class="r"><code># this time we&#39;ll save the results
+fitted_lines &lt;- fitted_lines %&gt;% 
+  group_by(ses) %&gt;% 
+  summarise(fit_bar = mean(fit),
+            v_w     = mean(se.fit^2),
+            v_b     = sum(fit - fit_bar)^2 / (m - 1),
+            v_p     = v_w + v_b * (1 + (1 / m)),
+            se_p    = sqrt(v_p)) %&gt;% 
+  mutate(lwr = fit_bar - se_p * 1.96,
+         upr = fit_bar + se_p * 1.96) 
+
+# what do we have?
+glimpse(fitted_lines)</code></pre>
+<pre><code>## Rows: 30
+## Columns: 8
+## $ ses     &lt;dbl&gt; -16.6666667, -15.4252874, -14.1839080, -12.9425287, -11.701149…
+## $ fit_bar &lt;dbl&gt; -2.06663732, -1.91265660, -1.75867587, -1.60469515, -1.4507144…
+## $ v_w     &lt;dbl&gt; 0.25989881, 0.23153126, 0.20555857, 0.18198075, 0.16079779, 0.…
+## $ v_b     &lt;dbl&gt; 2.684318e-31, 8.765121e-32, 4.930381e-32, 8.765121e-32, 4.9303…
+## $ v_p     &lt;dbl&gt; 0.25989881, 0.23153126, 0.20555857, 0.18198075, 0.16079779, 0.…
+## $ se_p    &lt;dbl&gt; 0.5098027, 0.4811770, 0.4533857, 0.4265920, 0.4009960, 0.37684…
+## $ lwr     &lt;dbl&gt; -3.06585065, -2.85576342, -2.64731180, -2.44081550, -2.2366665…
+## $ upr     &lt;dbl&gt; -1.06742400, -0.96954978, -0.87003995, -0.76857480, -0.6647622…</code></pre>
+</div>
+<div id="third-plot." class="section level4">
+<h4>Third: plot.</h4>
+<p>Now the hard part is over, we’re finally ready to plot.</p>
+<pre class="r"><code>fitted_lines %&gt;% 
+  ggplot(aes(x = ses)) +
+  geom_ribbon(aes(ymin = lwr, ymax = upr),
+              alpha = 1/2) +
+  geom_line(aes(y = fit_bar), 
+            size = 1/2) +
+  # add the observed data for good measure
+  geom_point(data = b_small,
+             aes(y = iqv)) +
+  ylab(&quot;iqv&quot;)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-20-1.png" width="672" /></p>
+<p>There it is, friends. We have the pooled fitted line and its pooled 95% confidence interval band from our model fit to multiply-imputed data. Until the day that Stef van Buuren and friends get around to building this functionality into <strong>mice</strong>, Andrew Miles’s <em>Predict Then Combine</em> (PC) approach has you covered.</p>
+</div>
+</div>
+</div>
+<div id="session-info" class="section level2">
+<h2>Session info</h2>
+<pre class="r"><code>sessionInfo()</code></pre>
+<pre><code>## R version 4.1.1 (2021-08-10)
+## Platform: x86_64-apple-darwin17.0 (64-bit)
+## Running under: macOS Catalina 10.15.7
+## 
+## Matrix products: default
+## BLAS:   /Library/Frameworks/R.framework/Versions/4.1/Resources/lib/libRblas.0.dylib
+## LAPACK: /Library/Frameworks/R.framework/Versions/4.1/Resources/lib/libRlapack.dylib
+## 
+## locale:
+## [1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+## 
+## attached base packages:
+## [1] stats     graphics  grDevices utils     datasets  methods   base     
+## 
+## other attached packages:
+##  [1] mice_3.13.0     GGally_2.1.2    forcats_0.5.1   stringr_1.4.0  
+##  [5] dplyr_1.0.7     purrr_0.3.4     readr_2.0.1     tidyr_1.1.3    
+##  [9] tibble_3.1.5    ggplot2_3.3.5   tidyverse_1.3.1
+## 
+## loaded via a namespace (and not attached):
+##  [1] Rcpp_1.0.7         lattice_0.20-44    lubridate_1.7.10   assertthat_0.2.1  
+##  [5] digest_0.6.28      utf8_1.2.2         R6_2.5.1           cellranger_1.1.0  
+##  [9] plyr_1.8.6         backports_1.2.1    reprex_2.0.1       evaluate_0.14     
+## [13] highr_0.9          httr_1.4.2         blogdown_1.5       pillar_1.6.3      
+## [17] rlang_0.4.11       readxl_1.3.1       rstudioapi_0.13    jquerylib_0.1.4   
+## [21] rmarkdown_2.10     labeling_0.4.2     munsell_0.5.0      broom_0.7.9       
+## [25] compiler_4.1.1     modelr_0.1.8       xfun_0.25          pkgconfig_2.0.3   
+## [29] htmltools_0.5.2    tidyselect_1.1.1   bookdown_0.23      emo_0.0.0.9000    
+## [33] reshape_0.8.8      fansi_0.5.0        crayon_1.4.1       tzdb_0.1.2        
+## [37] dbplyr_2.1.1       withr_2.4.2        grid_4.1.1         jsonlite_1.7.2    
+## [41] gtable_0.3.0       lifecycle_1.0.1    DBI_1.1.1          magrittr_2.0.1    
+## [45] scales_1.1.1       cli_3.0.1          stringi_1.7.4      farver_2.1.0      
+## [49] fs_1.5.0           xml2_1.3.2         bslib_0.3.0        ellipsis_0.3.2    
+## [53] generics_0.1.0     vctrs_0.3.8        RColorBrewer_1.1-2 tools_4.1.1       
+## [57] glue_1.4.2         hms_1.1.0          fastmap_1.1.0      yaml_2.2.1        
+## [61] colorspace_2.0-2   rvest_1.0.1        knitr_1.33         haven_2.4.3       
+## [65] sass_0.4.0</code></pre>
+</div>
+<div id="references" class="section level2 unnumbered">
+<h2>References</h2>
+<div id="refs" class="references csl-bib-body hanging-indent" line-spacing="2">
+<div id="ref-brandsma1989effects" class="csl-entry">
+Brandsma, H., &amp; Knuver, J. (1989). Effects of school and classroom characteristics on pupil progress in language and arithmetic. <em>International Journal of Educational Research</em>, <em>13</em>(7), 777–788. <a href="https://doi.org/10.1016/0883-0355(89)90028-1">https://doi.org/10.1016/0883-0355(89)90028-1</a>
+</div>
+<div id="ref-enders2010applied" class="csl-entry">
+Enders, C. K. (2010). <em>Applied missing data analysis</em>. <span>Guilford press</span>. <a href="http://www.appliedmissingdata.com/">http://www.appliedmissingdata.com/</a>
+</div>
+<div id="ref-gelmanRegressionOtherStories2020" class="csl-entry">
+Gelman, A., Hill, J., &amp; Vehtari, A. (2020). <em>Regression and other stories</em>. <span>Cambridge University Press</span>. <a href="https://doi.org/10.1017/9781139161879">https://doi.org/10.1017/9781139161879</a>
+</div>
+<div id="ref-james2021AnIntroduction" class="csl-entry">
+James, G., Witten, D., Hastie, T., &amp; Tibshirani, R. (2021). <em>An introduction to statistical learning with applications in <span>R</span></em> (Second Edition). <span>Springer</span>. <a href="https://web.stanford.edu/~hastie/ISLRv2_website.pdf">https://web.stanford.edu/~hastie/ISLRv2_website.pdf</a>
+</div>
+<div id="ref-kruschkeDoingBayesianData2015" class="csl-entry">
+Kruschke, J. K. (2015). <em>Doing <span>Bayesian</span> data analysis: <span>A</span> tutorial with <span>R</span>, <span>JAGS</span>, and <span>Stan</span></em>. <span>Academic Press</span>. <a href="https://sites.google.com/site/doingbayesiandataanalysis/">https://sites.google.com/site/doingbayesiandataanalysis/</a>
+</div>
+<div id="ref-little2019statistical" class="csl-entry">
+Little, R. J., &amp; Rubin, D. B. (2019). <em>Statistical analysis with missing data</em> (third, Vol. 793). <span>John Wiley &amp; Sons</span>. <a href="https://www.wiley.com/en-us/Statistical+Analysis+with+Missing+Data%2C+3rd+Edition-p-9780470526798">https://www.wiley.com/en-us/Statistical+Analysis+with+Missing+Data%2C+3rd+Edition-p-9780470526798</a>
+</div>
+<div id="ref-mcelreathStatisticalRethinkingBayesian2020" class="csl-entry">
+McElreath, R. (2020). <em>Statistical rethinking: <span>A Bayesian</span> course with examples in <span>R</span> and <span>Stan</span></em> (Second Edition). <span>CRC Press</span>. <a href="https://xcelab.net/rm/statistical-rethinking/">https://xcelab.net/rm/statistical-rethinking/</a>
+</div>
+<div id="ref-mcelreathStatisticalRethinkingBayesian2015" class="csl-entry">
+McElreath, R. (2015). <em>Statistical rethinking: <span>A Bayesian</span> course with examples in <span>R</span> and <span>Stan</span></em>. <span>CRC press</span>. <a href="https://xcelab.net/rm/statistical-rethinking/">https://xcelab.net/rm/statistical-rethinking/</a>
+</div>
+<div id="ref-miles2016obtaining" class="csl-entry">
+Miles, A. (2016). Obtaining predictions from models fit to multiply imputed data. <em>Sociological Methods &amp; Research</em>, <em>45</em>(1), 175–185. <a href="https://doi.org/10.1177/0049124115610345">https://doi.org/10.1177/0049124115610345</a>
+</div>
+<div id="ref-R-base" class="csl-entry">
+R Core Team. (2020). <em>R: <span>A</span> language and environment for statistical computing</em>. <span>R Foundation for Statistical Computing</span>. <a href="https://www.R-project.org/">https://www.R-project.org/</a>
+</div>
+<div id="ref-roback2021beyond" class="csl-entry">
+Roback, P., &amp; Legler, J. (2021). <em>Beyond multiple linear regression: <span>Applied</span> generalized linear models and multilevel models in <span>R</span></em>. <span>CRC Press</span>. <a href="https://bookdown.org/roback/bookdown-BeyondMLR/">https://bookdown.org/roback/bookdown-BeyondMLR/</a>
+</div>
+<div id="ref-R-GGally" class="csl-entry">
+Schloerke, B., Crowley, J., Di Cook, Briatte, F., Marbach, M., Thoen, E., Elberg, A., &amp; Larmarange, J. (2021). <em><span>GGally</span>: <span>Extension</span> to <span class="nocase">’ggplot2’</span></em>. <a href="https://CRAN.R-project.org/package=GGally">https://CRAN.R-project.org/package=GGally</a>
+</div>
+<div id="ref-vanbuurenFlexibleImputationMissing2018" class="csl-entry">
+van Buuren, S. (2018). <em>Flexible imputation of missing data</em> (Second Edition). <span>CRC Press</span>. <a href="https://stefvanbuuren.name/fimd/">https://stefvanbuuren.name/fimd/</a>
+</div>
+<div id="ref-mice2011" class="csl-entry">
+van Buuren, S., &amp; Groothuis-Oudshoorn, K. (2011). <span class="nocase">mice</span>: <span>Multivariate</span> imputation by chained equations in <span>R</span>. <em>Journal of Statistical Software</em>, <em>45</em>(3), 1–67. <a href="https://www.jstatsoft.org/v45/i03/">https://www.jstatsoft.org/v45/i03/</a>
+</div>
+<div id="ref-R-mice" class="csl-entry">
+van Buuren, S., &amp; Groothuis-Oudshoorn, K. (2021). <em><span class="nocase">mice</span>: <span>Multivariate</span> imputation by chained equations</em> [Manual]. <a href="https://CRAN.R-project.org/package=mice">https://CRAN.R-project.org/package=mice</a>
+</div>
+<div id="ref-R-tidyverse" class="csl-entry">
+Wickham, H. (2019). <em><span class="nocase">tidyverse</span>: <span>Easily</span> install and load the ’tidyverse’</em>. <a href="https://CRAN.R-project.org/package=tidyverse">https://CRAN.R-project.org/package=tidyverse</a>
+</div>
+<div id="ref-wickhamWelcomeTidyverse2019" class="csl-entry">
+Wickham, H., Averick, M., Bryan, J., Chang, W., McGowan, L. D., François, R., Grolemund, G., Hayes, A., Henry, L., Hester, J., Kuhn, M., Pedersen, T. L., Miller, E., Bache, S. M., Müller, K., Ooms, J., Robinson, D., Seidel, D. P., Spinu, V., … Yutani, H. (2019). Welcome to the tidyverse. <em>Journal of Open Source Software</em>, <em>4</em>(43), 1686. <a href="https://doi.org/10.21105/joss.01686">https://doi.org/10.21105/joss.01686</a>
+</div>
+</div>
+</div>
+<div class="footnotes">
+<hr />
+<ol>
+<li id="fn1"><p>Be warned that “full-luxury Bayesian …” isn’t a real term. Rather, it’s a playful descriptor coined by the great Richard McElreath. To hear him use it in action, check out his <a href="https://www.youtube.com/watch?v=KNPYUVmY3NM">nifty talk</a> on causal inference. One-step Bayesian imputation is a real thing, though. McElreath covered it in both editions of his text and I’ve even blogged about it <a href="https://solomonkurz.netlify.app/post/2021-07-27-one-step-bayesian-imputation-when-you-have-dropout-in-your-rct/">here</a>.<a href="#fnref1" class="footnote-back">↩︎</a></p></li>
+</ol>
+</div>
