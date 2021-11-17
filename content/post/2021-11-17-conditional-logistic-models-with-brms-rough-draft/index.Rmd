@@ -38,7 +38,7 @@ The goal of this blog post is to present a draft of my workflow, which will even
 
 * [GitHub](https://github.com/ASKurz/Doing-Bayesian-Data-Analysis-in-brms-and-the-tidyverse/issues/22),
 * [this thread](https://discourse.mc-stan.org/t/nominal-data-and-kruschkes-conditional-logistic-approach/21433) in the Stan forums,
-* or on twitter.
+* or on [twitter](https://twitter.com/SolomonKurz/status/1461016859420024842).
 
 To streamline this post a little, I have removed the content on the softmax model. For that material, just go to the ebook proper.
 
