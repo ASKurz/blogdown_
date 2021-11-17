@@ -96,7 +96,7 @@ glimpse(d3)</code></pre>
 ## $ X1 &lt;dbl&gt; -0.08714736, -0.72256565, 0.17918961, -1.15975176, -0.72711762, 0.5…
 ## $ X2 &lt;dbl&gt; -1.08134218, -1.58386308, 0.97179045, 0.50262438, 1.37570446, 1.774…
 ## $ Y  &lt;dbl&gt; 4, 4, 3, 4, 2, 3, 4, 3, 4, 4, 2, 4, 4, 3, 3, 4, 4, 4, 4, 3, 4, 4, 1…</code></pre>
-<p>In both data sets, the ordinal criterion is <code>Y</code> and the two predictors are <code>X1</code> and <code>X2</code>. Though the data are simple enough, the conditional logistic models are complex enough that it seems like we’ll be better served by focusing on them one at a time, which means I’m going to break up Figure 22.2. Here’s how to make the diagram in the left panel.</p>
+<p>In both data sets, the nominal criterion is <code>Y</code> and the two predictors are <code>X1</code> and <code>X2</code>. Though the data seem simple, the conditional logistic models are complex enough that it seems like we’ll be better served by focusing on them one at a time, which means I’m going to break up Figure 22.2. Here’s how to make the diagram in the left panel.</p>
 <pre class="r"><code># the big numbers
 numbers &lt;- tibble(
   x = c(3, 5, 2, 4, 1, 3, 2),
@@ -136,7 +136,7 @@ tibble(
   xlim(-1, 7) +
   theme_void()</code></pre>
 <p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-3-1.png" width="672" /></p>
-<p>The large numbers are the four levels in the criterion <code>Y</code> and the smaller numbers in the curly braces are various sets of those numbers. The diagram shows three levels of outcome set divisions:</p>
+<p>The large numbers are the four levels in the criterion <code>Y</code> and the smaller numbers in the curly braces are various sets of those numbers. The diagram shows three levels of outcome-set divisions:</p>
 <ul>
 <li>1 versus 2, 3, or 4;</li>
 <li>2 versus 3 or 4; and</li>
@@ -223,7 +223,7 @@ d3 %&gt;%
 <p>Recall back on page 629, Kruschke showed the equation for the 50% threshold of a logistic regression model given two continuous predictors was</p>
 <p><span class="math display">\[x_2 = (-\beta_0 / \beta_2) + (-\beta_1 / \beta_2) x_1.\]</span></p>
 <p>It was that equation that gave us the values for the <code>intercept</code> and <code>slope</code> arguments (<span class="math inline">\(-\beta_0 / \beta_2\)</span> and <span class="math inline">\(-\beta_1 / \beta_2\)</span>, respectively) for the <code>geom_abline()</code> function.</p>
-<p>It still might not be clear how the various <span class="math inline">\(\phi_{S^* | S}\)</span> values connect to the data. Though not in the text, here’s an alternative way of expression the relations in Figure 22.3. This time the plot is faceted by the three levels of <span class="math inline">\(\phi_{S^* | S}\)</span> and the background fill is based on those conditional probabilities.</p>
+<p>It still might not be clear how the various <span class="math inline">\(\phi_{S^* | S}\)</span> values connect to the data. Though not in the text, here’s an alternative way of expressing the relations in Figure 22.3. This time the plot is faceted by the three levels of <span class="math inline">\(\phi_{S^* | S}\)</span> and the background fill is based on those conditional probabilities.</p>
 <pre class="r"><code># define a grid of X1 and X2 values
 crossing(X1 = seq(from = -2, to = 2, length.out = 50),
          X2 = seq(from = -2, to = 2, length.out = 50)) %&gt;% 
@@ -257,7 +257,7 @@ crossing(X1 = seq(from = -2, to = 2, length.out = 50),
   theme(legend.position = c(0.8, 0.2)) +
   facet_wrap(~ name, labeller = label_parsed, ncol = 2)</code></pre>
 <p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-5-1.png" width="672" /></p>
-<p>Notice how because each of the levels of <span class="math inline">\(\phi\)</span> is defined by a different subset of the data, each of the facets contains a different subset of the <code>d3</code> data, too. For example, since <span class="math inline">\(\phi_{\{ 1 \} | \{ 1,2,3,4 \}}\)</span> is defined by the full subset of the possible values of <code>Y</code>, the data within <code>geom_text()</code> for that facet. In contrast, since <span class="math inline">\(\phi_{\{ 3 \} | \{ 3,4 \}}\)</span> is defined by a subset of the data for which <code>Y</code> is only <code>3</code> or <code>4</code>, those are the only values you see displayed within that facet of the plot.</p>
+<p>Notice how because each of the levels of <span class="math inline">\(\phi\)</span> is defined by a different subset of the data, each of the facets contains a different subset of the <code>d3</code> data, too. For example, since <span class="math inline">\(\phi_{\{ 1 \} | \{ 1,2,3,4 \}}\)</span> is defined by the full subset of the possible values of <code>Y</code>, you see all the <code>Y</code> data displayed by <code>geom_text()</code> for that facet. In contrast, since <span class="math inline">\(\phi_{\{ 3 \} | \{ 3,4 \}}\)</span> is defined by a subset of the data for which <code>Y</code> is only <code>3</code> or <code>4</code>, those are the only values you see displayed within that facet of the plot.</p>
 <p>Now we’ll consider an alternative way to set up the binary-choices hierarchy, as seen in the right panel of Figure 22.2. First, here’s that half of the figure.</p>
 <pre class="r"><code># the big numbers
 numbers &lt;- tibble(
@@ -298,7 +298,7 @@ tibble(
   xlim(-1, 10) +
   theme_void()</code></pre>
 <p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-6-1.png" width="672" /></p>
-<p>This diagram shows three levels of outcome set divisions:</p>
+<p>This diagram shows three levels of outcome-set divisions:</p>
 <ul>
 <li>1 or 2 versus 3 or 4;</li>
 <li>1 versus 2; and</li>
@@ -422,11 +422,10 @@ crossing(X1 = seq(from = -2, to = 2, length.out = 50),
 <li>First we’ll walk through the custom family approach.</li>
 <li>Second we’ll explore the sequential ordinal approach.</li>
 </ol>
-<p>However, there are at least two other ways to fit conditional logistic models with <strong>brms</strong>. Based on insights from <a href="http://singmann.org/">Henrik Singmann</a>, we can define conditional logistic models using the custom family approach. In contrast, <a href="https://sites.google.com/view/mattansb">Mattan Ben-Shachar</a> has shown we can also fit conditional logistic models using a tricky application of sequential ordinal regression. Rather than present them in the abstract, here, we will showcase both of these approaches in the sections below.</p>
 <div id="conditional-logistic-models-with-custom-likelihoods." class="section level5">
 <h5>Conditional logistic models with custom likelihoods.</h5>
 <p>As we briefly learned in [Section 8.6.1][Defining new likelihood functions.], <strong>brms</strong> users can define their own custom likelihood functions, which Bürkner outlined in his <span class="citation">(<a href="#ref-Bürkner2021Define" role="doc-biblioref">2021</a>)</span> vignette, <a href="https://CRAN.R-project.org/package=brms/vignettes/brms_customfamilies.html"><em>Define custom response distributions with brms</em></a>. As part of the <a href="https://discourse.mc-stan.org/t/nominal-data-and-kruschkes-conditional-logistic-approach/21433"><em>Nominal data and Kruschke’s “conditional logistic” approach</em></a> thread on the Stan forums, Henrik Singmann showed how you can use this functionality to fit conditional logistic models with <strong>brms</strong>. We will practice how to do this for the models of both the <code>d3</code> and <code>d4</code> data sets, which were showcased in the left and right panels of Figure 22.3 in <a href="#conditional-logistic-regression">Section 22.2</a>. Going in order, we’ll focus first on how to model the data in <code>d3</code>.</p>
-<p>For the first step, we use the <code>custom_family()</code> to</p>
+<p>For the first step, we use the <code>custom_family()</code> function to</p>
 <ul>
 <li>name the new family with the <code>name</code> argument,</li>
 <li>name the family’s parameters with the <code>dpars</code> argument,</li>
@@ -594,7 +593,7 @@ p2 &lt;-
   plot_layout(widths = c(1, 2)) &amp;
   plot_annotation(title = &quot;Figure 22.6, upper half&quot;,
                   subtitle = &quot;Results from the conditional logistic model fit to the d3 data via the custom-family approach&quot;)</code></pre>
-<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-15-1.png" width="672" /></p>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-15-1.png" width="768" /></p>
 <p>Though it isn’t necessary to reproduce any of the plots in this section of Kruschke’s text, we’ll want to use the <code>expose_functions()</code> function if we wanted to use any of the <strong>brms</strong> post-processing functions for our model fit with the custom likelihood.</p>
 <pre class="r"><code>expose_functions(fit22.3, vectorize = TRUE)</code></pre>
 <p>Here’s what we’d need to do before computing information criteria estimates, such as with the WAIC.</p>
@@ -709,7 +708,7 @@ vector cond_log_2_pred(int y, real mu, real mu_b, real mu_c, int n_cat) {
   return(prob);
 }
 &quot;) </code></pre>
-<p>Now we’re ready to fit the model with <code>brm()</code>. Notice how our use of the <code>family</code> and <code>stanvars</code> functions.</p>
+<p>Now we’re ready to fit the model with <code>brm()</code>. Again, notice how our use of the <code>family</code> and <code>stanvars</code> functions.</p>
 <pre class="r"><code>fit22.4 &lt;-
   brm(data = d4, 
       family = cond_log_2,
@@ -908,7 +907,7 @@ ac$data %&gt;%
 </div>
 <div id="conditional-logistic-models-by-sequential-ordinal-regression." class="section level5">
 <h5>Conditional logistic models by sequential ordinal regression.</h5>
-<p>In their <span class="citation">(<a href="#ref-burknerOrdinalRegressionModels2019" role="doc-biblioref">2019</a>)</span> paper, <a href="https://psyarxiv.com/x8swp/"><em>Ordinal regression models in psychology: A Tutorial</em></a>, Bürkner and Vourre outlined a framework for fitting a variety of orginal models with <strong>brms</strong>. We’ll learn more about ordinal models in [Chapter 23][Ordinal Predicted Variable]. In this section, we’ll use Mattan Ben-Shachar’s strategy and purpose one of the ordinal models to fit a conditional logistic model to our nominal data.</p>
+<p>In their <span class="citation">(<a href="#ref-burknerOrdinalRegressionModels2019" role="doc-biblioref">2019</a>)</span> paper, <a href="https://psyarxiv.com/x8swp/"><em>Ordinal regression models in psychology: A tutorial</em></a>, Bürkner and Vourre outlined a framework for fitting a variety of orginal models with <strong>brms</strong>. We’ll learn more about ordinal models in [Chapter 23][Ordinal Predicted Variable]. In this section, we’ll use Mattan Ben-Shachar’s strategy and purpose one of the ordinal models to fit a conditional logistic model to our nominal data.</p>
 <p>As outlined in <span class="citation"><a href="#ref-burknerOrdinalRegressionModels2019" role="doc-biblioref">Bürkner &amp; Vuorre</a> (<a href="#ref-burknerOrdinalRegressionModels2019" role="doc-biblioref">2019</a>)</span>, and as we will learn in greater detain in the next chapter, many ordinal regression models presume an underlying continuous process. However, you can use a sequential model in cases where one level of the criterion is only possible after the lower levels of the criterion have been achieved. Although this is not technically correct for the nominal variable <code>Y</code> in the <code>d3</code> data set, the simple hierarchical sequence Kruschke used to model those data does follow that same pattern. Ben-Shachar’s insight was that if we treat our nominal variable <code>Y</code> as ordinal, the sequential model will mimic the sequential-ness of Kruschke’s binary-choices hierarchy. To get this to work, we first have to save an ordinal version of <code>Y</code>, which we’ll call <code>Y_ord</code>.</p>
 <pre class="r"><code>d3 &lt;-
   d3 %&gt;% 
@@ -1054,7 +1053,7 @@ loo_compare(fit22.3, fit22.5, criterion = &quot;waic&quot;) %&gt;%
 ##         se_waic
 ## fit22.3   33.6 
 ## fit22.5   33.6</code></pre>
-<p>A limitation of the <code>family = sratio</code> method for conditional logistic models is it requires a simple binary-divisions hierarchy that resembles the one we just used, the one in the left panel of Figure 22.2. It is not well suited for the more complicated hierarchy displayed in the right panel of Figure 22.3, nor will it help you make sense of data generated by that kind of mechanism. For example, consider what happens when we try to use <code>family = sratio</code> with the <code>d4</code> data.</p>
+<p>A limitation of the <code>family = sratio</code> method for conditional logistic models is it requires a simple binary-divisions hierarchy that resembles the one we just used, the one in the left panel of Figure 22.2. It is not well suited for the more complicated hierarchy displayed in the right panel of Figure 22.2, nor will it help you make sense of data generated by that kind of mechanism. For example, consider what happens when we try to use <code>family = sratio</code> with the <code>d4</code> data.</p>
 <pre class="r"><code># make an ordinal version of Y
 d4 &lt;-
   d4 %&gt;% 
@@ -1166,7 +1165,7 @@ post %&gt;%
   plot_layout(widths = c(1, 2)) &amp;
   plot_annotation(title = &quot;Figure 22.7, lower half&quot;,
                   subtitle = &quot;Results from the conditional logistic model fit to the d4 data via the sequential-ordinal approach&quot;)</code></pre>
-<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-34-1.png" width="672" /></p>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-34-1.png" width="768" /></p>
 <p>We ended up with our version of the lower half of Figure 22.7. As with the previous model, the sequential-ordinal approach reverses the signs for the <span class="math inline">\(\beta_1\)</span> and <span class="math inline">\(\beta_2\)</span> parameters, which isn’t a big deal as long as you keep that in mind. The larger issue is that the thresholds displayed in the left panel do a poor job differentiating among the various <code>Y</code> categories. The model underlying those thresholds is a bad match for the data.</p>
 </div>
 <div id="conditional-logistic-wrap-up." class="section level5">

@@ -90,7 +90,7 @@ glimpse(d3)
 glimpse(d4)
 ```
 
-In both data sets, the ordinal criterion is `Y` and the two predictors are `X1` and `X2`. Though the data are simple enough, the conditional logistic models are complex enough that it seems like we'll be better served by focusing on them one at a time, which means I'm going to break up Figure 22.2. Here's how to make the diagram in the left panel.
+In both data sets, the nominal criterion is `Y` and the two predictors are `X1` and `X2`. Though the data seem simple, the conditional logistic models are complex enough that it seems like we'll be better served by focusing on them one at a time, which means I'm going to break up Figure 22.2. Here's how to make the diagram in the left panel.
 
 ```{r}
 # the big numbers
@@ -133,7 +133,7 @@ tibble(
   theme_void()
 ```
 
-The large numbers are the four levels in the criterion `Y` and the smaller numbers in the curly braces are various sets of those numbers. The diagram shows three levels of outcome set divisions:
+The large numbers are the four levels in the criterion `Y` and the smaller numbers in the curly braces are various sets of those numbers. The diagram shows three levels of outcome-set divisions:
 
 * 1 versus 2, 3, or 4;
 * 2 versus 3 or 4; and
@@ -232,7 +232,7 @@ $$x_2 = (-\beta_0 / \beta_2) + (-\beta_1 / \beta_2) x_1.$$
 
 It was that equation that gave us the values for the `intercept` and `slope` arguments ($-\beta_0 / \beta_2$ and $-\beta_1 / \beta_2$, respectively) for the `geom_abline()` function.
 
-It still might not be clear how the various $\phi_{S^* | S}$ values connect to the data. Though not in the text, here's an alternative way of expression the relations in Figure 22.3. This time the plot is faceted by the three levels of $\phi_{S^* | S}$ and the background fill is based on those conditional probabilities.
+It still might not be clear how the various $\phi_{S^* | S}$ values connect to the data. Though not in the text, here's an alternative way of expressing the relations in Figure 22.3. This time the plot is faceted by the three levels of $\phi_{S^* | S}$ and the background fill is based on those conditional probabilities.
 
 ```{r}
 # define a grid of X1 and X2 values
@@ -269,7 +269,7 @@ crossing(X1 = seq(from = -2, to = 2, length.out = 50),
   facet_wrap(~ name, labeller = label_parsed, ncol = 2)
 ```
 
-Notice how because each of the levels of $\phi$ is defined by a different subset of the data, each of the facets contains a different subset of the `d3` data, too. For example, since $\phi_{\{ 1 \} | \{ 1,2,3,4 \}}$ is defined by the full subset of the possible values of `Y`, the data within `geom_text()` for that facet. In contrast, since $\phi_{\{ 3 \} | \{ 3,4 \}}$ is defined by a subset of the data for which `Y` is only `3` or `4`, those are the only values you see displayed within that facet of the plot.
+Notice how because each of the levels of $\phi$ is defined by a different subset of the data, each of the facets contains a different subset of the `d3` data, too. For example, since $\phi_{\{ 1 \} | \{ 1,2,3,4 \}}$ is defined by the full subset of the possible values of `Y`, you see all the `Y` data displayed by `geom_text()` for that facet. In contrast, since $\phi_{\{ 3 \} | \{ 3,4 \}}$ is defined by a subset of the data for which `Y` is only `3` or `4`, those are the only values you see displayed within that facet of the plot.
 
 Now we'll consider an alternative way to set up the binary-choices hierarchy, as seen in the right panel of Figure 22.2. First, here's that half of the figure.
 
@@ -314,7 +314,7 @@ tibble(
   theme_void()
 ```
 
-This diagram shows three levels of outcome set divisions:
+This diagram shows three levels of outcome-set divisions:
 
 * 1 or 2 versus 3 or 4;
 * 1 versus 2; and
@@ -447,13 +447,11 @@ Since we will be fitting the conditional logistic model with two different strat
 1. First we'll walk through the custom family approach.
 2. Second we'll explore the sequential ordinal approach.
 
-However, there are at least two other ways to fit conditional logistic models with **brms**. Based on insights from [Henrik Singmann](http://singmann.org/), we can define conditional logistic models using the custom family approach. In contrast, [Mattan Ben-Shachar](https://sites.google.com/view/mattansb) has shown we can also fit conditional logistic models using a tricky application of sequential ordinal regression. Rather than present them in the abstract, here, we will showcase both of these approaches in the sections below.
-
 ##### Conditional logistic models with custom likelihoods.
 
 As we briefly learned in [Section 8.6.1][Defining new likelihood functions.], **brms** users can define their own custom likelihood functions, which Bürkner outlined in his [-@Bürkner2021Define] vignette, [*Define custom response distributions with brms*](https://CRAN.R-project.org/package=brms/vignettes/brms_customfamilies.html). As part of the [*Nominal data and Kruschke's "conditional logistic" approach*](https://discourse.mc-stan.org/t/nominal-data-and-kruschkes-conditional-logistic-approach/21433) thread on the Stan forums, Henrik Singmann showed how you can use this functionality to fit conditional logistic models with **brms**. We will practice how to do this for the models of both the `d3` and `d4` data sets, which were showcased in the left and right panels of Figure 22.3 in [Section 22.2][Conditional logistic regression]. Going in order, we'll focus first on how to model the data in `d3`.
 
-For the first step, we use the `custom_family()` to 
+For the first step, we use the `custom_family()` function to 
 
 * name the new family with the `name` argument,
 * name the family's parameters with the `dpars` argument,
@@ -627,7 +625,7 @@ p2 <-
 
 Now combine the two ggplots, add a little formatting, and show the full upper half of Figure 22.6, based on the `custom_family()` approach.
 
-```{r}
+```{r, fig.width = 8, fig.height = 5.25, warning = F, message = F}
 (p2 + p1) & 
   plot_layout(widths = c(1, 2)) &
   plot_annotation(title = "Figure 22.6, upper half",
@@ -764,7 +762,7 @@ vector cond_log_2_pred(int y, real mu, real mu_b, real mu_c, int n_cat) {
 ```
 
 
-Now we're ready to fit the model with `brm()`. Notice how our use of the `family` and `stanvars` functions.
+Now we're ready to fit the model with `brm()`. Again, notice how our use of the `family` and `stanvars` functions.
 
 ```{r fit22.4}
 fit22.4 <-
@@ -791,7 +789,7 @@ print(fit22.4)
 
 We can use the same basic workflow as before to make our version of the upper half of Figure 22.7.
 
-```{r, fig.width = 8, fig.height = 4.5, warning = F, message = F}
+```{r, fig.width = 8, fig.height = 5.25, warning = F, message = F}
 # extract the posterior draws
 post <- posterior_samples(fit22.4)
 
@@ -962,7 +960,7 @@ On the whole, the autocorrelations are reasonably low across all parameters, cha
 
 ##### Conditional logistic models by sequential ordinal regression.
 
-In their [-@burknerOrdinalRegressionModels2019] paper, [*Ordinal regression models in psychology: A Tutorial*](https://psyarxiv.com/x8swp/), Bürkner and Vourre outlined a framework for fitting a variety of orginal models with **brms**. We'll learn more about ordinal models in [Chapter 23][Ordinal Predicted Variable]. In this section, we'll use Mattan Ben-Shachar's strategy and purpose one of the ordinal models to fit a conditional logistic model to our nominal data. 
+In their [-@burknerOrdinalRegressionModels2019] paper, [*Ordinal regression models in psychology: A tutorial*](https://psyarxiv.com/x8swp/), Bürkner and Vourre outlined a framework for fitting a variety of orginal models with **brms**. We'll learn more about ordinal models in [Chapter 23][Ordinal Predicted Variable]. In this section, we'll use Mattan Ben-Shachar's strategy and purpose one of the ordinal models to fit a conditional logistic model to our nominal data. 
 
 As outlined in @burknerOrdinalRegressionModels2019, and as we will learn in greater detain in the next chapter, many ordinal regression models presume an underlying continuous process. However, you can use a sequential model in cases where one level of the criterion is only possible after the lower levels of the criterion have been achieved. Although this is not technically correct for the nominal variable `Y` in the `d3` data set, the simple hierarchical sequence Kruschke used to model those data does follow that same pattern. Ben-Shachar's insight was that if we treat our nominal variable `Y` as ordinal, the sequential model will mimic the sequential-ness of Kruschke's binary-choices hierarchy. To get this to work, we first have to save an ordinal version of `Y`, which we'll call `Y_ord`.
 
@@ -1099,7 +1097,7 @@ loo_compare(fit22.3, fit22.5, criterion = "waic") %>%
   print(simplify = F)
 ```
 
-A limitation of the `family = sratio` method for conditional logistic models is it requires a simple binary-divisions hierarchy that resembles the one we just used, the one in the left panel of Figure 22.2. It is not well suited for the more complicated hierarchy displayed in the right panel of Figure 22.3, nor will it help you make sense of data generated by that kind of mechanism. For example, consider what happens when we try to use `family = sratio` with the `d4` data.
+A limitation of the `family = sratio` method for conditional logistic models is it requires a simple binary-divisions hierarchy that resembles the one we just used, the one in the left panel of Figure 22.2. It is not well suited for the more complicated hierarchy displayed in the right panel of Figure 22.2, nor will it help you make sense of data generated by that kind of mechanism. For example, consider what happens when we try to use `family = sratio` with the `d4` data.
 
 ```{r fit22.6}
 # make an ordinal version of Y
@@ -1125,7 +1123,7 @@ print(fit22.6)
 
 If you look at the parameter summary, nothing obviously bad happened. The computer didn't crash or anything. To get a better sense of the damage, we plot.
 
-```{r, warning = F, message = F}
+```{r, fig.width = 8, fig.height = 5.25, warning = F, message = F}
 # extract the posterior draws for fit22.6
 post <- posterior_samples(fit22.6)
 
