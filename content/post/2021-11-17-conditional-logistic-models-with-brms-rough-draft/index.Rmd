@@ -808,7 +808,7 @@ p1 <-
          slope     = -X1 / X2) %>% 
   
   ggplot() +
-  geom_text(data = d3,
+  geom_text(data = d4,
             aes(x = X1, y = X2, label = Y, color = factor(Y)),
             size = 3, show.legend = F) +
   geom_abline(aes(intercept = intercept,
