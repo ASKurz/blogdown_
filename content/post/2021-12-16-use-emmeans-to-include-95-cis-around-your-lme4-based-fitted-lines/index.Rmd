@@ -65,9 +65,8 @@ library(emmeans)
 # adjust the plotting theme
 theme_set(
   theme_linedraw() +
-  theme(legend.position = "none",
-        panel.grid = element_blank(),
-        strip.background = element_blank(),
+  theme(panel.grid = element_blank(),
+        strip.background = element_rect(fill = "grey92", color = "grey92"),
         strip.text = element_text(color = "black", size = 10))
 )
 ```
@@ -306,10 +305,8 @@ Our goal is to use the `emmeans::emmeans()` function to compute 95% confidence i
 fit1.emmeans.population <- emmeans(
   object = fit1, 
   specs = ~ Time, 
-  # ask for a more densely-packed sequence of Time values
   at = list(Time = seq(from = 0, to = 21, length.out = 30)), 
   lmer.df = "satterthwaite") %>% 
-  # make it a data frame
   data.frame()
 
 # what is this?
@@ -344,7 +341,6 @@ fit2.emmeans.population <- emmeans(
   specs = ~ Time : Diet, 
   at = list(Time = seq(from = 0, to = 21, length.out = 30)), 
   lmer.df = "satterthwaite") %>% 
-  # make it a data frame
   data.frame()
 
 # what is this?

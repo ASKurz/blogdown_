@@ -52,9 +52,8 @@ library(emmeans)
 # adjust the plotting theme
 theme_set(
   theme_linedraw() +
-  theme(legend.position = &quot;none&quot;,
-        panel.grid = element_blank(),
-        strip.background = element_blank(),
+  theme(panel.grid = element_blank(),
+        strip.background = element_rect(fill = &quot;grey92&quot;, color = &quot;grey92&quot;),
         strip.text = element_text(color = &quot;black&quot;, size = 10))
 )</code></pre>
 </div>
@@ -268,10 +267,8 @@ p2 + p4 &amp;
 <pre class="r"><code>fit1.emmeans.population &lt;- emmeans(
   object = fit1, 
   specs = ~ Time, 
-  # ask for a more densely-packed sequence of Time values
   at = list(Time = seq(from = 0, to = 21, length.out = 30)), 
   lmer.df = &quot;satterthwaite&quot;) %&gt;% 
-  # make it a data frame
   data.frame()
 
 # what is this?
@@ -307,7 +304,6 @@ p1 + p5 &amp;
   specs = ~ Time : Diet, 
   at = list(Time = seq(from = 0, to = 21, length.out = 30)), 
   lmer.df = &quot;satterthwaite&quot;) %&gt;% 
-  # make it a data frame
   data.frame()
 
 # what is this?
