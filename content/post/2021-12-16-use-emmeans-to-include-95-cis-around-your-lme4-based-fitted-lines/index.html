@@ -1,0 +1,506 @@
+---
+title: Use emmeans() to include 95% CIs around your lme4-based fitted lines
+author: A. Solomon Kurz
+date: '2021-12-16'
+slug: ''
+categories: []
+tags:
+  - Bayesian
+  - brms
+  - confidence interval
+  - emmeans
+  - frequentist
+  - lme4
+  - multilevel
+  - R
+  - tidyverse
+  - tutorial
+subtitle: ''
+summary: ''
+authors: []
+lastmod: '2021-12-16T14:12:58-06:00'
+featured: no
+image:
+  caption: ''
+  focal_point: ''
+  preview_only: no
+projects: []
+bibliography: /Users/solomonkurz/Dropbox/blogdown/content/post/my_blog.bib
+biblio-style: apalike
+csl: /Users/solomonkurz/Dropbox/blogdown/content/post/apa.csl  
+link-citations: yes
+---
+
+<script src="{{< blogdown/postref >}}index_files/header-attrs/header-attrs.js"></script>
+
+
+<div id="scenario" class="section level2">
+<h2>Scenario</h2>
+<p>You’re an <strong>R</strong> <span class="citation">(<a href="#ref-R-base" role="doc-biblioref">R Core Team, 2020</a>)</span> user and just fit a nice multilevel model to some grouped data and you’d like to showcase the results in a plot. In your plots, it would be ideal to express the model uncertainty with 95% interval bands. If you’re a Bayesian working with <a href="https://mc-stan.org/">Stan</a>-based software, such as <a href="https://github.com/paul-buerkner/brms"><strong>brms</strong></a> <span class="citation">(<a href="#ref-burknerBrmsPackageBayesian2017" role="doc-biblioref">Bürkner, 2017</a>, <a href="#ref-burknerAdvancedBayesianMultilevel2018" role="doc-biblioref">2018</a>, <a href="#ref-R-brms" role="doc-biblioref">2020</a>)</span>, this is pretty trivial. But if you’re a frequentist and like using the popular <a href="https://CRAN.R-project.org/package=lme4"><strong>lme4</strong></a> package <span class="citation">(<a href="#ref-R-lme4" role="doc-biblioref">Bates et al., 2015b</a>, <a href="#ref-batesFittingLinearMixedeffects2015" role="doc-biblioref">2015a</a>)</span>, you might be surprised how difficult it is to get those 95% intervals. I recently stumbled upon a solution with the <a href="https://github.com/rvlenth/emmeans"><strong>emmeans</strong></a> package <span class="citation">(<a href="#ref-R-emmeans" role="doc-biblioref">Lenth, 2021</a>)</span> and the purpose of this blog post is to show you how it works.</p>
+<div id="i-make-assumptions." class="section level3">
+<h3>I make assumptions.</h3>
+<p>You’ll want to be familiar with multilevel regression. For frequentist resources, I recommend the texts by <span class="citation"><a href="#ref-roback2021beyond" role="doc-biblioref">Roback &amp; Legler</a> (<a href="#ref-roback2021beyond" role="doc-biblioref">2021</a>)</span>, <span class="citation"><a href="#ref-hoffmanLongitudinalAnalysisModeling2015" role="doc-biblioref">Hoffman</a> (<a href="#ref-hoffmanLongitudinalAnalysisModeling2015" role="doc-biblioref">2015</a>)</span>, or <span class="citation"><a href="#ref-singerAppliedLongitudinalData2003" role="doc-biblioref">Singer &amp; Willett</a> (<a href="#ref-singerAppliedLongitudinalData2003" role="doc-biblioref">2003</a>)</span>. For the Bayesians in the room, I recommend the texts by McElreath <span class="citation">(<a href="#ref-mcelreathStatisticalRethinkingBayesian2020" role="doc-biblioref">2020</a>, <a href="#ref-mcelreathStatisticalRethinkingBayesian2015" role="doc-biblioref">2015</a>)</span> or Kruschke <span class="citation">(<a href="#ref-kruschkeDoingBayesianData2015" role="doc-biblioref">2015</a>)</span>.</p>
+<p>All code is in <strong>R</strong> <span class="citation">(<a href="#ref-R-base" role="doc-biblioref">R Core Team, 2020</a>)</span>, with healthy doses of the <strong>tidyverse</strong> <span class="citation">(<a href="#ref-R-tidyverse" role="doc-biblioref">Wickham, 2019</a>; <a href="#ref-wickhamWelcomeTidyverse2019" role="doc-biblioref">Wickham et al., 2019</a>)</span>. Probably the best place to learn about the <strong>tidyverse</strong>-style of coding, as well as an introduction to <strong>R</strong>, is Grolemund and Wickham’s <span class="citation">(<a href="#ref-grolemundDataScience2017" role="doc-biblioref">2017</a>)</span> freely-available online text, <a href="https://r4ds.had.co.nz"><em>R for data science</em></a>. We will also make good use of the <strong>patchwork</strong> package <span class="citation">(<a href="#ref-R-patchwork" role="doc-biblioref">Pedersen, 2019</a>)</span>. Our two modeling packages will be the aforementioned <strong>lme4</strong> and <strong>brms</strong>.</p>
+<p>Load the primary <strong>R</strong> packages and adjust the plotting theme.</p>
+<pre class="r"><code># load
+library(tidyverse)
+library(lme4)
+library(brms)
+library(patchwork)
+library(emmeans)
+
+# adjust the plotting theme
+theme_set(
+  theme_linedraw() +
+  theme(legend.position = &quot;none&quot;,
+        panel.grid = element_blank(),
+        strip.background = element_blank(),
+        strip.text = element_text(color = &quot;black&quot;, size = 10))
+)</code></pre>
+</div>
+<div id="we-need-data." class="section level3">
+<h3>We need data.</h3>
+<p>In this post we’ll use the base-<strong>R</strong> <code>ChickWeight</code> data.</p>
+<pre class="r"><code>data(ChickWeight)
+
+glimpse(ChickWeight)</code></pre>
+<pre><code>## Rows: 578
+## Columns: 4
+## $ weight &lt;dbl&gt; 42, 51, 59, 64, 76, 93, 106, 125, 149, 171, 199, 205, 40, 49, 58, 72, 84, 103, 122, 138, 162,…
+## $ Time   &lt;dbl&gt; 0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 21, 0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 21, 0, 2, 4…
+## $ Chick  &lt;ord&gt; 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, …
+## $ Diet   &lt;fct&gt; 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, …</code></pre>
+<p>The <code>ChickWeight</code> data set contains the <code>weight</code> measurements in grams for 50 chicks, each of which was randomized into one of four experimental diets. To get a sense of the data, here are their <code>weight</code> values plotted across <code>Time</code>, separated by the levels of <code>Diet</code>.</p>
+<pre class="r"><code>ChickWeight %&gt;%
+  ggplot(aes(x = Time, y = weight, group = Chick)) +
+  geom_line(alpha = 3/4, size = 1/4) +
+  ylim(0, NA) +
+  facet_wrap(~ Diet, labeller = label_both)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-5-1.png" width="672" /></p>
+<p>Our goal will be to fit a couple models to these data and practice plotting the model-based trajectories at both the population- and chick-levels.</p>
+</div>
+</div>
+<div id="models" class="section level2">
+<h2>Models</h2>
+<p>Our first model with be the unconditional linear growth model</p>
+<p><span class="math display">\[
+\begin{align*}
+\text{weight}_{ij} &amp; \sim \operatorname{Normal}(\mu_{ij}, \sigma_\epsilon^2) \\
+\mu_{ij} &amp; = a_i + b_i \text{Time}_{ij} \\
+a_i &amp; = \alpha_0 + u_i \\
+b_i &amp; = \beta_0 + v_i \\
+\begin{bmatrix} u_i \\ v_i \end{bmatrix} &amp; \sim \operatorname{Normal} \left (
+  \begin{bmatrix} 0 \\ 0 \end{bmatrix}, 
+  \begin{bmatrix} \sigma_u^2 &amp; \\ \sigma_{uv} &amp; \sigma_v^2 \end{bmatrix} 
+\right ),
+\end{align*}
+\]</span></p>
+<p>where <span class="math inline">\(i\)</span> indexes the different levels of <code>Chick</code> and <span class="math inline">\(j\)</span> indexes the various measurements taken across <code>Time</code>. The <span class="math inline">\(a_i\)</span> intercepts and <span class="math inline">\(b_i\)</span> slopes are both random with a level-2 covariance <span class="math inline">\(\sigma_{uv}\)</span>. The second model with be the conditional quadratic growth model</p>
+<p><span class="math display">\[
+\begin{align*}
+\text{weight}_{ij} &amp; \sim \operatorname{Normal}(\mu_{ij}, \sigma_\epsilon^2) \\
+\mu_{ij} &amp; = a_i + b_i \text{Time}_{ij} + c_i \text{Time}_{ij}^2 \\
+a_i &amp; = \alpha_0 + \alpha_1 \text{Diet}_i + u_i \\
+b_i &amp; = \beta_0 + \beta_1 \text{Diet}_i + v_i \\
+c_i &amp; = \gamma_0 + \gamma_1 \text{Diet}_i + w_i \\
+\begin{bmatrix} u_i \\ v_i \\ w_i \end{bmatrix} &amp; \sim \operatorname{Normal} \left (
+  \begin{bmatrix} 0 \\ 0 \\ 0 \end{bmatrix}, 
+  \begin{bmatrix} \sigma_u^2 &amp; &amp; \\ \sigma_{uv} &amp; \sigma_v^2 &amp; \\ \sigma_{uw} &amp; \sigma_{vw} &amp; \sigma_w^2 \end{bmatrix} 
+\right ),
+\end{align*}
+\]</span></p>
+<p>which adds a new quadratic growth parameter <span class="math inline">\(c_i\)</span>, which varies across chicks. The random intercepts, linear slopes, and quadratic slopes all covary in a <span class="math inline">\(3 \times 3\)</span> level-2 variance/covariance matrix and all three parameters are conditioned on the experimental variable <code>Diet</code>.</p>
+<p>Here’s how to fit the two models with <code>lme4::lmer()</code>.</p>
+<pre class="r"><code># unconditional linear growth model
+fit1 &lt;- lmer(
+  data = ChickWeight,
+  weight ~ 1 + Time + (1 + Time | Chick)
+)
+
+# conditional quadratic growth model
+fit2 &lt;- lmer(
+  data = ChickWeight,
+  weight ~ 1 + Time + I(Time^2) + Diet + Time:Diet + I(Time^2):Diet + (1 + Time + I(Time^2) | Chick)
+)</code></pre>
+<pre><code>## boundary (singular) fit: see ?isSingular</code></pre>
+<p>If you fit the second model, you probably got the warning message reading <code>boundary (singular) fit: see ?isSingular</code>. That often pops up when one or more of your level-2 variance parameters are zero or close to zero, which isn’t necessarily a problem but it’s just something to take note of. Unless there are other problems with the model, I wouldn’t worry about it.</p>
+<p>As this post isn’t a full multilevel growth model tutorial, I’m not going to go through the model <code>summary()</code> output. If you’re new to models like this, it’s worth your time to inspect the model parameters with care.</p>
+</div>
+<div id="plot" class="section level2">
+<h2>Plot</h2>
+<p>There are many ways to plot the results from models like these. If you do a quick web search, you’ll find a variety of prior blog posts exploring how to model and visualize the <code>ChickWeight</code> data. In this post, I’m going to recommend a two-panel approach where you (a) plot the chick-level trajectories, (b) plot the population average trajectory, and (c) combine the two plots with <strong>patchwork</strong> syntax.</p>
+<div id="chick-level-trajectories-wo-uncertainty-with-predict." class="section level3">
+<h3>Chick-level trajectories w/o uncertainty with <code>predict()</code>.</h3>
+<p>If you’re trick, there are many post-processing methods you can use to compute and plot the chick-level trajectories. In this post, we’ll focus on the <code>predict()</code> method. For simple models fit with the <code>lmer()</code> function, I recommend the following steps.</p>
+<ol style="list-style-type: decimal">
+<li>Insert your model fit object into <code>predict()</code>.</li>
+<li>Covert the results into a data frame.</li>
+<li>Rename the vector of predicted values something generic like <code>y_hat</code>.</li>
+<li>Append the original data set with <code>bind_cols()</code>.</li>
+<li>Save the results with a descriptive name.</li>
+</ol>
+<p>Here’s what those steps look like in action with <code>fit1</code>.</p>
+<pre class="r"><code>fit1.predict.chicks &lt;- predict(fit1) %&gt;% 
+  data.frame() %&gt;% 
+  set_names(&quot;y_hat&quot;) %&gt;% 
+  bind_cols(ChickWeight)
+
+# what have we done?
+glimpse(fit1.predict.chicks)</code></pre>
+<pre><code>## Rows: 578
+## Columns: 5
+## $ y_hat  &lt;dbl&gt; 29.64524, 45.01241, 60.37958, 75.74675, 91.11392, 106.48109, 121.84826, 137.21543, 152.58260,…
+## $ weight &lt;dbl&gt; 42, 51, 59, 64, 76, 93, 106, 125, 149, 171, 199, 205, 40, 49, 58, 72, 84, 103, 122, 138, 162,…
+## $ Time   &lt;dbl&gt; 0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 21, 0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 21, 0, 2, 4…
+## $ Chick  &lt;ord&gt; 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, …
+## $ Diet   &lt;fct&gt; 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, …</code></pre>
+<p>Now here’s a quick plot.</p>
+<pre class="r"><code>p1 &lt;- fit1.predict.chicks %&gt;% 
+  ggplot(aes(x = Time, y = y_hat, group = Chick)) +
+  geom_line(alpha = 2/4, size = 1/4) +
+  labs(title = &quot;Chick-level trajectories&quot;,
+       subtitle = &quot;predict() method&quot;,
+       y = expression(widehat(weight)[italic(i)])) +
+  ylim(0, 400)
+
+p1</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-8-1.png" width="672" /></p>
+<p>Now here’s how to follow the same steps to get the chick-level trajectories for the conditional quadratic growth model, <code>fit2</code>.</p>
+<pre class="r"><code># compute
+fit2.predict.chicks &lt;- predict(fit2) %&gt;% 
+  data.frame() %&gt;% 
+  set_names(&quot;y_hat&quot;) %&gt;% 
+  bind_cols(ChickWeight)
+
+# plot
+p2 &lt;- fit2.predict.chicks %&gt;% 
+  ggplot(aes(x = Time, y = y_hat, group = Chick)) +
+  geom_line(alpha = 2/4, size = 1/4) +
+  labs(title = &quot;Chick-level trajectories&quot;,
+       subtitle = &quot;predict() method&quot;,
+       y = expression(widehat(weight)[italic(i)])) +
+  ylim(0, 400) +
+  facet_wrap(~ Diet, labeller = label_both)
+
+p2</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-9-1.png" width="672" /></p>
+<p>I should point out that this variant of the <code>predict()</code> method will break down if you have markedly non-linear trajectories and relatively few points the are defined over on the <span class="math inline">\(x\)</span>-axis. In those cases, you’ll have to generalize with skillful use of the <code>newdata</code> argument within <code>predict()</code>. But that’s an issue for another tutorial.</p>
+<p>A limitation with both these plots is there is no expression of uncertainty for our chick-level trajectories. My go-to approach would be to depict that with 95% interval bands. However, to my knowledge there is no good way to get the frequentist 95% confidence intervals for the chick-level trajectories with a model fit with <strong>lme4</strong>. You’re just SOL on that one, friends. If you really need those, switch to a Bayesian paradigm.</p>
+</div>
+<div id="population-level-trajectories-wo-uncertainty-with-predict." class="section level3">
+<h3>Population-level trajectories w/o uncertainty with <code>predict()</code>.</h3>
+<p>The click-level trajectories are great and IMO not enough researchers make plots like that when they fit multilevel models. <em>Show us the group-level differences implied by your level-2 variance parameters!</em> But the motivation for this blog post is to show how you can use <strong>emmeans</strong> to improve your population-level plots. Before we get to the good stuff, let’s first explore the limitations in the <code>predict()</code> method.</p>
+<p>When using <code>predict()</code> to compute population-level trajectories, we’ll need to adjust our approach in two important ways. Instead of simply computing the fitted values for each case in the original data set, we’re going to want to define the predictor values beforehand, save those values in a data frame, and then plug that data frame into <code>predict()</code> via the <code>newdata</code> argument. Our second adjustment will be to explicitly tell <code>predict()</code> we only want the population-level values by setting <code>re.form = NA</code>.</p>
+<p>Here’s what that adjusted workflow looks like for our unconditional model <code>fit1</code>.</p>
+<pre class="r"><code># define and save the predictor values beforehand
+nd &lt;- tibble(Time = 0:21)
+
+fit1.predict.population &lt;- 
+  predict(fit1,
+          # notice the two new lines
+          newdata = nd, 
+          re.form = NA) %&gt;% 
+  data.frame() %&gt;% 
+  set_names(&quot;y_hat&quot;) %&gt;% 
+  bind_cols(nd)
+
+# what have we done?
+glimpse(fit1.predict.population)</code></pre>
+<pre><code>## Rows: 22
+## Columns: 2
+## $ y_hat &lt;dbl&gt; 29.17800, 37.63105, 46.08410, 54.53716, 62.99021, 71.44326, 79.89631, 88.34936, 96.80241, 105.…
+## $ Time  &lt;int&gt; 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21</code></pre>
+<p>When you compare this output to the corresponding output from our <code>fit1.predict.chicks</code> data frame, you’ll notice the results are a data frame with fewer rows and columns.</p>
+<p>Now we’re all ready to make the <code>predict()</code>-based population-level plot, save it as <code>p3</code>, and use <strong>patchwork</strong> syntax to display those results along with the chick-level trajectories from before.</p>
+<pre class="r"><code>p3 &lt;- fit1.predict.population %&gt;% 
+  ggplot(aes(x = Time, y = y_hat)) +
+  geom_line(size = 1) +
+  labs(title = &quot;Population-level trajectory&quot;,
+       subtitle = &quot;predict() method&quot;,
+       y = expression(widehat(weight))) +
+  ylim(0, 400)
+
+# combine the two ggplots
+p1 + p3 &amp; 
+  # add an overall title
+  plot_annotation(title = &quot;Unconditional linear growth model&quot;)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-11-1.png" width="672" /></p>
+<p>Our population-level plot on the right is okay at showing the expected values, but it’s terrible at expressing the uncertainty we have around those expectations. Before we learn how to solve that problem, let’s first practice this method a little more with our conditional model <code>fit2</code>.</p>
+<pre class="r"><code># define and save the predictor values beforehand
+nd &lt;- ChickWeight %&gt;% distinct(Diet, Time)
+
+# compute the expected values
+fit2.predict.population &lt;- 
+  predict(fit2,
+          newdata = nd, 
+          re.form = NA) %&gt;% 
+  data.frame() %&gt;% 
+  set_names(&quot;y_hat&quot;) %&gt;% 
+  bind_cols(nd)
+
+# make and save the plot
+p4 &lt;- fit2.predict.population %&gt;% 
+  ggplot(aes(x = Time, y = y_hat)) +
+  geom_line(size = 1) +
+  labs(title = &quot;Population-level trajectories&quot;,
+       subtitle = &quot;predict() method&quot;,
+       y = expression(widehat(weight))) +
+  ylim(0, 400) +
+  facet_wrap(~ Diet, labeller = label_both)
+
+# combine the two ggplots
+p2 + p4 &amp; 
+  # add an overall title
+  plot_annotation(title = &quot;Conditional quadratic growth model&quot;)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-12-1.png" width="672" /></p>
+<p>This plot’s okay if you’re starting out, but careful scientists can do better. In the next section, we’ll finally learn how.</p>
+</div>
+<div id="population-level-trajectories-with-uncertainty-with-emmeans." class="section level3">
+<h3>Population-level trajectories <em>with</em> uncertainty with <code>emmeans()</code>.</h3>
+<p>Our goal is to use the <code>emmeans::emmeans()</code> function to compute 95% confidence intervals around our fitted values. Here are the fine points:</p>
+<ul>
+<li>The first argument, <code>object</code>, takes our model object. Here we start with unconditional growth model <code>fit1</code>.</li>
+<li>The <code>specs</code> argument allows us to specify what variable(s) we’d like to condition our expected values on. For the unconditional growth model, we just want to condition on <code>Time</code>.</li>
+<li>The <code>at</code> argument allows to specify exactly which values of <code>Time</code> we’d like to condition on. In this context, the <code>at</code> argument functions much the same way the <code>newdata</code> argument functioned within <code>predict()</code>. Here, though, we define our <code>Time</code> values within a list.</li>
+<li>The <code>lmer.df</code> is not necessary, but I recommend giving it some thought. The default approach to computing the 95% confidence intervals uses the Kenward-Roger method. My understanding is that this method is generally excellent and is a sensible choice for the default. However, the Kenward-Roger method can be a little slow for some models and you should know about your options. Another fine option is the Satterthwaite method, which is often very close to the Kenward-Roger method, but faster. For the sake of practice, here we’ll set <code>lmer.df = "satterthwaite"</code>. To learn more about the issue, I recommend reading through <span class="citation"><a href="#ref-kuznetsova2017lmertest" role="doc-biblioref">Kuznetsova et al.</a> (<a href="#ref-kuznetsova2017lmertest" role="doc-biblioref">2017</a>)</span> and <span class="citation"><a href="#ref-luke2017EvaluatingSignificance" role="doc-biblioref">Luke</a> (<a href="#ref-luke2017EvaluatingSignificance" role="doc-biblioref">2017</a>)</span>.</li>
+<li>Finally, we convert the output to a data frame and save it with a descriptive name.</li>
+</ul>
+<pre class="r"><code>fit1.emmeans.population &lt;- emmeans(
+  object = fit1, 
+  specs = ~ Time, 
+  # ask for a more densely-packed sequence of Time values
+  at = list(Time = seq(from = 0, to = 21, length.out = 30)), 
+  lmer.df = &quot;satterthwaite&quot;) %&gt;% 
+  # make it a data frame
+  data.frame()
+
+# what is this?
+glimpse(fit1.emmeans.population)</code></pre>
+<pre><code>## Rows: 30
+## Columns: 6
+## $ Time     &lt;dbl&gt; 0.0000000, 0.7241379, 1.4482759, 2.1724138, 2.8965517, 3.6206897, 4.3448276, 5.0689655, 5.7…
+## $ emmean   &lt;dbl&gt; 29.17800, 35.29918, 41.42035, 47.54153, 53.66270, 59.78388, 65.90505, 72.02623, 78.14740, 8…
+## $ SE       &lt;dbl&gt; 1.9572766, 1.6274605, 1.3315708, 1.0974018, 0.9706994, 0.9934691, 1.1569189, 1.4130459, 1.7…
+## $ df       &lt;dbl&gt; 49.13050, 49.27943, 49.47338, 49.56893, 49.12761, 48.30421, 47.99833, 48.07510, 48.20401, 4…
+## $ lower.CL &lt;dbl&gt; 25.24497, 32.02914, 38.74511, 45.33685, 51.71214, 57.78670, 63.57891, 69.18522, 74.68756, 8…
+## $ upper.CL &lt;dbl&gt; 33.11103, 38.56921, 44.09560, 49.74620, 55.61327, 61.78106, 68.23120, 74.86723, 81.60724, 8…</code></pre>
+<p>The expected values are in the <code>emmean</code> column. See those values in the <code>SE</code>, <code>df</code>, and <code>.CL</code> columns? Those are what we’ve been building up to. In particular, the values in the <code>lower.CL</code> and <code>upper.CL</code> columns mark off our 95% confidence-interval bounds. Let’s plot.</p>
+<pre class="r"><code>p5 &lt;- fit1.emmeans.population %&gt;% 
+  ggplot(aes(x = Time, y = emmean, ymin = lower.CL, ymax = upper.CL)) +
+  geom_ribbon(alpha = 1/2, fill = &quot;red3&quot;) +
+  geom_line(size = 1) +
+  labs(title = &quot;Population-level trajectory&quot;,
+       subtitle = &quot;emmeans() method&quot;,
+       y = expression(widehat(weight))) +
+  ylim(0, 400) +
+  theme(plot.subtitle = element_text(color = &quot;red4&quot;))
+
+# combine the two ggplots
+p1 + p5 &amp; 
+  # add an overall title
+  plot_annotation(title = &quot;Unconditional linear growth model&quot;)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-14-1.png" width="672" /></p>
+<p>Now our population-level plot on the right explicitly expresses the uncertainty in our trajectory with a 95% confidence-interval band. The red shading is a little silly, but I wanted to make sure it was easy to see the change in the plot. Here’s how to extend our <code>emmeans()</code> method to the more complicated conditional quadratic growth model. Note the changes in the <code>specs</code> argument.</p>
+<pre class="r"><code>fit2.emmeans.population &lt;- emmeans(
+  object = fit2, 
+  # this line has changed
+  specs = ~ Time : Diet, 
+  at = list(Time = seq(from = 0, to = 21, length.out = 30)), 
+  lmer.df = &quot;satterthwaite&quot;) %&gt;% 
+  # make it a data frame
+  data.frame()
+
+# what is this?
+glimpse(fit2.emmeans.population)</code></pre>
+<pre><code>## Rows: 120
+## Columns: 7
+## $ Time     &lt;dbl&gt; 0.0000000, 0.7241379, 1.4482759, 2.1724138, 2.8965517, 3.6206897, 4.3448276, 5.0689655, 5.7…
+## $ Diet     &lt;fct&gt; 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2…
+## $ emmean   &lt;dbl&gt; 37.53433, 41.26093, 45.04110, 48.87484, 52.76214, 56.70301, 60.69745, 64.74545, 68.84702, 7…
+## $ SE       &lt;dbl&gt; 1.6868681, 1.2258006, 0.9062629, 0.8356543, 1.0232620, 1.3408419, 1.7023042, 2.0762953, 2.4…
+## $ df       &lt;dbl&gt; 56.00845, 71.36390, 162.12707, 120.87857, 55.54711, 47.95749, 46.83404, 46.67509, 46.67226,…
+## $ lower.CL &lt;dbl&gt; 34.15514, 38.81697, 43.25150, 47.22043, 50.71193, 54.00701, 57.27253, 60.56771, 63.91091, 6…
+## $ upper.CL &lt;dbl&gt; 40.91352, 43.70490, 46.83071, 50.52926, 54.81235, 59.39902, 64.12236, 68.92318, 73.78313, 7…</code></pre>
+<p>Note how our output now has a <code>Diet</code> column and that there are four times as many rows as before. That’s all because of our changes to the <code>specs</code> argument. Here’s the plot.</p>
+<pre class="r"><code>p6 &lt;- fit2.emmeans.population %&gt;% 
+  ggplot(aes(x = Time, y = emmean, ymin = lower.CL, ymax = upper.CL)) +
+  geom_ribbon(alpha = 1/2, fill = &quot;red3&quot;) +
+  geom_line(size = 1) +
+  labs(title = &quot;Population-level trajectories&quot;,
+       subtitle = &quot;emmeans() method&quot;,
+       y = expression(widehat(weight))) +
+  ylim(0, 400) +
+  facet_wrap(~ Diet, labeller = label_both) +
+  theme(plot.subtitle = element_text(color = &quot;red4&quot;))
+
+# combine the two ggplots
+p2 + p6 &amp; 
+  # add an overall title
+  plot_annotation(title = &quot;Conditional quadratic growth model&quot;)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-16-1.png" width="672" /></p>
+<p>Glorious.</p>
+</div>
+</div>
+<div id="but-that-bayes-though" class="section level2">
+<h2>But that Bayes, though</h2>
+<p>Now all the Bayesians in the room have been able to compute 95% intervals of this kind all along. They just set their priors, sample from the posterior, and summarize the posterior samples as needed. It’s no big deal. Which brings us to an important caveat:</p>
+<p>Whether you use <code>emmeans()</code> to compute 95% confidence intervals by the Kenward-Roger method or the Satterthwaite method, both approaches are approximate and will occasionally return bogus results. Again, see <span class="citation"><a href="#ref-kuznetsova2017lmertest" role="doc-biblioref">Kuznetsova et al.</a> (<a href="#ref-kuznetsova2017lmertest" role="doc-biblioref">2017</a>)</span> and <span class="citation"><a href="#ref-luke2017EvaluatingSignificance" role="doc-biblioref">Luke</a> (<a href="#ref-luke2017EvaluatingSignificance" role="doc-biblioref">2017</a>)</span> for introductions to the issue. So if you’re going to use the <code>emmeans()</code> method, you should heed this warning from the great <a href="https://math.mcmaster.ca/~bolker/">Ben Bolker</a>:</p>
+<p>{{% tweet "1465826587060940806" %}}</p>
+<p>It’s wise to inspect the quality of your <code>emmeans()</code>-based Kenward-Roger or Satterthwaite intervals against intervals computed using the parametric bootstrap, or with Bayesian software. Though it’s my understanding that <code>emmeans()</code> is capable of bootstrapping, I have not explored that functionality and will have to leave that guidance up to others. I can, however, give you an example of how to compare our Satterthwaite intervals to those from a Bayesian model computed with the <strong>brms</strong> package. Here we’ll use <code>brms::brm()</code> to fit the Bayesian version of our unconditional growth model. For simplicity, we’ll use the default minimally-informative priors<a href="#fn1" class="footnote-ref" id="fnref1"><sup>1</sup></a>.</p>
+<pre class="r"><code>fit3 &lt;- brm(
+  data = ChickWeight,
+  family = gaussian,
+  weight ~ 1 + Time + (1 + Time | Chick),
+  cores = 4, seed = 1
+)</code></pre>
+<p>When working with a <strong>brms</strong> model, it’s the <code>fitted()</code> function that will most readily take the place of what we were doing with <code>emmeans()</code>.</p>
+<pre class="r"><code>nd &lt;- tibble(Time = 0:21)
+
+fit3.fitted.population &lt;- fitted(
+  fit3,
+  newdata = nd,
+  re_formula = NA) %&gt;% 
+  data.frame() %&gt;% 
+  bind_cols(nd)
+
+# what is this?
+glimpse(fit3.fitted.population)</code></pre>
+<pre><code>## Rows: 22
+## Columns: 5
+## $ Estimate  &lt;dbl&gt; 29.21441, 37.65529, 46.09618, 54.53707, 62.97796, 71.41885, 79.85973, 88.30062, 96.74151, …
+## $ Est.Error &lt;dbl&gt; 2.021475, 1.564884, 1.199970, 1.029351, 1.143576, 1.478018, 1.920905, 2.413252, 2.930232, …
+## $ Q2.5      &lt;dbl&gt; 25.26062, 34.64450, 43.77749, 52.54076, 60.71001, 68.49214, 76.10985, 83.63797, 91.21743, …
+## $ Q97.5     &lt;dbl&gt; 33.26492, 40.71766, 48.43553, 56.53052, 65.18467, 74.32911, 83.64334, 93.01031, 102.54640,…
+## $ Time      &lt;int&gt; 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21</code></pre>
+<p>The <code>Estimate</code> column is our posterior mean, which roughly corresponds to the expectations from our frequentist models. The percentile-based 95% Bayesian interval bounds are listed in the <code>Q2.5</code> and <code>Q97.5</code> columns. Here’s how you can compare these results with the Satterthwaite-based intervals, from above.</p>
+<pre class="r"><code>fit3.fitted.population %&gt;% 
+  ggplot(aes(x = Time)) +
+  geom_ribbon(aes(ymin = Q2.5, ymax = Q97.5),
+              alpha = 1/2, fill = &quot;blue3&quot;) +
+  geom_ribbon(data = fit1.emmeans.population,
+              aes(ymin = lower.CL, ymax = upper.CL),
+              alpha = 1/2, fill = &quot;red3&quot;) +
+  labs(title = &quot;The Satterthwaite intervals versus the Bayesian intervals&quot;,
+       subtitle = &quot;The Bayesian percentile-based intervals are in semitransparent blue.\nThe frequentist Satterthwaite-based intervals are in semitransparent red.\nIt appears as if there&#39;s just a purple band because the two interval types largely overlap.&quot;)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-20-1.png" width="672" /></p>
+<p>In this case, the two sets of 95% intervals are in near perfect agreement. On the one hand, this is great and it suggests that we’re on good footing to move ahead with our <code>emmeans()</code> approach. On the other hand, be cautioned: Though Bayesian and frequentist intervals often times overlap, this won’t always be the case and it’s not necessarily a problem when they don’t. Remember that Bayesian models are combinations of the likelihood AND the prior and if you fit your Bayesian models with informative priors, the resulting posterior might well be different from the frequentist solution.</p>
+<p>Another thing to consider is that if we’re using Bayesian intervals as the benchmark for quality, then why not just switch to a Bayesian modeling paradigm altogether? Indeed, friends. Indeed.</p>
+</div>
+<div id="session-info" class="section level2">
+<h2>Session info</h2>
+<pre class="r"><code>sessionInfo()</code></pre>
+<pre><code>## R version 4.1.1 (2021-08-10)
+## Platform: x86_64-apple-darwin17.0 (64-bit)
+## Running under: macOS Catalina 10.15.7
+## 
+## Matrix products: default
+## BLAS:   /Library/Frameworks/R.framework/Versions/4.1/Resources/lib/libRblas.0.dylib
+## LAPACK: /Library/Frameworks/R.framework/Versions/4.1/Resources/lib/libRlapack.dylib
+## 
+## locale:
+## [1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+## 
+## attached base packages:
+## [1] stats     graphics  grDevices utils     datasets  methods   base     
+## 
+## other attached packages:
+##  [1] emmeans_1.7.1-1 patchwork_1.1.1 brms_2.16.2     Rcpp_1.0.7      lme4_1.1-27.1   Matrix_1.3-4   
+##  [7] forcats_0.5.1   stringr_1.4.0   dplyr_1.0.7     purrr_0.3.4     readr_2.0.1     tidyr_1.1.3    
+## [13] tibble_3.1.6    ggplot2_3.3.5   tidyverse_1.3.1
+## 
+## loaded via a namespace (and not attached):
+##   [1] readxl_1.3.1         backports_1.3.0      plyr_1.8.6           igraph_1.2.6         splines_4.1.1       
+##   [6] crosstalk_1.1.1      TH.data_1.0-10       rstantools_2.1.1     inline_0.3.19        digest_0.6.28       
+##  [11] htmltools_0.5.2      rsconnect_0.8.24     lmerTest_3.1-3       fansi_0.5.0          magrittr_2.0.1      
+##  [16] checkmate_2.0.0      tzdb_0.1.2           modelr_0.1.8         RcppParallel_5.1.4   matrixStats_0.61.0  
+##  [21] xts_0.12.1           sandwich_3.0-1       prettyunits_1.1.1    colorspace_2.0-2     rvest_1.0.1         
+##  [26] haven_2.4.3          xfun_0.25            callr_3.7.0          crayon_1.4.2         jsonlite_1.7.2      
+##  [31] survival_3.2-11      zoo_1.8-9            glue_1.5.0           gtable_0.3.0         V8_3.4.2            
+##  [36] distributional_0.2.2 pkgbuild_1.2.0       rstan_2.26.3         abind_1.4-5          scales_1.1.1        
+##  [41] mvtnorm_1.1-2        DBI_1.1.1            miniUI_0.1.1.1       xtable_1.8-4         stats4_4.1.1        
+##  [46] StanHeaders_2.26.3   DT_0.19              htmlwidgets_1.5.3    httr_1.4.2           threejs_0.3.3       
+##  [51] posterior_1.1.0.9000 ellipsis_0.3.2       pkgconfig_2.0.3      loo_2.4.1            farver_2.1.0        
+##  [56] sass_0.4.0           dbplyr_2.1.1         utf8_1.2.2           labeling_0.4.2       tidyselect_1.1.1    
+##  [61] rlang_0.4.12         reshape2_1.4.4       later_1.3.0          cellranger_1.1.0     munsell_0.5.0       
+##  [66] tools_4.1.1          cli_3.1.0            generics_0.1.1       broom_0.7.9          ggridges_0.5.3      
+##  [71] evaluate_0.14        fastmap_1.1.0        yaml_2.2.1           fs_1.5.0             processx_3.5.2      
+##  [76] knitr_1.33           nlme_3.1-152         mime_0.11            projpred_2.0.2       xml2_1.3.2          
+##  [81] compiler_4.1.1       bayesplot_1.8.1      shinythemes_1.2.0    rstudioapi_0.13      curl_4.3.2          
+##  [86] gamm4_0.2-6          reprex_2.0.1         bslib_0.3.0          stringi_1.7.4        highr_0.9           
+##  [91] ps_1.6.0             blogdown_1.5         Brobdingnag_1.2-6    lattice_0.20-44      nloptr_1.2.2.2      
+##  [96] markdown_1.1         shinyjs_2.0.0        tensorA_0.36.2       vctrs_0.3.8          pillar_1.6.4        
+## [101] lifecycle_1.0.1      jquerylib_0.1.4      bridgesampling_1.1-2 estimability_1.3     httpuv_1.6.2        
+## [106] R6_2.5.1             bookdown_0.23        promises_1.2.0.1     gridExtra_2.3        codetools_0.2-18    
+## [111] boot_1.3-28          colourpicker_1.1.0   MASS_7.3-54          gtools_3.9.2         assertthat_0.2.1    
+## [116] withr_2.4.2          shinystan_2.5.0      multcomp_1.4-17      mgcv_1.8-36          parallel_4.1.1      
+## [121] hms_1.1.0            grid_4.1.1           coda_0.19-4          minqa_1.2.4          rmarkdown_2.10      
+## [126] numDeriv_2016.8-1.1  shiny_1.6.0          lubridate_1.7.10     base64enc_0.1-3      dygraphs_1.1.1.6</code></pre>
+</div>
+<div id="references" class="section level2 unnumbered">
+<h2>References</h2>
+<div id="refs" class="references csl-bib-body hanging-indent" line-spacing="2">
+<div id="ref-R-lme4" class="csl-entry">
+Bates, D., Mächler, M., Bolker, B., &amp; Walker, S. (2015b). Fitting linear mixed-effects models using <span class="nocase">lme4</span>. <em>Journal of Statistical Software</em>, <em>67</em>(1), 1–48. <a href="https://doi.org/10.18637/jss.v067.i01">https://doi.org/10.18637/jss.v067.i01</a>
+</div>
+<div id="ref-batesFittingLinearMixedeffects2015" class="csl-entry">
+Bates, D., Mächler, M., Bolker, B., &amp; Walker, S. (2015a). Fitting linear mixed-effects models using Lme4. <em>Journal of Statistical Software</em>, <em>67</em>(1), 1–48. <a href="https://doi.org/10.18637/jss.v067.i01">https://doi.org/10.18637/jss.v067.i01</a>
+</div>
+<div id="ref-burknerBrmsPackageBayesian2017" class="csl-entry">
+Bürkner, P.-C. (2017). <span class="nocase">brms</span>: <span>An R</span> package for <span>Bayesian</span> multilevel models using <span>Stan</span>. <em>Journal of Statistical Software</em>, <em>80</em>(1), 1–28. <a href="https://doi.org/10.18637/jss.v080.i01">https://doi.org/10.18637/jss.v080.i01</a>
+</div>
+<div id="ref-burknerAdvancedBayesianMultilevel2018" class="csl-entry">
+Bürkner, P.-C. (2018). Advanced <span>Bayesian</span> multilevel modeling with the <span>R</span> package brms. <em>The R Journal</em>, <em>10</em>(1), 395–411. <a href="https://doi.org/10.32614/RJ-2018-017">https://doi.org/10.32614/RJ-2018-017</a>
+</div>
+<div id="ref-R-brms" class="csl-entry">
+Bürkner, P.-C. (2020). <em><span class="nocase">brms</span>: <span>Bayesian</span> regression models using ’<span>Stan</span>’</em>. <a href="https://CRAN.R-project.org/package=brms">https://CRAN.R-project.org/package=brms</a>
+</div>
+<div id="ref-grolemundDataScience2017" class="csl-entry">
+Grolemund, G., &amp; Wickham, H. (2017). <em>R for data science</em>. <span>O’Reilly</span>. <a href="https://r4ds.had.co.nz">https://r4ds.had.co.nz</a>
+</div>
+<div id="ref-hoffmanLongitudinalAnalysisModeling2015" class="csl-entry">
+Hoffman, L. (2015). <em>Longitudinal analysis: <span>Modeling</span> within-person fluctuation and change</em> (1 edition). <span>Routledge</span>. <a href="https://www.routledge.com/Longitudinal-Analysis-Modeling-Within-Person-Fluctuation-and-Change/Hoffman/p/book/9780415876025">https://www.routledge.com/Longitudinal-Analysis-Modeling-Within-Person-Fluctuation-and-Change/Hoffman/p/book/9780415876025</a>
+</div>
+<div id="ref-kruschkeDoingBayesianData2015" class="csl-entry">
+Kruschke, J. K. (2015). <em>Doing <span>Bayesian</span> data analysis: <span>A</span> tutorial with <span>R</span>, <span>JAGS</span>, and <span>Stan</span></em>. <span>Academic Press</span>. <a href="https://sites.google.com/site/doingbayesiandataanalysis/">https://sites.google.com/site/doingbayesiandataanalysis/</a>
+</div>
+<div id="ref-kuznetsova2017lmertest" class="csl-entry">
+Kuznetsova, A., Brockhoff, P. B., &amp; Christensen, R. H. (2017). <span class="nocase">lmerTest</span> package: <span>Tests</span> in linear mixed effects models. <em>Journal of Statistical Software</em>, <em>82</em>(13), 1–26. <a href="https://doi.org/10.18637/jss.v082.i13">https://doi.org/10.18637/jss.v082.i13</a>
+</div>
+<div id="ref-R-emmeans" class="csl-entry">
+Lenth, R. V. (2021). <em><span class="nocase">emmeans</span>: <span>Estimated</span> marginal means, aka least-squares means</em> [Manual]. <a href="https://github.com/rvlenth/emmeans">https://github.com/rvlenth/emmeans</a>
+</div>
+<div id="ref-luke2017EvaluatingSignificance" class="csl-entry">
+Luke, S. G. (2017). Evaluating significance in linear mixed-effects models in <span>R</span>. <em>Behavior Research Methods</em>, <em>49</em>(4), 1494–1502. <a href="https://doi.org/10.3758/s13428-016-0809-y">https://doi.org/10.3758/s13428-016-0809-y</a>
+</div>
+<div id="ref-mcelreathStatisticalRethinkingBayesian2020" class="csl-entry">
+McElreath, R. (2020). <em>Statistical rethinking: <span>A Bayesian</span> course with examples in <span>R</span> and <span>Stan</span></em> (Second Edition). <span>CRC Press</span>. <a href="https://xcelab.net/rm/statistical-rethinking/">https://xcelab.net/rm/statistical-rethinking/</a>
+</div>
+<div id="ref-mcelreathStatisticalRethinkingBayesian2015" class="csl-entry">
+McElreath, R. (2015). <em>Statistical rethinking: <span>A Bayesian</span> course with examples in <span>R</span> and <span>Stan</span></em>. <span>CRC press</span>. <a href="https://xcelab.net/rm/statistical-rethinking/">https://xcelab.net/rm/statistical-rethinking/</a>
+</div>
+<div id="ref-R-patchwork" class="csl-entry">
+Pedersen, T. L. (2019). <em><span class="nocase">patchwork</span>: <span>The</span> composer of plots</em>. <a href="https://CRAN.R-project.org/package=patchwork">https://CRAN.R-project.org/package=patchwork</a>
+</div>
+<div id="ref-R-base" class="csl-entry">
+R Core Team. (2020). <em>R: <span>A</span> language and environment for statistical computing</em>. <span>R Foundation for Statistical Computing</span>. <a href="https://www.R-project.org/">https://www.R-project.org/</a>
+</div>
+<div id="ref-roback2021beyond" class="csl-entry">
+Roback, P., &amp; Legler, J. (2021). <em>Beyond multiple linear regression: <span>Applied</span> generalized linear models and multilevel models in <span>R</span></em>. <span>CRC Press</span>. <a href="https://bookdown.org/roback/bookdown-BeyondMLR/">https://bookdown.org/roback/bookdown-BeyondMLR/</a>
+</div>
+<div id="ref-singerAppliedLongitudinalData2003" class="csl-entry">
+Singer, J. D., &amp; Willett, J. B. (2003). <em>Applied longitudinal data analysis: <span>Modeling</span> change and event occurrence</em>. <span>Oxford University Press, USA</span>. <a href="https://oxford.universitypressscholarship.com/view/10.1093/acprof:oso/9780195152968.001.0001/acprof-9780195152968">https://oxford.universitypressscholarship.com/view/10.1093/acprof:oso/9780195152968.001.0001/acprof-9780195152968</a>
+</div>
+<div id="ref-R-tidyverse" class="csl-entry">
+Wickham, H. (2019). <em><span class="nocase">tidyverse</span>: <span>Easily</span> install and load the ’tidyverse’</em>. <a href="https://CRAN.R-project.org/package=tidyverse">https://CRAN.R-project.org/package=tidyverse</a>
+</div>
+<div id="ref-wickhamWelcomeTidyverse2019" class="csl-entry">
+Wickham, H., Averick, M., Bryan, J., Chang, W., McGowan, L. D., François, R., Grolemund, G., Hayes, A., Henry, L., Hester, J., Kuhn, M., Pedersen, T. L., Miller, E., Bache, S. M., Müller, K., Ooms, J., Robinson, D., Seidel, D. P., Spinu, V., … Yutani, H. (2019). Welcome to the tidyverse. <em>Journal of Open Source Software</em>, <em>4</em>(43), 1686. <a href="https://doi.org/10.21105/joss.01686">https://doi.org/10.21105/joss.01686</a>
+</div>
+</div>
+</div>
+<div class="footnotes">
+<hr />
+<ol>
+<li id="fn1"><p>Often times, default priors will return posterior distributions that closely resemble the solutions from their frequentist counterparts. But this won’t always be the case to keep your wits about you when comparing Bayesian and frequentist models.<a href="#fnref1" class="footnote-back">↩︎</a></p></li>
+</ol>
+</div>
