@@ -110,7 +110,7 @@ b_i & = \beta_0 + v_i \\
 \end{align*}
 $$
 
-where $i$ indexes the different levels of `Chick` and $j$ indexes the various measurements taken across `Time`. The $a_i$ intercepts and $b_i$ slopes are both random with a level-2 covariance $\sigma_{uv}$. The second model with be the conditional quadratic growth model
+where $i$ indexes the different levels of `Chick` and $j$ indexes the various measurements taken across `Time`. The $a_i$ intercepts and $b_i$ slopes are both random with a level-2 covariance $\sigma_{uv}$. The second model will be the conditional quadratic growth model
 
 $$
 \begin{align*}
@@ -150,11 +150,11 @@ As this post isn't a full multilevel growth model tutorial, I'm not going to go 
 
 ## Plot
 
-There are many ways to plot the results from models like these. If you do a quick web search, you'll find a variety of prior blog posts exploring how to model and visualize the `ChickWeight` data. In this post, I'm going to recommend a two-panel approach where you (a) plot the chick-level trajectories, (b) plot the population average trajectory, and (c) combine the two plots with **patchwork** syntax.
+There are many ways to plot the results from models like these. If you do a quick web search, you'll find a variety of other blog posts exploring how to model and visualize the `ChickWeight` data. In this post, I'm going to recommend a two-panel approach where you (a) plot the chick-level trajectories, (b) plot the population average trajectory, and (c) combine the two plots with **patchwork** syntax. You can then generalize from there to suit your own needs.
 
 ### Chick-level trajectories w/o uncertainty with `predict()`.
 
-If you're trick, there are many post-processing methods you can use to compute and plot the chick-level trajectories. In this post, we'll focus on the `predict()` method. For simple models fit with the `lmer()` function, I recommend the following steps.
+If you're tricky, there are many post-processing methods you can use to compute and plot the chick-level trajectories. In this post, we'll focus on the `predict()` method. For simple models fit with the `lmer()` function, I recommend the following steps.
 
 1. Insert your model fit object into `predict()`.
 2. Covert the results into a data frame.
@@ -174,7 +174,7 @@ fit1.predict.chicks <- predict(fit1) %>%
 glimpse(fit1.predict.chicks)
 ```
 
-Now here's a quick plot.
+We can plot the results like so.
 
 ```{r}
 p1 <- fit1.predict.chicks %>% 
@@ -239,7 +239,7 @@ fit1.predict.population <-
 glimpse(fit1.predict.population)
 ```
 
-When you compare this output to the corresponding output from our `fit1.predict.chicks` data frame, you'll notice the results are a data frame with fewer rows and columns.
+When you compare this output to the corresponding output from our `fit1.predict.chicks` data frame, you'll notice the results have fewer rows and columns. If it's not clear to you why that would be, spend some time pondering the difference between group-level and population-level effects. This can be easy to lose track of when you're new to multilevel models.
 
 Now we're all ready to make the `predict()`-based population-level plot, save it as `p3`, and use **patchwork** syntax to display those results along with the chick-level trajectories from before.
 
@@ -258,7 +258,7 @@ p1 + p3 &
   plot_annotation(title = "Unconditional linear growth model")
 ```
 
-Our population-level plot on the right is okay at showing the expected values, but it's terrible at expressing the uncertainty we have around those expectations. Before we learn how to solve that problem, let's first practice this method a little more with our conditional model `fit2`.
+Our population-level plot on the right is okay at showing the expected values, but it's terrible at expressing the uncertainty we have around those expectations. Before we learn how to solve that problem, let's first practice this method a once more with our conditional model `fit2`.
 
 ```{r}
 # define and save the predictor values beforehand
@@ -296,9 +296,9 @@ This plot's okay if you're starting out, but careful scientists can do better. I
 Our goal is to use the `emmeans::emmeans()` function to compute 95% confidence intervals around our fitted values. Here are the fine points:
 
 * The first argument, `object`, takes our model object. Here we start with unconditional growth model `fit1`.
-* The `specs` argument allows us to specify what variable(s) we'd like to condition our expected values on. For the unconditional growth model, we just want to condition on `Time`.
+* The `specs` argument allows us to specify which variable(s) we'd like to condition our expected values on. For the unconditional growth model, we just want to condition on `Time`.
 * The `at` argument allows to specify exactly which values of `Time` we'd like to condition on. In this context, the `at` argument functions much the same way the `newdata` argument functioned within `predict()`. Here, though, we define our `Time` values within a list.
-* The `lmer.df` is not necessary, but I recommend giving it some thought. The default approach to computing the 95% confidence intervals uses the Kenward-Roger method. My understanding is that this method is generally excellent and is a sensible choice for the default. However, the Kenward-Roger method can be a little slow for some models and you should know about your options. Another fine option is the Satterthwaite method, which is often very close to the Kenward-Roger method, but faster. For the sake of practice, here we'll set `lmer.df = "satterthwaite"`. To learn more about the issue, I recommend reading through @kuznetsova2017lmertest and @luke2017EvaluatingSignificance.
+* The `lmer.df` argument is not necessary, but I recommend giving it some thought. The default approach to computing the 95% confidence intervals uses the Kenward-Roger method. My understanding is this method is generally excellent and is probably a sensible choice for the default. However, the Kenward-Roger method can be a little slow for some models and you should know about your options. Another fine option is the Satterthwaite method, which is often very close to the Kenward-Roger method, but faster. For the sake of practice, here we'll set `lmer.df = "satterthwaite"`. To learn more about the issue, I recommend reading through @kuznetsova2017lmertest and @luke2017EvaluatingSignificance.
 * Finally, we convert the output to a data frame and save it with a descriptive name.
 
 ```{r}
@@ -313,7 +313,7 @@ fit1.emmeans.population <- emmeans(
 glimpse(fit1.emmeans.population)
 ```
 
-The expected values are in the `emmean` column. See those values in the `SE`, `df`, and `.CL` columns? Those are what we've been building up to. In particular, the values in the `lower.CL` and `upper.CL` columns mark off our 95% confidence-interval bounds. Let's plot.
+The expected values are in the `emmean` column. See those values in the `SE`, `df`, and `.CL` columns? Those are what we've been building up to. In particular, the values in the `lower.CL` and `upper.CL` columns mark off our 95% confidence-interval bounds. Let's show those off in a plot.
 
 ```{r}
 p5 <- fit1.emmeans.population %>% 
@@ -332,7 +332,7 @@ p1 + p5 &
   plot_annotation(title = "Unconditional linear growth model")
 ```
 
-Now our population-level plot on the right explicitly expresses the uncertainty in our trajectory with a 95% confidence-interval band. The red shading is a little silly, but I wanted to make sure it was easy to see the change in the plot. Here's how to extend our `emmeans()` method to the more complicated conditional quadratic growth model. Note the changes in the `specs` argument.
+Now our population-level plot explicitly expresses the uncertainty in our trajectory with a 95% confidence-interval band. The red shading is a little silly, but I wanted to make sure it was easy to see the change in the plot. Here's how to extend our `emmeans()` method to the more complicated conditional quadratic growth model. Note the changes in the `specs` argument.
 
 ```{r}
 fit2.emmeans.population <- emmeans(
@@ -371,9 +371,9 @@ Glorious.
 
 ## But that Bayes, though
 
-Now all the Bayesians in the room have been able to compute 95% intervals of this kind all along. They just set their priors, sample from the posterior, and summarize the posterior samples as needed. It's no big deal. Which brings us to an important caveat:
+The Bayesians in the room have been able to compute 95% intervals of this kind all along. They just set their priors, sample from the posterior, and summarize the posterior samples as needed. It's no big deal. Which brings us to an important caveat:
 
-Whether you use `emmeans()` to compute 95% confidence intervals by the Kenward-Roger method or the Satterthwaite method, both approaches are approximate and will occasionally return bogus results. Again, see @kuznetsova2017lmertest and @luke2017EvaluatingSignificance for introductions to the issue. So if you're going to use the `emmeans()` method, you should heed this warning from the great [Ben Bolker](https://math.mcmaster.ca/~bolker/):
+Whether you use `emmeans()` to compute 95% confidence intervals by the Kenward-Roger method or the Satterthwaite method, both approaches are approximate and will occasionally return questionable results. Again, see @kuznetsova2017lmertest and @luke2017EvaluatingSignificance for introductions to the issue. So if you're going to use the `emmeans()` method, you should heed this warning from the great [Ben Bolker](https://math.mcmaster.ca/~bolker/):
 
 ```{r echo = FALSE}
 blogdown::shortcode('tweet', '1465826587060940806')
