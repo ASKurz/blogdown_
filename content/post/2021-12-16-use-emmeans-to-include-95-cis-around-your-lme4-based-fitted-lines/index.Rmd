@@ -432,5 +432,5 @@ sessionInfo()
 
 ## References
 
-[^1]: Often times, default priors will return posterior distributions that closely resemble the solutions from their frequentist counterparts. But this won't always be the case to keep your wits about you when comparing Bayesian and frequentist models.
+[^1]: Often times, default priors will return posterior distributions that closely resemble the solutions from their frequentist counterparts. But this won't always be the case, so do keep your wits about you when comparing Bayesian and frequentist models.
 
