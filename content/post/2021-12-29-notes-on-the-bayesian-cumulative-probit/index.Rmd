@@ -136,8 +136,8 @@ Anyway, the thing to understand is that the area under the normal curve to the l
 
 $$
 \begin{align*}
-p(\text{rating} = k | \{ \tau_k \}) & = \Phi(\tau_1) - \Phi(\color{blue}{\tau_0}) \\
-  & = \Phi(\tau_1) - \Phi(\color{blue}{-\infty}) \\
+p(\text{rating} = k | \{ \tau_k \}) & = \Phi(\tau_1) - \Phi(\color{blue}{\tau_0} \color{black}{)} \\
+  & = \Phi(\tau_1) - \Phi(\color{blue}{-\infty} \color{black}{)} \\
   & = \Phi(\tau_1) - \color{blue}0 \\
   & = \Phi(\tau_1).
 \end{align*}
@@ -147,13 +147,13 @@ In a similar way, for the last rating we have
 
 $$
 \begin{align*}
-p(\text{rating} = k | \{ \tau_k \}) & = \Phi(\color{blue}{\tau_{K + 1}}) - \Phi(\tau_K) \\
-  & = \Phi(\color{blue}\infty) - \Phi(\tau_K) \\
-  & = \color{blue}1 - \Phi(\tau_K).
+p(\text{rating} = k | \{ \tau_k \}) & = \Phi(\color{blue}{\tau_{K + 1}} \color{black}{) - \Phi(\tau_K)} \\
+  & = \Phi(\color{blue}\infty \color{black}{) - \Phi(\tau_K)} \\
+  & = \color{blue}1 \color{black}{- \Phi(\tau_K)}.
 \end{align*}
 $$
 
-It might help to visualize this. Consider a case where we have a rating variable with 6 values (`1` through `6`), each with equal proportions, $1 / 6 \approx .167$. Here's what that could look like mapped onto $\Phi$.
+It might help to visualize this. Consider a case where we have a rating variable with 6 values (`1` through `6`), each with equal proportions, $1 / 6 \approx .167.$ Here's what that could look like mapped onto $\Phi$.
 
 ```{r}
 tibble(z = seq(from = -3.75, to = 3.75, length.out = 1e3)) %>% 
@@ -441,7 +441,7 @@ $$
 \begin{align*}
 p(\text{rating} = k | \{ \tau_k \}, \color{blue}{\mu_i}) & = \Phi(\tau_k \color{blue}{- \mu_i} \color{black}{) - \Phi(\tau_{k - 1}} \color{blue}{- \mu_i} \color{black}) \\
 \color{blue}{\mu_i} & = \color{blue}{\beta_0 + \sum_1^l \beta_l x_l} \\
-\color{blue}{\beta_0} & = \color{blue}0,
+\color{blue}{\beta_0} & = \color{blue}0 \color{black}{,}
 \end{align*}
 $$
 
@@ -608,7 +608,7 @@ p(\text{rating} = k | \{ \tau_k \}, \mu_i, \color{blue}{\sigma_i} \color{black}{
 \mu_i & = \beta_0 + \sum_1^l \beta_l x_l \\
 \color{blue}{\log(\sigma_i)} & = \color{blue}{\eta_0 + \sum_1^m \eta_m x_m} \\
 \beta_0 & = 0 \\
-\color{blue}{\eta_0} & = \color{blue}0,
+\color{blue}{\eta_0} & = \color{blue}0 \color{black}{,}
 \end{align*}
 $$
 
@@ -890,7 +890,7 @@ p(\text{rating} = k | \{ \tau_k \}, \mu_i) & = \Phi(\tau_k - \mu_i) - \Phi(\tau_
 \tau_3 & \sim \mathcal N(0, 1) \\
 \tau_4 & \sim \mathcal N(0.43, 1) \\
 \tau_5 & \sim \mathcal N(0.97, 1) \\
-\color{blue}{\sigma_u} & \sim \color{blue}{\operatorname{Exponential}(1)},
+\color{blue}{\sigma_u} & \sim \color{blue}{\operatorname{Exponential}(1)} \color{black}{,}
 \end{align*}
 $$
 
@@ -939,7 +939,7 @@ Now it's time to fit a proper cross-classified model accounting for the nesting 
 $$
 \begin{align*}
 p(\text{rating} = k | \{ \tau_k \}, \mu_{i\color{blue}j}) & = \Phi(\tau_k - \mu_{i\color{blue}j}) - \Phi(\tau_{k - 1} - \mu_{i\color{blue}j}) \\
-\mu_{i\color{blue}j} & = 0 + u_i \color{blue}{+ v_j} \\ 
+\mu_{i\color{blue}j} & = 0 + u_i \color{blue}{+} \color{blue}{v_j} \\ 
 u_i               & \sim \mathcal N(0, \sigma_u) \\
 \color{blue}{v_j} & \sim \color{blue}{\mathcal N(0, \sigma_v)} \\
 \tau_1 & \sim \mathcal N(-0.97, 1) \\
@@ -948,7 +948,7 @@ u_i               & \sim \mathcal N(0, \sigma_u) \\
 \tau_4 & \sim \mathcal N(0.43, 1) \\
 \tau_5 & \sim \mathcal N(0.97, 1) \\
 \sigma_u               & \sim \operatorname{Exponential}(1) \\
-\color{blue}{\sigma_v} & \sim \color{blue}{\operatorname{Exponential}(1)}.
+\color{blue}{\sigma_v} & \sim \color{blue}{\operatorname{Exponential}(1)} \color{black}{.}
 \end{align*}
 $$
 
@@ -996,7 +996,7 @@ v_j & \sim \mathcal N(0, \sigma_v) \\
 \tau_{4\color{blue}j} & \sim \mathcal N(0.43, 1) \\
 \tau_{5\color{blue}j} & \sim \mathcal N(0.97, 1) \\
 \sigma_u & \sim \operatorname{Exponential}(1) \\
-\sigma_v & \sim \operatorname{Exponential}(1)
+\sigma_v & \sim \operatorname{Exponential}(1),
 \end{align*}
 $$
 
@@ -1115,7 +1115,7 @@ v_j & \sim \mathcal N(0, \sigma_v) \\
 \sigma_u & \sim \operatorname{Exponential}(1) \\
 \sigma_v & \sim \operatorname{Exponential}(1) \\
 \color{blue}{\sigma_w} & \sim \color{blue}{\operatorname{Exponential}(1)} \\
-\color{blue}{\sigma_x} & \sim \color{blue}{\operatorname{Exponential}(1)}.
+\color{blue}{\sigma_x} & \sim \color{blue}{\operatorname{Exponential}(1)} \color{black}{.}
 \end{align*}
 
 Though the $\operatorname{Exponential}(1)$ might be a good place to start with our new $\sigma_w$ and $\sigma_x$, it might be best to ponder this a bit. Recall these are for the distribution of logged discrimination parameters. Since I'm no statistician or psychometrician, I'm not even sure what that means, which makes it hard to intuit whether the $\operatorname{Exponential}(1)$ prior makes sense for my data. A plot might help. Here we'll simulate $100{,}000$ draws from the $\operatorname{Exponential}(1)$ prior, use those draws to simulate $w_i$ values from $\mathcal N(0, \sigma_w)$, and then plot that distribution in the $w_i$, $\exp(w_i)$ and $1/\exp(w_i)$ metrics.
@@ -1214,7 +1214,7 @@ tibble(sigma_w = rexp(n = 1e5, rate = 1 / 0.463)) %>%
 With that as our prior, our updated model formula will be
 
 \begin{align*}
-\small{p(\text{rating} = k | \{ \tau_{kj} \}, \mu_{ij}, \alpha_{ij})} & \small{= \Phi(\alpha_{ij}[\tau_{kj} - \mu_{ij}]) - \Phi(\alpha_{ij}[\tau_{k - 1,j} - \mu_{ij}])} \\
+\small{p(\text{rating} = k | \{ \tau_{kj} \}, \mu_{ij}, \alpha_{ij})} & = \small{\Phi(\alpha_{ij}[\tau_{kj} - \mu_{ij}]) - \Phi(\alpha_{ij}[\tau_{k - 1,j} - \mu_{ij}])} \\
 \mu_{ij} & = 0 + u_i + v_j \\ 
 \log(\alpha_{ij}) & = 0 + w_i + x_j \\
 u_i & \sim \mathcal N(0, \sigma_u) \\
@@ -1438,7 +1438,7 @@ The model does a great job capturing the Neuroticism sum scores.
 Now if you wanted to, you could expand this model further to include correlations between $u_i$ and $w_i$ and between $v_j$ and $x_j$. That would change the model formula to something like
 
 \begin{align*}
-\small{p(\text{rating} = k | \{ \tau_{kj} \}, \mu_{ij}, \alpha_{ij})} & \small{= \Phi(\alpha_{ij}[\tau_{kj} - \mu_{ij}]) - \Phi(\alpha_{ij}[\tau_{k - 1,j} - \mu_{ij}])} \\
+\small{p(\text{rating} = k | \{ \tau_{kj} \}, \mu_{ij}, \alpha_{ij})} & = \small{\Phi(\alpha_{ij}[\tau_{kj} - \mu_{ij}]) - \Phi(\alpha_{ij}[\tau_{k - 1,j} - \mu_{ij}])} \\
 \mu_{ij} & = 0 + u_i + v_j \\ 
 \log(\alpha_{ij}) & = 0 + w_i + x_j \\
 
@@ -1471,9 +1471,9 @@ A while back, we put our level-1 predictor `male` to the side while we focused o
 
 $$
 \begin{align*}
-\small{p(\text{rating} = k | \{ \tau_{kj} \}, \mu_{ij}, \alpha_{ij})} & \small{= \Phi(\alpha_{ij}[\tau_{kj} - \mu_{ij}]) - \Phi(\alpha_{ij}[\tau_{k - 1,j} - \mu_{ij}])} \\
-\mu_{ij}          & = \color{blue}{\beta_1 \text{male}_i} \color{black}{+} u_i + v_j \\ 
-\log(\alpha_{ij}) & = \color{blue}{\eta_1 \text{male}_i} \color{black}{+} w_i + x_j \\
+\small{p(\text{rating} = k | \{ \tau_{kj} \}, \mu_{ij}, \alpha_{ij})} & = \small{\Phi(\alpha_{ij}[\tau_{kj} - \mu_{ij}]) - \Phi(\alpha_{ij}[\tau_{k - 1,j} - \mu_{ij}])} \\
+\mu_{ij}          & = \color{blue}{\beta_1 \text{male}_i} \color{black}{ + u_i + v_j} \\ 
+\log(\alpha_{ij}) & = \color{blue}{\eta_1 \text{male}_i} \color{black}{ + w_i + x_j} \\
 u_i & \sim \mathcal N(0, \sigma_u) \\
 v_j & \sim \mathcal N(0, \sigma_v) \\
 w_i & \sim \mathcal N(0, \sigma_w) \\
