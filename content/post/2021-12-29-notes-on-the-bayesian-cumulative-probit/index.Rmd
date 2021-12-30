@@ -114,7 +114,7 @@ d %>%
 
 ## Basics of the ordered probit
 
-I've had a difficult time understanding the notation used in these models. As McElreath [-@mcelreathStatisticalRethinkingBayesian2015, p. 335] remarked, there are a lot of different notational approaches for describing these models. In this post, I'll be using a blend of sensibilities from McElreath, @burknerBayesianItemResponse2020, and @kruschkeDoingBayesianData2015. If you see flaws in my equations, do drop me a comment.
+I've had a difficult time understanding the notation used in these models. As McElreath [-@mcelreathStatisticalRethinkingBayesian2015, p. 335] remarked, there are a lot of different notational approaches for describing these models. In this post, I'll be using a blend of sensibilities from McElreath, @burknerBayesianItemResponse2020, and @kruschkeDoingBayesianData2015. If you see flaws in my equations, do [drop me a comment](https://twitter.com/SolomonKurz/status/1476641792263131143).
 
 Given a Likert-type variable `rating` for which there are $K + 1 = 6$ response options, you can model the relative probability of each ordinal category as
 
@@ -149,7 +149,7 @@ $$
 \begin{align*}
 p(\text{rating} = k | \{ \tau_k \}) & = \Phi(\color{blue}{\tau_{K + 1}} \color{black}{) - \Phi(\tau_K)} \\
   & = \Phi(\color{blue}\infty \color{black}{) - \Phi(\tau_K)} \\
-  & = \color{blue}1 \color{black}{- \Phi(\tau_K)}.
+  & = \color{blue}1 \color{black}{-} \color{black}{\Phi(\tau_K)}.
 \end{align*}
 $$
 
@@ -439,7 +439,7 @@ If we would like to add a predictor, the most natural way is probably to explici
 
 $$
 \begin{align*}
-p(\text{rating} = k | \{ \tau_k \}, \color{blue}{\mu_i}) & = \Phi(\tau_k \color{blue}{- \mu_i} \color{black}{) - \Phi(\tau_{k - 1}} \color{blue}{- \mu_i} \color{black}) \\
+p(\text{rating} = k | \{ \tau_k \}, \color{blue}{\mu_i} \color{black}{)} & = \Phi(\tau_k \color{blue}{- \mu_i} \color{black}{) - \Phi(\tau_{k - 1}} \color{blue}{- \mu_i} \color{black}) \\
 \color{blue}{\mu_i} & = \color{blue}{\beta_0 + \sum_1^l \beta_l x_l} \\
 \color{blue}{\beta_0} & = \color{blue}0 \color{black}{,}
 \end{align*}
@@ -939,7 +939,7 @@ Now it's time to fit a proper cross-classified model accounting for the nesting 
 $$
 \begin{align*}
 p(\text{rating} = k | \{ \tau_k \}, \mu_{i\color{blue}j}) & = \Phi(\tau_k - \mu_{i\color{blue}j}) - \Phi(\tau_{k - 1} - \mu_{i\color{blue}j}) \\
-\mu_{i\color{blue}j} & = 0 + u_i \color{blue}{+} \color{blue}{v_j} \\ 
+\mu_{i\color{blue}j} & = 0 + u_i \color{blue}{ + } \color{blue}{v_j} \\ 
 u_i               & \sim \mathcal N(0, \sigma_u) \\
 \color{blue}{v_j} & \sim \color{blue}{\mathcal N(0, \sigma_v)} \\
 \tau_1 & \sim \mathcal N(-0.97, 1) \\
