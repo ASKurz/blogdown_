@@ -113,7 +113,8 @@ p(\text{rating} = k | \{ \tau_k \}) &amp; = \Phi(\color{blue}{\tau_{K + 1}}) - \
   &amp; = \color{blue}1 - \Phi(\tau_K).
 \end{align*}
 \]</span></p>
-<p>It might help to visualize this. Consider a case where we have a rating variable with 6 values (<code>1</code> through <code>6</code>), each with equal proportions (<span class="math inline">\(1 / 6 \approx .167\)</span>). Here’s what that could look like mapped onto <span class="math inline">\(\Phi\)</span>.</p>
+<p>It might help to visualize this. Consider a case where we have a rating variable with 6 values (<code>1</code> through <code>6</code>), each with equal proportions
+(<span class="math inline">\(1 / 6 \approx .167\)</span>). Here’s what that could look like mapped onto <span class="math inline">\(\Phi\)</span>.</p>
 <pre class="r"><code>tibble(z = seq(from = -3.75, to = 3.75, length.out = 1e3)) %&gt;% 
   mutate(d = dnorm(x = z, mean = 0, sd = 1)) %&gt;% 
   
@@ -1066,9 +1067,8 @@ pp_check(fit6, type = &quot;bars_grouped&quot;, group = &quot;item&quot;,
 <div id="randomly-varying-latent-standard-deviations." class="section level3">
 <h3>Randomly-varying latent standard deviations.</h3>
 <p>If the latent means can vary randomly, the latent dispersion parameters can vary randomly, too. Now <span class="math inline">\(\log(\alpha_{ij})\)</span> will vary across <span class="math inline">\(i\)</span> persons and <span class="math inline">\(j\)</span> questions with the Bayesian ordinal IRT model</p>
-<p>$$
-<span class="math display">\[\begin{align*}
-p(\text{rating} = k | \{ \tau_{kj} \}, \mu_{ij}, \color{blue}{\alpha_{ij}}) &amp; = \Phi(\color{blue}{\alpha_{ij}}[\tau_{kj} - \mu_{ij}]) - \Phi(\color{blue}{\alpha_{ij}}[\tau_{k - 1,j} - \mu_{ij}]) \\
+<p><span class="math display">\[\begin{align*}
+\small{p(\text{rating} = k | \{ \tau_{kj} \}, \mu_{ij}, \color{blue}{\alpha_{ij}})} &amp; \small{= \Phi(\color{blue}{\alpha_{ij}}[\tau_{kj} - \mu_{ij}]) - \Phi(\color{blue}{\alpha_{ij}}[\tau_{k - 1,j} - \mu_{ij}])} \\
 \mu_{ij} &amp; = 0 + u_i + v_j \\ 
 \color{blue}{\log(\alpha_{ij})} &amp; \color{blue}= \color{blue}{0 + w_i + x_j} \\
 u_i &amp; \sim \mathcal N(0, \sigma_u) \\
@@ -1086,8 +1086,7 @@ v_j &amp; \sim \mathcal N(0, \sigma_v) \\
 \sigma_v &amp; \sim \operatorname{Exponential}(1) \\
 \color{blue}{\sigma_w} &amp; \color{blue}\sim \color{blue}{\operatorname{Exponential}(1)} \\
 \color{blue}{\sigma_x} &amp; \color{blue}\sim \color{blue}{\operatorname{Exponential}(1)}.
-\end{align*}\]</span>
-$$</p>
+\end{align*}\]</span></p>
 <p>Though the <span class="math inline">\(\operatorname{Exponential}(1)\)</span> might be a good place to start with our new <span class="math inline">\(\sigma_w\)</span> and <span class="math inline">\(\sigma_x\)</span>, it might be best to ponder this a bit. Recall these are for the distribution of logged discrimination parameters. Since I’m no statistician or psychometrician, I’m not even sure what that means, which makes it hard to intuit whether the <span class="math inline">\(\operatorname{Exponential}(1)\)</span> prior makes sense for my data. A plot might help. Here we’ll simulate <span class="math inline">\(100{,}000\)</span> draws from the <span class="math inline">\(\operatorname{Exponential}(1)\)</span> prior, use those draws to simulate <span class="math inline">\(w_i\)</span> values from <span class="math inline">\(\mathcal N(0, \sigma_w)\)</span>, and then plot that distribution in the <span class="math inline">\(w_i\)</span>, <span class="math inline">\(\exp(w_i)\)</span> and <span class="math inline">\(1/\exp(w_i)\)</span> metrics.</p>
 <pre class="r"><code>set.seed(1)
 
@@ -1132,9 +1131,8 @@ tibble(sigma_w = rexp(n = 1e5, rate = 1 / 0.463)) %&gt;%
   facet_wrap(~ name, labeller = label_parsed, ncol = 1)</code></pre>
 <p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-48-1.png" width="672" /></p>
 <p>With that as our prior, our updated model formula will be</p>
-<p>$$
-<span class="math display">\[\begin{align*}
-p(\text{rating} = k | \{ \tau_{kj} \}, \mu_{ij}, \alpha_{ij}) &amp; = \Phi(\alpha_{ij}[\tau_{kj} - \mu_{ij}]) - \Phi(\alpha_{ij}[\tau_{k - 1,j} - \mu_{ij}]) \\
+<p><span class="math display">\[\begin{align*}
+\small{p(\text{rating} = k | \{ \tau_{kj} \}, \mu_{ij}, \alpha_{ij})} &amp; \small{= \Phi(\alpha_{ij}[\tau_{kj} - \mu_{ij}]) - \Phi(\alpha_{ij}[\tau_{k - 1,j} - \mu_{ij}])} \\
 \mu_{ij} &amp; = 0 + u_i + v_j \\ 
 \log(\alpha_{ij}) &amp; = 0 + w_i + x_j \\
 u_i &amp; \sim \mathcal N(0, \sigma_u) \\
@@ -1152,8 +1150,7 @@ x_j &amp; \sim \mathcal N(0, \sigma_x) \\
 \sigma_v &amp; \sim \operatorname{Exponential}(1) \\
 \sigma_w &amp; \sim \operatorname{Exponential}(\color{blue}{1 / 0.463}) \\
 \sigma_x &amp; \sim \operatorname{Exponential}(\color{blue}{1 / 0.463}).
-\end{align*}\]</span>
-$$</p>
+\end{align*}\]</span></p>
 <p>Put those new priors to work and fit the model.</p>
 <pre class="r"><code># 5.223564 mins
 fit7 &lt;- brm(
@@ -1377,9 +1374,8 @@ m_sum_score</code></pre>
 <p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-57-1.png" width="672" /></p>
 <p>The model does a great job capturing the Neuroticism sum scores.</p>
 <p>Now if you wanted to, you could expand this model further to include correlations between <span class="math inline">\(u_i\)</span> and <span class="math inline">\(w_i\)</span> and between <span class="math inline">\(v_j\)</span> and <span class="math inline">\(x_j\)</span>. That would change the model formula to something like</p>
-<p>$$
-<span class="math display">\[\begin{align*}
-p(\text{rating} = k | \{ \tau_{kj} \}, \mu_{ij}, \alpha_{ij}) &amp; = \Phi(\alpha_{ij}[\tau_{kj} - \mu_{ij}]) - \Phi(\alpha_{ij}[\tau_{k - 1,j} - \mu_{ij}]) \\
+<p><span class="math display">\[\begin{align*}
+\small{p(\text{rating} = k | \{ \tau_{kj} \}, \mu_{ij}, \alpha_{ij})} &amp; \small{= \Phi(\alpha_{ij}[\tau_{kj} - \mu_{ij}]) - \Phi(\alpha_{ij}[\tau_{k - 1,j} - \mu_{ij}])} \\
 \mu_{ij} &amp; = 0 + u_i + v_j \\ 
 \log(\alpha_{ij}) &amp; = 0 + w_i + x_j \\
 
@@ -1402,8 +1398,7 @@ p(\text{rating} = k | \{ \tau_{kj} \}, \mu_{ij}, \alpha_{ij}) &amp; = \Phi(\alph
 \sigma_x &amp; \sim \operatorname{Exponential}(1 / 0.463) \\
 \color{blue}{\rho_a} &amp; \color{blue}\sim \color{blue}{\operatorname{LKJ}(2)} \\
 \color{blue}{\rho_b} &amp; \color{blue}\sim \color{blue}{\operatorname{LKJ}(2)},
-\end{align*}\]</span>
-$$</p>
+\end{align*}\]</span></p>
 <p>where though our four random parameters are now modeled as two bivariate-normal pairs, there really are only two new parameters: <span class="math inline">\(\rho_a\)</span> and <span class="math inline">\(\rho_b\)</span>. The LKJ priors for our two new parameters would be weakly regularizing. In my experience, so far, adding those two level-2 correlations can make for notably longer fitting times and they often result in computational complications like the need to further adjust <code>adapt_delta</code> and so on. So in the interest of space, I’m not going to fit this model. But it’s always a possibility to consider.</p>
 </div>
 <div id="full-conditional-distributional-model." class="section level3">
@@ -1411,7 +1406,7 @@ $$</p>
 <p>A while back, we put our level-1 predictor <code>male</code> to the side while we focused on expanding the random components. Now’s time to bring that predictor back and fit the full conditional distributional model</p>
 <p><span class="math display">\[
 \begin{align*}
-p(\text{rating} = k | \{ \tau_{kj} \}, \mu_{ij}, \alpha_{ij}) &amp; = \Phi(\alpha_{ij}[\tau_{kj} - \mu_{ij}]) - \Phi(\alpha_{ij}[\tau_{k - 1,j} - \mu_{ij}]) \\
+\small{p(\text{rating} = k | \{ \tau_{kj} \}, \mu_{ij}, \alpha_{ij})} &amp; \small{= \Phi(\alpha_{ij}[\tau_{kj} - \mu_{ij}]) - \Phi(\alpha_{ij}[\tau_{k - 1,j} - \mu_{ij}])} \\
 \mu_{ij}          &amp; = \color{blue}{\beta_1 \text{male}_i} + u_i + v_j \\ 
 \log(\alpha_{ij}) &amp; = \color{blue}{\eta_1 \text{male}_i}  + w_i + x_j \\
 u_i &amp; \sim \mathcal N(0, \sigma_u) \\
@@ -1668,6 +1663,7 @@ fit8 &lt;- brm(
   facet_wrap(~ parameter)</code></pre>
 <p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-64-1.png" width="672" /></p>
 <p>I still haven’t figured out how to make item-characteristic curves for an ordinal model. If you know how, please chime in on twitter. And that last plot’s going to wrap this little blog post up. If you have any concerns about my equations or the workflows, herein, do chime in to twitter. This is a resource for us all and I’d hate to spread incorrect methods.</p>
+<p>{{% tweet "1476641792263131143" %}}</p>
 <p>Happy modeling, friends.</p>
 </div>
 </div>

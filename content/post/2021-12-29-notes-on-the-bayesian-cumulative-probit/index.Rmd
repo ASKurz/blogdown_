@@ -153,7 +153,8 @@ p(\text{rating} = k | \{ \tau_k \}) & = \Phi(\color{blue}{\tau_{K + 1}}) - \Phi(
 \end{align*}
 $$
 
-It might help to visualize this. Consider a case where we have a rating variable with 6 values (`1` through `6`), each with equal proportions ($1 / 6 \approx .167$). Here's what that could look like mapped onto $\Phi$.
+It might help to visualize this. Consider a case where we have a rating variable with 6 values (`1` through `6`), each with equal proportions 
+($1 / 6 \approx .167$). Here's what that could look like mapped onto $\Phi$.
 
 ```{r}
 tibble(z = seq(from = -3.75, to = 3.75, length.out = 1e3)) %>% 
@@ -1097,9 +1098,8 @@ Well okay, maybe I do lose something by letting the thresholds vary across quest
 
 If the latent means can vary randomly, the latent dispersion parameters can vary randomly, too. Now $\log(\alpha_{ij})$ will vary across $i$ persons and $j$ questions with the Bayesian ordinal IRT model
 
-$$
 \begin{align*}
-p(\text{rating} = k | \{ \tau_{kj} \}, \mu_{ij}, \color{blue}{\alpha_{ij}}) & = \Phi(\color{blue}{\alpha_{ij}}[\tau_{kj} - \mu_{ij}]) - \Phi(\color{blue}{\alpha_{ij}}[\tau_{k - 1,j} - \mu_{ij}]) \\
+\small{p(\text{rating} = k | \{ \tau_{kj} \}, \mu_{ij}, \color{blue}{\alpha_{ij}})} & \small{= \Phi(\color{blue}{\alpha_{ij}}[\tau_{kj} - \mu_{ij}]) - \Phi(\color{blue}{\alpha_{ij}}[\tau_{k - 1,j} - \mu_{ij}])} \\
 \mu_{ij} & = 0 + u_i + v_j \\ 
 \color{blue}{\log(\alpha_{ij})} & \color{blue}= \color{blue}{0 + w_i + x_j} \\
 u_i & \sim \mathcal N(0, \sigma_u) \\
@@ -1118,7 +1118,6 @@ v_j & \sim \mathcal N(0, \sigma_v) \\
 \color{blue}{\sigma_w} & \color{blue}\sim \color{blue}{\operatorname{Exponential}(1)} \\
 \color{blue}{\sigma_x} & \color{blue}\sim \color{blue}{\operatorname{Exponential}(1)}.
 \end{align*}
-$$
 
 Though the $\operatorname{Exponential}(1)$ might be a good place to start with our new $\sigma_w$ and $\sigma_x$, it might be best to ponder this a bit. Recall these are for the distribution of logged discrimination parameters. Since I'm no statistician or psychometrician, I'm not even sure what that means, which makes it hard to intuit whether the $\operatorname{Exponential}(1)$ prior makes sense for my data. A plot might help. Here we'll simulate $100{,}000$ draws from the $\operatorname{Exponential}(1)$ prior, use those draws to simulate $w_i$ values from $\mathcal N(0, \sigma_w)$, and then plot that distribution in the $w_i$, $\exp(w_i)$ and $1/\exp(w_i)$ metrics.
 
@@ -1215,9 +1214,8 @@ tibble(sigma_w = rexp(n = 1e5, rate = 1 / 0.463)) %>%
 
 With that as our prior, our updated model formula will be
 
-$$
 \begin{align*}
-p(\text{rating} = k | \{ \tau_{kj} \}, \mu_{ij}, \alpha_{ij}) & = \Phi(\alpha_{ij}[\tau_{kj} - \mu_{ij}]) - \Phi(\alpha_{ij}[\tau_{k - 1,j} - \mu_{ij}]) \\
+\small{p(\text{rating} = k | \{ \tau_{kj} \}, \mu_{ij}, \alpha_{ij})} & \small{= \Phi(\alpha_{ij}[\tau_{kj} - \mu_{ij}]) - \Phi(\alpha_{ij}[\tau_{k - 1,j} - \mu_{ij}])} \\
 \mu_{ij} & = 0 + u_i + v_j \\ 
 \log(\alpha_{ij}) & = 0 + w_i + x_j \\
 u_i & \sim \mathcal N(0, \sigma_u) \\
@@ -1236,7 +1234,6 @@ x_j & \sim \mathcal N(0, \sigma_x) \\
 \sigma_w & \sim \operatorname{Exponential}(\color{blue}{1 / 0.463}) \\
 \sigma_x & \sim \operatorname{Exponential}(\color{blue}{1 / 0.463}).
 \end{align*}
-$$
 
 Put those new priors to work and fit the model.
 
@@ -1441,9 +1438,8 @@ The model does a great job capturing the Neuroticism sum scores.
 
 Now if you wanted to, you could expand this model further to include correlations between $u_i$ and $w_i$ and between $v_j$ and $x_j$. That would change the model formula to something like
 
-$$
 \begin{align*}
-p(\text{rating} = k | \{ \tau_{kj} \}, \mu_{ij}, \alpha_{ij}) & = \Phi(\alpha_{ij}[\tau_{kj} - \mu_{ij}]) - \Phi(\alpha_{ij}[\tau_{k - 1,j} - \mu_{ij}]) \\
+\small{p(\text{rating} = k | \{ \tau_{kj} \}, \mu_{ij}, \alpha_{ij})} & \small{= \Phi(\alpha_{ij}[\tau_{kj} - \mu_{ij}]) - \Phi(\alpha_{ij}[\tau_{k - 1,j} - \mu_{ij}])} \\
 \mu_{ij} & = 0 + u_i + v_j \\ 
 \log(\alpha_{ij}) & = 0 + w_i + x_j \\
 
@@ -1467,7 +1463,6 @@ p(\text{rating} = k | \{ \tau_{kj} \}, \mu_{ij}, \alpha_{ij}) & = \Phi(\alpha_{i
 \color{blue}{\rho_a} & \color{blue}\sim \color{blue}{\operatorname{LKJ}(2)} \\
 \color{blue}{\rho_b} & \color{blue}\sim \color{blue}{\operatorname{LKJ}(2)},
 \end{align*}
-$$
 
 where though our four random parameters are now modeled as two bivariate-normal pairs, there really are only two new parameters: $\rho_a$ and $\rho_b$. The LKJ priors for our two new parameters would be weakly regularizing. In my experience, so far, adding those two level-2 correlations can make for notably longer fitting times and they often result in computational complications like the need to further adjust `adapt_delta` and so on. So in the interest of space, I'm not going to fit this model. But it's always a possibility to consider.
 
@@ -1477,7 +1472,7 @@ A while back, we put our level-1 predictor `male` to the side while we focused o
 
 $$
 \begin{align*}
-p(\text{rating} = k | \{ \tau_{kj} \}, \mu_{ij}, \alpha_{ij}) & = \Phi(\alpha_{ij}[\tau_{kj} - \mu_{ij}]) - \Phi(\alpha_{ij}[\tau_{k - 1,j} - \mu_{ij}]) \\
+\small{p(\text{rating} = k | \{ \tau_{kj} \}, \mu_{ij}, \alpha_{ij})} & \small{= \Phi(\alpha_{ij}[\tau_{kj} - \mu_{ij}]) - \Phi(\alpha_{ij}[\tau_{k - 1,j} - \mu_{ij}])} \\
 \mu_{ij}          & = \color{blue}{\beta_1 \text{male}_i} + u_i + v_j \\ 
 \log(\alpha_{ij}) & = \color{blue}{\eta_1 \text{male}_i}  + w_i + x_j \\
 u_i & \sim \mathcal N(0, \sigma_u) \\
@@ -1704,6 +1699,10 @@ rbind(ranef(fit8)$item[, , "Intercept"],
 ```
 
 I still haven't figured out how to make item-characteristic curves for an ordinal model. If you know how, please chime in on twitter. And that last plot's going to wrap this little blog post up. If you have any concerns about my equations or the workflows, herein, do chime in to twitter. This is a resource for us all and I'd hate to spread incorrect methods.
+
+```{r echo = FALSE}
+blogdown::shortcode('tweet', '1476641792263131143')
+```
 
 Happy modeling, friends.
 
