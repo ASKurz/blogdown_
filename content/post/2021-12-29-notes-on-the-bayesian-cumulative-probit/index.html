@@ -1,0 +1,1777 @@
+---
+title: Notes on the Bayesian cumulative probit
+author: A. Solomon Kurz
+date: '2021-12-29'
+slug: ''
+categories: []
+tags:
+  - Bayesian
+  - brms
+  - cumulative probit
+  - IRT
+  - multilevel
+  - ordinal
+  - probit
+  - R
+  - tidyverse
+  - tutorial
+subtitle: ''
+summary: ''
+authors: []
+lastmod: '2021-12-29T12:59:59-06:00'
+featured: no
+image:
+  caption: ''
+  focal_point: ''
+  preview_only: no
+projects: []
+bibliography: /Users/solomonkurz/Dropbox/blogdown/content/post/my_blog.bib
+biblio-style: apalike
+csl: /Users/solomonkurz/Dropbox/blogdown/content/post/apa.csl  
+link-citations: yes
+---
+
+<script src="{{< blogdown/postref >}}index_files/header-attrs/header-attrs.js"></script>
+
+
+<div id="whatwhy" class="section level2">
+<h2>What/why?</h2>
+<p>Prompted by a couple of my research projects, I’ve been fitting a lot of ordinal models, lately. Because of its nice interpretive properties, I’m fond of using the cumulative probit. Though I’ve written about cumulative logit <span class="citation">(<a href="#ref-kurzStatisticalRethinkingBrms2020" role="doc-biblioref">Kurz, 2020b</a>, Section 11.1)</span> and probit models <span class="citation">(<a href="#ref-kurzDoingBayesianData2021" role="doc-biblioref">Kurz, 2020a</a>, Chapter 23)</span> before, I still didn’t feel grounded enough to make rational decisions about priors and parameter interpretations. In this post, I have collected my recent notes and reformatted them into something of a tutorial on the Bayesian cumulative probit model. Using a single psychometric data set, we explore a variety of models, starting with the simplest single-level thresholds-only model and ending with a conditional multilevel distributional model.</p>
+<p>Be warned: This isn’t exactly a tutorial for beginners to the cumulative probit. For introductions, see some of the references cited within.</p>
+</div>
+<div id="set-it-up" class="section level2">
+<h2>Set it up</h2>
+<p>All code is in <strong>R</strong> <span class="citation">(<a href="#ref-R-base" role="doc-biblioref">R Core Team, 2020</a>)</span>, with healthy doses of the <strong>tidyverse</strong> <span class="citation">(<a href="#ref-R-tidyverse" role="doc-biblioref">Wickham, 2019</a>; <a href="#ref-wickhamWelcomeTidyverse2019" role="doc-biblioref">Wickham et al., 2019</a>)</span> for data wrangling and plotting. All models are fit with <a href="https://github.com/paul-buerkner/brms"><strong>brms</strong></a> <span class="citation">(<a href="#ref-burknerBrmsPackageBayesian2017" role="doc-biblioref">Bürkner, 2017</a>, <a href="#ref-burknerAdvancedBayesianMultilevel2018" role="doc-biblioref">2018</a>, <a href="#ref-R-brms" role="doc-biblioref">2020b</a>)</span>. In addition, there are a couple places where I make good use of the <a href="https://mjskay.github.io/tidybayes/"><strong>tidybayes</strong> package</a> <span class="citation">(<a href="#ref-R-tidybayes" role="doc-biblioref">Kay, 2020</a>)</span>.</p>
+<p>Here we load the packages and adjust the global plotting theme.</p>
+<pre class="r"><code># load
+library(tidyverse)
+library(brms)
+library(tidybayes)
+
+# adjust the global plotting theme
+theme_set(
+  theme_gray(base_size = 13,
+             base_family = &quot;Times&quot;) +
+  theme(panel.grid = element_blank())
+)</code></pre>
+<p>Our data will be a subset of the <code>bfi</code> data <span class="citation">(<a href="#ref-revelle2010individual" role="doc-biblioref">Revelle et al., 2010</a>)</span> from the <a href="https://CRAN.R-project.org/package=psych"><strong>psych</strong> package</a> <span class="citation">(<a href="#ref-R-psych" role="doc-biblioref">Revelle, 2021</a>)</span>. Here we load, subset, and wrangle the data to suit our needs.</p>
+<pre class="r"><code>set.seed(1)
+
+d &lt;- psych::bfi %&gt;% 
+  mutate(male = ifelse(gender == 1, 1, 0),
+         female = ifelse(gender == 2, 1, 0)) %&gt;% 
+  drop_na() %&gt;% 
+  slice_sample(n = 200) %&gt;% 
+  mutate(id = 1:n()) %&gt;% 
+  select(id, male, female, N1:N5) %&gt;% 
+  pivot_longer(N1:N5, names_to = &quot;item&quot;, values_to = &quot;rating&quot;)
+
+# what is this?
+glimpse(d)</code></pre>
+<pre><code>## Rows: 1,000
+## Columns: 5
+## $ id     &lt;int&gt; 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7…
+## $ male   &lt;dbl&gt; 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0…
+## $ female &lt;dbl&gt; 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1…
+## $ item   &lt;chr&gt; &quot;N1&quot;, &quot;N2&quot;, &quot;N3&quot;, &quot;N4&quot;, &quot;N5&quot;, &quot;N1&quot;, &quot;N2&quot;, &quot;N3&quot;, &quot;N4&quot;, &quot;N5&quot;, &quot;N1&quot;, &quot;N2&quot;, &quot;N3&quot;, &quot;N4&quot;, &quot;N5&quot;, &quot;N1&quot;, &quot;N2&quot;, &quot;…
+## $ rating &lt;int&gt; 2, 2, 1, 1, 1, 3, 3, 2, 3, 3, 4, 4, 4, 4, 2, 5, 3, 4, 6, 2, 1, 1, 3, 2, 2, 2, 4, 4, 1, 2, 1, 2, 4, 4, 1…</code></pre>
+<p>Our focal variables will be <code>rating</code>, which is a combination of the responses to the five questions in the Neuroticism scale of a version of the Big Five inventory <span class="citation">(<a href="#ref-goldberg1999broad" role="doc-biblioref">Goldberg, 1999</a>)</span>. Here’s a quick plot of the responses, by item and sex.</p>
+<pre class="r"><code>d %&gt;% 
+  mutate(sex = ifelse(male == 0, &quot;female&quot;, &quot;male&quot;)) %&gt;% 
+  
+  ggplot(aes(x = rating)) +
+  geom_bar() +
+  scale_x_continuous(breaks = 1:6) +
+  facet_grid(sex ~ item)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-5-1.png" width="672" /></p>
+</div>
+<div id="basics-of-the-ordered-probit" class="section level2">
+<h2>Basics of the ordered probit</h2>
+<p>I’ve had a difficult time understanding the notation used in these models. As McElreath <span class="citation">(<a href="#ref-mcelreathStatisticalRethinkingBayesian2015" role="doc-biblioref">2015, p. 335</a>)</span> remarked, there are a lot of different notational approaches for describing these models. In this post, I’ll be using a blend of sensibilities from McElreath, <span class="citation"><a href="#ref-burknerBayesianItemResponse2020" role="doc-biblioref">Bürkner</a> (<a href="#ref-burknerBayesianItemResponse2020" role="doc-biblioref">2020a</a>)</span>, and <span class="citation"><a href="#ref-kruschkeDoingBayesianData2015" role="doc-biblioref">Kruschke</a> (<a href="#ref-kruschkeDoingBayesianData2015" role="doc-biblioref">2015</a>)</span>. If you see flaws in my equations, do drop me a comment.</p>
+<p>Given a Likert-type variable <code>rating</code> for which there are <span class="math inline">\(K + 1 = 6\)</span> response options, you can model the relative probability of each ordinal category as</p>
+<p><span class="math display">\[p(\text{rating} = k | \{ \tau_k \}) = f(\tau_k) - f(\tau_{k - 1}),\]</span></p>
+<p>where <span class="math inline">\(\tau_k\)</span> is the <span class="math inline">\(k^\text{th}\)</span> threshold. On the left side of the equation, we stated the relative probabilities of the ordinal categories is conditional on our set of thresholds <span class="math inline">\(\{ \tau_k \}\)</span>, which is a shorthand for writing out <span class="math inline">\(\{k_1, k_2, k_3, k_4, k_5\}\)</span>. The <span class="math inline">\(f(\cdot)\)</span> operator is a stand-in for some cumulative distribution function, which will allow us to map the cumulative probabilities onto an unbounded parameter space divided up by the <span class="math inline">\(K\)</span> thresholds.</p>
+<p>Because of it’s nice interpretative properties, I (and many others) like to use the cumulative standard normal distribution <span class="math inline">\(\Phi\)</span> as our function <span class="math inline">\(f(\cdot)\)</span>, which means we can rewrite the equation as</p>
+<p><span class="math display">\[p(\text{rating} = k | \{ \tau_k \}) = \Phi(\tau_k) - \Phi(\tau_{k - 1}),\]</span></p>
+<p>where, to be explicit, the parameters for <span class="math inline">\(\Phi\)</span> are fixed to <span class="math inline">\(\mu = 0\)</span> and <span class="math inline">\(\sigma = 1\)</span> for purposes of identification. However, if you wanted two write out the equation to explicitly include our fixed <span class="math inline">\(\mu\)</span> and <span class="math inline">\(\sigma\)</span> parameters, it could look like</p>
+<p><span class="math display">\[p(\text{rating} = k | \{ \tau_k \}) = \Phi([\tau_k - \mu] / \sigma) - \Phi([\tau_{k - 1} - \mu] / \sigma).\]</span></p>
+<p>But again, since those are both held constant as 0 and 1, respectively, substituting those values into the equation reduces to what it was, before. This is one of the nice things about starting off with the cumulative standard normal distribution.</p>
+<p>Anyway, the thing to understand is that the area under the normal curve to the left of $_k $ is defined as <span class="math inline">\(\Phi(\tau_k)\)</span>, which is the cumulative probability mass for the <span class="math inline">\(k^\text{th}\)</span> rating. The reason we have to subtract the area to the left of <span class="math inline">\(\Phi(\tau_{k - 1})\)</span> from <span class="math inline">\(\Phi(\tau_k)\)</span> is so we can isolate a relative probability from a cumulative probability. This applies in the same way for all the middle ratings–<code>2</code> through <code>5</code> in our case. For the first and last ratings (<code>1</code> and <code>6</code>), we might add two <em>virtual</em> thresholds <span class="math inline">\(-\infty\)</span> and <span class="math inline">\(\infty\)</span>, respectively. With the first rating, this means</p>
+<p><span class="math display">\[
+\begin{align*}
+p(\text{rating} = k | \{ \tau_k \}) &amp; = \Phi(\tau_1) - \Phi(\color{blue}{\tau_0}) \\
+  &amp; = \Phi(\tau_1) - \Phi(\color{blue}{-\infty}) \\
+  &amp; = \Phi(\tau_1) - \color{blue}0 \\
+  &amp; = \Phi(\tau_1).
+\end{align*}
+\]</span></p>
+<p>In a similar way, for the last rating we have</p>
+<p><span class="math display">\[
+\begin{align*}
+p(\text{rating} = k | \{ \tau_k \}) &amp; = \Phi(\color{blue}{\tau_{K + 1}}) - \Phi(\tau_K) \\
+  &amp; = \Phi(\color{blue}\infty) - \Phi(\tau_K) \\
+  &amp; = \color{blue}1 - \Phi(\tau_K).
+\end{align*}
+\]</span></p>
+<p>It might help to visualize this. Consider a case where we have a rating variable with 6 values (<code>1</code> through <code>6</code>), each with equal proportions (<span class="math inline">\(1 / 6 \approx .167\)</span>). Here’s what that could look like mapped onto <span class="math inline">\(\Phi\)</span>.</p>
+<pre class="r"><code>tibble(z = seq(from = -3.75, to = 3.75, length.out = 1e3)) %&gt;% 
+  mutate(d = dnorm(x = z, mean = 0, sd = 1)) %&gt;% 
+  
+  ggplot(aes(x = z, y = d)) +
+  geom_line(color = &quot;blue&quot;) +
+  geom_area(aes(fill = z &gt;= qnorm(p = 0 / 6)), alpha = 1/4) + 
+  geom_area(aes(fill = z &gt;= qnorm(p = 1 / 6)), alpha = 1/4) + 
+  geom_area(aes(fill = z &gt;= qnorm(p = 2 / 6)), alpha = 1/4) + 
+  geom_area(aes(fill = z &gt;= qnorm(p = 3 / 6)), alpha = 1/4) + 
+  geom_area(aes(fill = z &gt;= qnorm(p = 4 / 6)), alpha = 1/4) + 
+  geom_area(aes(fill = z &gt;= qnorm(p = 5 / 6)), alpha = 1/4) + 
+  geom_vline(xintercept = qnorm(p = 1:5 / 6), linetype = 3) +
+  scale_fill_manual(values = c(&quot;transparent&quot;, &quot;blue&quot;), breaks = NULL) +
+  scale_x_continuous(expression(Phi), breaks = -3:3,
+                     sec.axis = dup_axis(
+    name = NULL,
+    breaks = qnorm(p = 1:5 / 6),
+    labels = parse(text = str_c(&quot;tau[&quot;, 1:5, &quot;]&quot;))
+    )) +
+  scale_y_continuous(NULL, breaks = NULL) +
+  coord_cartesian(xlim = c(-3.25, 3.25)) +
+  labs(title = expression(Phi*&quot; for an evenly-distributed 6-point ordinal variable&quot;),
+       subtitle = &quot;Each shaded section, defined by the thresholds, has the same probability mass.&quot;)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-6-1.png" width="672" /></p>
+<p>Here’s how you might compute some of those values within a tibble.</p>
+<pre class="r"><code>tibble(rating = 1:6) %&gt;% 
+  mutate(proportion = 1/6) %&gt;% 
+  mutate(cumulative_proportion = cumsum(proportion)) %&gt;% 
+  mutate(right_hand_threshold = qnorm(cumulative_proportion))</code></pre>
+<pre><code>## # A tibble: 6 × 4
+##   rating proportion cumulative_proportion right_hand_threshold
+##    &lt;int&gt;      &lt;dbl&gt;                 &lt;dbl&gt;                &lt;dbl&gt;
+## 1      1      0.167                 0.167               -0.967
+## 2      2      0.167                 0.333               -0.431
+## 3      3      0.167                 0.5                  0    
+## 4      4      0.167                 0.667                0.431
+## 5      5      0.167                 0.833                0.967
+## 6      6      0.167                 1                  Inf</code></pre>
+<p>Alternatively, here’s how to use <code>qnorm()</code> within <code>pnorm()</code> to realize the various combinations of <span class="math inline">\(\Phi(\tau_k) - \Phi(\tau_{k - 1})\)</span>.</p>
+<pre class="r"><code>pnorm(q = qnorm(p = 1 / 6)) - pnorm(q = qnorm(p = 0 / 6))</code></pre>
+<pre><code>## [1] 0.1666667</code></pre>
+<pre class="r"><code>pnorm(q = qnorm(p = 2 / 6)) - pnorm(q = qnorm(p = 1 / 6))</code></pre>
+<pre><code>## [1] 0.1666667</code></pre>
+<pre class="r"><code>pnorm(q = qnorm(p = 3 / 6)) - pnorm(q = qnorm(p = 2 / 6))</code></pre>
+<pre><code>## [1] 0.1666667</code></pre>
+<pre class="r"><code>pnorm(q = qnorm(p = 4 / 6)) - pnorm(q = qnorm(p = 3 / 6))</code></pre>
+<pre><code>## [1] 0.1666667</code></pre>
+<pre class="r"><code>pnorm(q = qnorm(p = 5 / 6)) - pnorm(q = qnorm(p = 4 / 6))</code></pre>
+<pre><code>## [1] 0.1666667</code></pre>
+<pre class="r"><code>pnorm(q = qnorm(p = 6 / 6)) - pnorm(q = qnorm(p = 5 / 6))</code></pre>
+<pre><code>## [1] 0.1666667</code></pre>
+</div>
+<div id="models" class="section level2">
+<h2>Models</h2>
+<p>For practice and building intuition, we’ll be fitting 8 models to the Neuroticism items. Starting simple and building up, they will be:</p>
+<ul>
+<li><code>fit1</code>, the thresholds-only model;</li>
+<li><code>fit2</code>, the single-level conditional mean model;</li>
+<li><code>fit3</code>, the single-level conditional mean and dispersion model;</li>
+<li><code>fit4</code>, the multilevel random participant-means model;</li>
+<li><code>fit5</code>, the multilevel random participant- and item-level means model;</li>
+<li><code>fit6</code>, the multilevel random participant- and item-level means model with varying thresholds;</li>
+<li><code>fit7</code>, the multilevel unconditional distributional model; and</li>
+<li><code>fit8</code>, the multilevel conditional distributional model.</li>
+</ul>
+<p>I make no claim these titles are canonical. They just make sense to me.</p>
+<div id="thresholds-only." class="section level3">
+<h3>Thresholds only.</h3>
+<p>Over the years, I’ve become fond of McElreath’s style of writing out models. His style usually looks something like</p>
+<p><span class="math display">\[
+\begin{align*}
+\text{criterion}_i &amp; \sim \operatorname{Some likelihood}(\phi_i) \\
+\text{some link function}(\phi_i) &amp; = \alpha + \beta x_i \\
+\alpha &amp; \sim \text{&lt; some prior &gt;} \\
+\beta  &amp; \sim \text{&lt; some prior &gt;},
+\end{align*}
+\]</span></p>
+<p>where <span class="math inline">\(\phi_i\)</span> is a stand-in for the likelihood parameter(s). I’ve had a hard time applying this notation style to the cumulative probit model, so I’m going to detract a bit. Here’s my current attempt applied to the thresholds-only model:</p>
+<p><span class="math display">\[
+\begin{align*}
+p(\text{rating} = k | \{ \tau_k \}) &amp; = \Phi(\tau_k) - \Phi(\tau_{k - 1}) \\
+\tau_k &amp; \sim \mathcal N(0, 2),
+\end{align*}
+\]</span></p>
+<p>where the first line is the likelihood, which only contains the model parameters <span class="math inline">\(\tau_k\)</span>. The second line is a simple non-committal prior for the thresholds, which places <span class="math inline">\(95\%\)</span> of the prior probability mass for each threshold between <span class="math inline">\(-4\)</span> and <span class="math inline">\(4\)</span>. However, if we consider the plot above, we can come up with a less lazy default prior. If we want our starting assumption to be a uniform distribution between our <code>rating</code> data, we could update the model to</p>
+<p><span class="math display">\[
+\begin{align*}
+p(\text{rating} = k | \{ \tau_k \}) &amp; = \Phi(\tau_k) - \Phi(\tau_{k - 1}) \\
+\tau_1 &amp; \sim \mathcal N(-0.97, 1) \\
+\tau_2 &amp; \sim \mathcal N(-0.43, 1) \\
+\tau_3 &amp; \sim \mathcal N(0, 1) \\
+\tau_4 &amp; \sim \mathcal N(0.43, 1) \\
+\tau_5 &amp; \sim \mathcal N(0.97, 1),
+\end{align*}
+\]</span></p>
+<p>where the priors are now all sequentially centered in different places in the <span class="math inline">\(\Phi\)</span> space. Though it might initially seem bold to use <span class="math inline">\(1\)</span> for the standard deviations on each, that’s still rather permissive when you consider the figure, above. I think you could easily justify using a <span class="math inline">\(0.5\)</span> or so, instead.</p>
+<p>Here’s how to fit the model with <strong>brms</strong>.</p>
+<pre class="r"><code>fit1 &lt;- brm(
+  data = d,
+  family = cumulative(probit),
+  rating ~ 1,
+  prior = c(prior(normal(-0.97, 1), class = Intercept, coef = 1),
+            prior(normal(-0.43, 1), class = Intercept, coef = 2),
+            prior(normal( 0.00, 1), class = Intercept, coef = 3),
+            prior(normal( 0.43, 1), class = Intercept, coef = 4),
+            prior(normal( 0.97, 1), class = Intercept, coef = 5)),
+  cores = 4,
+  seed = 1,
+  init_r = 0.2
+)</code></pre>
+<p>You don’t necessarily have to adjust <code>init_r</code>, but my experience is these models often benefit from this adjustment.</p>
+<p>Here’s the model summary.</p>
+<pre class="r"><code>print(fit1)</code></pre>
+<pre><code>##  Family: cumulative 
+##   Links: mu = probit; disc = identity 
+## Formula: rating ~ 1 
+##    Data: d (Number of observations: 1000) 
+##   Draws: 4 chains, each with iter = 2000; warmup = 1000; thin = 1;
+##          total post-warmup draws = 4000
+## 
+## Population-Level Effects: 
+##              Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+## Intercept[1]    -0.94      0.05    -1.03    -0.85 1.00     3334     2650
+## Intercept[2]    -0.25      0.04    -0.33    -0.17 1.00     5251     3510
+## Intercept[3]     0.07      0.04    -0.00     0.15 1.00     4869     3513
+## Intercept[4]     0.74      0.04     0.66     0.83 1.00     5449     3979
+## Intercept[5]     1.32      0.05     1.21     1.43 1.00     5336     3509
+## 
+## Family Specific Parameters: 
+##      Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+## disc     1.00      0.00     1.00     1.00   NA       NA       NA
+## 
+## Draws were sampled using sampling(NUTS). For each parameter, Bulk_ESS
+## and Tail_ESS are effective sample size measures, and Rhat is the potential
+## scale reduction factor on split chains (at convergence, Rhat = 1).</code></pre>
+<p>As Bürkner explained in his <span class="citation">(<a href="#ref-burknerBayesianItemResponse2020" role="doc-biblioref">2020a</a>)</span> tutorial, the <code>Intercept[k]</code> rows are actually summarizing the <span class="math inline">\(\tau_k\)</span> thresholds, not the <span class="math inline">\(\mu\)</span> intercept for the underlying latent variable. That, recall, is fixed at <span class="math inline">\(0\)</span> for identification purposes. Also, notice that the <code>disc</code> parameter is similarly held constant at <span class="math inline">\(1\)</span> for identification.</p>
+<p>It might help to visualize the thresholds in a plot.</p>
+<pre class="r"><code>tibble(x = seq(from = -3.5, to = 3.5, length.out = 200)) %&gt;% 
+  mutate(d = dnorm(x = x)) %&gt;% 
+  
+  ggplot(aes(x = x, y = d)) +
+  geom_area(fill = &quot;black&quot;, alpha = 1/3) +
+  geom_vline(xintercept = fixef(fit1)[, 1], linetype = 3) +
+  scale_x_continuous(expression(Phi), breaks = -3:3,
+                     sec.axis = dup_axis(
+    name = NULL,
+    breaks = fixef(fit1)[, 1] %&gt;% as.double(),
+    labels = parse(text = str_c(&quot;tau[&quot;, 1:5, &quot;]&quot;))
+    )) +
+  scale_y_continuous(NULL, breaks = NULL) +
+  coord_cartesian(xlim = c(-3, 3)) +
+  labs(title = &quot;Latent distribution for fit1&quot;,
+       subtitle = &quot;By definition and identification constraints, the shape is a standardized normal.&quot;)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-10-1.png" width="672" /></p>
+<p>To get more practice working with the thresholds and how they relate to the actual <code>rating</code> data, it’ll help to to a couple posterior-predictive checks by hand. For our first version, we’ll make a custom function called <code>pp_check_pmap()</code>, which will make use of the <code>pmap_dbl()</code> function.</p>
+<pre class="r"><code>pp_check_pmap &lt;- function(seed = 0) {
+  
+  set.seed(seed)
+  
+  as_draws_df(fit1) %&gt;% 
+    slice_sample(n = 200) %&gt;% 
+    select(starts_with(&quot;b_Intercept&quot;)) %&gt;% 
+    set_names(str_c(&quot;tau[&quot;, 1:5, &quot;]&quot;)) %&gt;% 
+    mutate(p1 = pnorm(`tau[1]`),
+           p2 = pnorm(`tau[2]`) - pnorm(`tau[1]`),
+           p3 = pnorm(`tau[3]`) - pnorm(`tau[2]`),
+           p4 = pnorm(`tau[4]`) - pnorm(`tau[3]`),
+           p5 = pnorm(`tau[5]`) - pnorm(`tau[4]`),
+           p6 = 1 - pnorm(`tau[5]`)) %&gt;% 
+    mutate(rating = pmap_dbl(.l = list(p1, p2, p3, p4, p5, p6),
+                             .f = ~sample(
+                               x = 1:6,
+                               size = 1,
+                               replace = TRUE,
+                               prob = c(..1, ..2, ..3, ..4, ..5, ..6)
+                             ))) %&gt;% 
+    select(rating)
+  
+}</code></pre>
+<p>Now use <code>pp_check_pmap()</code> to simulate <span class="math inline">\(9\)</span> data sets resembling the original data.</p>
+<pre class="r"><code>tibble(seed = 1:9) %&gt;% 
+  mutate(sim = map(seed, pp_check_pmap)) %&gt;% 
+  unnest(sim) %&gt;% 
+  
+  ggplot(aes(x = rating)) +
+  geom_bar() +
+  scale_x_continuous(breaks = 1:6) +
+  ggtitle(&quot;PP-check with the pp_check_pmap() function&quot;) +
+  facet_wrap(~ seed, labeller = label_both)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-12-1.png" width="672" /></p>
+<p>We can gain more insights into the model by using a different approach to computing the <code>rating</code> probabilities. This time, we’ll use an approach that leverages the <code>case_when()</code> function. We’ll wrap the approach in a custom function called <code>pp_check_case_when()</code>.</p>
+<pre class="r"><code>pp_check_case_when &lt;- function(seed = 0) {
+  
+  set.seed(seed)
+  
+  as_draws_df(fit1) %&gt;% 
+    slice_sample(n = 200) %&gt;% 
+    select(starts_with(&quot;b_Intercept&quot;)) %&gt;% 
+    set_names(str_c(&quot;tau[&quot;, 1:5, &quot;]&quot;)) %&gt;% 
+    mutate(Phi = rnorm(n = n(), mean = 0, sd = 1)) %&gt;% 
+    mutate(rating = case_when(
+      Phi &lt; `tau[1]` ~ 1,
+      Phi &gt;= `tau[1]` &amp; Phi &lt; `tau[2]`~ 2,
+      Phi &gt;= `tau[2]` &amp; Phi &lt; `tau[3]`~ 3,
+      Phi &gt;= `tau[3]` &amp; Phi &lt; `tau[4]`~ 4,
+      Phi &gt;= `tau[4]` &amp; Phi &lt; `tau[5]`~ 5,
+      Phi &gt;= `tau[5]` ~ 6
+    )) %&gt;% 
+    select(rating)
+  
+}</code></pre>
+<p>Now use <code>pp_check_pmap()</code> to simulate <span class="math inline">\(9\)</span> data sets resembling the original data.</p>
+<pre class="r"><code>tibble(seed = 1:9) %&gt;% 
+  mutate(sim = map(seed, pp_check_case_when)) %&gt;% 
+  unnest(sim) %&gt;% 
+  
+  ggplot(aes(x = rating)) +
+  geom_bar() +
+  scale_x_continuous(breaks = 1:6) +
+  ggtitle(&quot;PP-check with the pp_check_case_when() function&quot;) +
+  facet_wrap(~ seed, labeller = label_both)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-14-1.png" width="672" /></p>
+<p>Both hand-done pp-checks returned similar results from those you can get with the <code>pp_check()</code> function.</p>
+<pre class="r"><code>pp_check(fit1, type = &quot;hist&quot;, ndraws = 8, binwidth = 1) +
+  scale_x_continuous(breaks = 1:6) +
+  ggtitle(&quot;PP-check with the pp_check() function&quot;) </code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-15-1.png" width="672" /></p>
+<p>Posterior predictive distributions are cool and all, but one of the most common sense questions a researcher would ask is <em>How do I use the model to compute the mean of the data?</em> When you have an ordinal model, the mean of the criterion variable is the sum of the <span class="math inline">\(p_k\)</span> probabilities multiplied by the <span class="math inline">\(k\)</span> values of the criterion. We might express this in an equation as</p>
+<p><span class="math display">\[
+\mathbb{E}(\text{rating}) = \sum_1^K p_k \times k,
+\]</span></p>
+<p>where <span class="math inline">\(\mathbb{E}\)</span> is the expectation operator (the model-based mean), <span class="math inline">\(p_k\)</span> is the probability of the <span class="math inline">\(k^\text{th}\)</span> ordinal value, and <span class="math inline">\(k\)</span> is the actual ordinal value. The trick, here, is that because we are computing all the <span class="math inline">\(p_k\)</span> values with MCMC and expressing those values as posterior distributions, we have to perform this operation within each of our MCMC draws. If we take cues from our <code>pp_check_pmap()</code>, above, we can compute this with our posterior draws like so.</p>
+<pre class="r"><code>as_draws_df(fit1) %&gt;% 
+  select(.draw, starts_with(&quot;b_Intercept&quot;)) %&gt;% 
+  set_names(&quot;.draw&quot;, str_c(&quot;tau[&quot;, 1:5, &quot;]&quot;)) %&gt;% 
+  # compute the p_k distributions
+  mutate(p1 = pnorm(`tau[1]`),
+         p2 = pnorm(`tau[2]`) - pnorm(`tau[1]`),
+         p3 = pnorm(`tau[3]`) - pnorm(`tau[2]`),
+         p4 = pnorm(`tau[4]`) - pnorm(`tau[3]`),
+         p5 = pnorm(`tau[5]`) - pnorm(`tau[4]`),
+         p6 = 1 - pnorm(`tau[5]`)) %&gt;% 
+  # wrangle
+  pivot_longer(starts_with(&quot;p&quot;), values_to = &quot;p&quot;) %&gt;% 
+  mutate(rating = str_extract(name, &quot;\\d&quot;) %&gt;% as.double()) %&gt;% 
+  # compute p_k * k
+  mutate(`p * rating` = p * rating) %&gt;% 
+  # sum those values within each posterior draw
+  group_by(.draw) %&gt;% 
+  summarise(mean_rating = sum(`p * rating`)) %&gt;% 
+  
+  # plot!
+  ggplot(aes(x = mean_rating, y = 0)) +
+  stat_halfeye(.width = .95) +
+  geom_vline(xintercept = mean(d$rating), linetype = 2) +
+  scale_y_continuous(NULL, breaks = NULL) +
+  labs(title = &quot;The postrior for the mean of the rating values&quot;,
+       subtitle = &quot;The dashed vertical line marks off the sample mean. The posterior distribution is based on the\nsimple cumulative ordinal model fit1.&quot;,
+       x = expression(mu[rating])) +
+  xlim(2, 4)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-16-1.png" width="672" /></p>
+<p>Our model did a great job finding the mean of the <code>rating</code> data.</p>
+</div>
+<div id="add-a-predictor." class="section level3">
+<h3>Add a predictor.</h3>
+<p>If we would like to add a predictor, the most natural way is probably to explicitly add <span class="math inline">\(\mu\)</span> in the likelihood and then attach a linear model to <span class="math inline">\(\mu_i\)</span>. This would look like</p>
+<p><span class="math display">\[
+\begin{align*}
+p(\text{rating} = k | \{ \tau_k \}, \color{blue}{\mu_i}) &amp; = \Phi(\tau_k \color{blue}{- \mu_i}) - \Phi(\tau_{k - 1} \color{blue}{- \mu_i}) \\
+\color{blue}{\mu_i} &amp; \color{blue}= \color{blue}{\beta_0 + \sum_1^l \beta_l x_l} \\
+\color{blue}{\beta_0} &amp; \color{blue}= \color{blue}0,
+\end{align*}
+\]</span></p>
+<p>where <span class="math inline">\(\beta_0\)</span> is the intercept for the latent mean and <span class="math inline">\(\sum_1^l \beta_l x_l\)</span> is the additive effect of the full set of <span class="math inline">\(l\)</span> predictor variables and their <span class="math inline">\(\beta_l\)</span> coefficients. Now <span class="math inline">\(\beta_0\)</span> is the parameter we set to zero for identification purposes. As before, the <span class="math inline">\(\sigma\)</span> parameter will remain set to <span class="math inline">\(1\)</span>.</p>
+<p>Since we are modeling a latent mean with a latent standard deviation of <span class="math inline">\(1\)</span>, this puts</p>
+<ul>
+<li>single continuous standardized predictors in a correlation metric and</li>
+<li>single dummy variables in a Cohen’s-<span class="math inline">\(d\)</span> metric.</li>
+</ul>
+<p>As soon as you have multiple predictor variables in the mix, their metrics become increasingly difficult to interpret, but at least you can surmise that a partial correlation or a conditional Cohen’s <span class="math inline">\(d\)</span> isn’t on a <em>radically</em> different metric from their univariable counterparts.</p>
+<p>In the case of these data, our predictor of interest will be the dummy variable <code>male</code>. Thus, it makes sense to assign it a weakly-regularizing prior like <span class="math inline">\(\mathcal N(0, 1)\)</span>. Here’s the model formula:</p>
+<p><span class="math display">\[
+\begin{align*}
+p(\text{rating} = k | \{ \tau_k \}, \mu_i) &amp; = \Phi(\tau_k - \mu_i) - \Phi(\tau_{k - 1} - \mu_i) \\
+\mu_i &amp; = \beta_1 \text{male}_i \\ 
+\tau_1 &amp; \sim \mathcal N(-0.97, 1) \\
+\tau_2 &amp; \sim \mathcal N(-0.43, 1) \\
+\tau_3 &amp; \sim \mathcal N(0, 1) \\
+\tau_4 &amp; \sim \mathcal N(0.43, 1) \\
+\tau_5 &amp; \sim \mathcal N(0.97, 1) \\
+\beta_1 &amp; \sim \mathcal N(0, 1),
+\end{align*}
+\]</span></p>
+<p>where now the reference category is female. Here’s how to fit the model with <strong>brms</strong>.</p>
+<pre class="r"><code># 49.33003 secs
+fit2 &lt;- brm(
+  data = d,
+  family = cumulative(probit),
+  rating ~ 1 + male,
+  prior = c(prior(normal(-0.97, 1), class = Intercept, coef = 1),
+            prior(normal(-0.43, 1), class = Intercept, coef = 2),
+            prior(normal( 0.00, 1), class = Intercept, coef = 3),
+            prior(normal( 0.43, 1), class = Intercept, coef = 4),
+            prior(normal( 0.97, 1), class = Intercept, coef = 5),
+            prior(normal(0, 1), class = b)),
+  cores = 4,
+  seed = 1,
+  init_r = 0.2
+)</code></pre>
+<p>Check the summary.</p>
+<pre class="r"><code>print(fit2)</code></pre>
+<pre><code>##  Family: cumulative 
+##   Links: mu = probit; disc = identity 
+## Formula: rating ~ 1 + male 
+##    Data: d (Number of observations: 1000) 
+##   Draws: 4 chains, each with iter = 2000; warmup = 1000; thin = 1;
+##          total post-warmup draws = 4000
+## 
+## Population-Level Effects: 
+##              Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+## Intercept[1]    -1.02      0.05    -1.12    -0.91 1.00     3167     3036
+## Intercept[2]    -0.33      0.05    -0.42    -0.24 1.00     4809     3628
+## Intercept[3]    -0.00      0.05    -0.09     0.09 1.00     4785     3571
+## Intercept[4]     0.67      0.05     0.57     0.77 1.00     5309     3523
+## Intercept[5]     1.25      0.06     1.13     1.37 1.00     5651     3799
+## male            -0.22      0.07    -0.36    -0.09 1.00     5139     3154
+## 
+## Family Specific Parameters: 
+##      Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+## disc     1.00      0.00     1.00     1.00   NA       NA       NA
+## 
+## Draws were sampled using sampling(NUTS). For each parameter, Bulk_ESS
+## and Tail_ESS are effective sample size measures, and Rhat is the potential
+## scale reduction factor on split chains (at convergence, Rhat = 1).</code></pre>
+<p>Since the <span class="math inline">\(\beta_1\)</span> coefficient is a mean difference on the latent-<span class="math inline">\(\Phi\)</span> scale, it might be instructive to compare it to a Cohen’s <span class="math inline">\(d\)</span> computed with the sample statistics. Here we compute the sample means, standard deviations, and sample sizes, by <code>male</code>.</p>
+<pre class="r"><code># sample means
+m_female &lt;- d %&gt;% filter(female == 1) %&gt;% summarise(m = mean(rating)) %&gt;% pull()
+m_male   &lt;- d %&gt;% filter(male == 1)   %&gt;% summarise(m = mean(rating)) %&gt;% pull()
+
+# sample standard deviations
+s_female &lt;- d %&gt;% filter(female == 1) %&gt;% summarise(s = sd(rating)) %&gt;% pull()
+s_male   &lt;- d %&gt;% filter(male == 1)   %&gt;% summarise(s = sd(rating)) %&gt;% pull()
+
+# sample sizes
+n_female &lt;- d %&gt;% filter(female == 1) %&gt;% summarise(n = n()) %&gt;% pull()
+n_male   &lt;- d %&gt;% filter(male == 1)   %&gt;% summarise(n = n()) %&gt;% pull()</code></pre>
+<p>Now compute the pooled standard deviation.</p>
+<pre class="r"><code>s_pooled &lt;- sqrt(((n_female - 1) * s_female^2 + (n_male - 1) * s_male^2) / (n_female + n_male - 2))</code></pre>
+<p>We’re finally ready to compute the sample Cohen’s <span class="math inline">\(d\)</span>.</p>
+<pre class="r"><code>(m_male - m_female) / s_pooled</code></pre>
+<pre><code>## [1] -0.2167152</code></pre>
+<p>Compare that with the posterior mean and 95% CIs for our <span class="math inline">\(b_1\)</span> parameter.</p>
+<pre class="r"><code>fixef(fit2)[&quot;male&quot;, -2]</code></pre>
+<pre><code>##    Estimate        Q2.5       Q97.5 
+## -0.22406785 -0.35812222 -0.08881928</code></pre>
+<p>As with the first model, it might also be helpful to plot the latent distributions along with the thresholds.</p>
+<pre class="r"><code>tibble(male = 0:1,
+       mu   = c(0, fixef(fit2)[&quot;male&quot;, 1])) %&gt;% 
+  expand(nesting(male, mu),
+         x = seq(from = -3.5, to = 3.5, length.out = 200)) %&gt;% 
+  mutate(d   = dnorm(x, mean = mu, sd = 1),
+         sex = ifelse(male == 0, &quot;female&quot;, &quot;male&quot;)) %&gt;% 
+  
+  ggplot(aes(x = x, y = d, fill = sex)) +
+  geom_area(alpha = 1/2, position = &quot;identity&quot;) +
+  geom_vline(xintercept = fixef(fit2)[1:5, 1], linetype = 3) +
+  scale_fill_manual(NULL, values = c(&quot;red3&quot;, &quot;blue3&quot;)) +
+  scale_x_continuous(expression(Phi), breaks = -3:3,
+                     sec.axis = dup_axis(
+    name = NULL,
+    breaks = fixef(fit2)[1:5, 1] %&gt;% as.double(),
+    labels = parse(text = str_c(&quot;tau[&quot;, 1:5, &quot;]&quot;))
+    )) +
+  scale_y_continuous(NULL, breaks = NULL) +
+  coord_cartesian(xlim = c(-3, 3)) +
+  labs(title = &quot;Latent distributions for fit2&quot;,
+       subtitle = expression(&quot;The reference category is female. &quot;*beta[1]*&quot; is reflected in the leftward shift for men.&quot;))</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-22-1.png" width="672" /></p>
+<p>As before, we might also want to use our conditional <code>fit2</code> to compute the population means for <code>ratiing</code>, by sex. We can extend our workflow from before by including the posterior draws for <span class="math inline">\(\beta_1\)</span>. Then when we use the <code>pnorm()</code> functions to compute the conditional probabilities, we’ll have to use <span class="math inline">\(\beta_1\)</span> to adjust the values in the <code>mean</code> argument within <code>pnorm()</code> to account for the <span class="math inline">\(\mu_i = \beta_1 \text{male}_i\)</span> portion of our statistical model.</p>
+<pre class="r"><code>as_draws_df(fit2) %&gt;% 
+  select(.draw, starts_with(&quot;b_&quot;)) %&gt;% 
+  set_names(&quot;.draw&quot;, str_c(&quot;tau[&quot;, 1:5, &quot;]&quot;), &quot;beta[1]&quot;) %&gt;% 
+  # insert another copy of the data below
+  bind_rows(., .) %&gt;% 
+  # add the two values for the dummy variable male
+  mutate(male = rep(0:1, each = n() / 2)) %&gt;% 
+  # compute the p_k values conditional on the male dummy
+  mutate(p1 = pnorm(`tau[1]`, mean = 0 + male * `beta[1]`),
+         p2 = pnorm(`tau[2]`, mean = 0 + male * `beta[1]`) - pnorm(`tau[1]`, mean = 0 + male * `beta[1]`),
+         p3 = pnorm(`tau[3]`, mean = 0 + male * `beta[1]`) - pnorm(`tau[2]`, mean = 0 + male * `beta[1]`),
+         p4 = pnorm(`tau[4]`, mean = 0 + male * `beta[1]`) - pnorm(`tau[3]`, mean = 0 + male * `beta[1]`),
+         p5 = pnorm(`tau[5]`, mean = 0 + male * `beta[1]`) - pnorm(`tau[4]`, mean = 0 + male * `beta[1]`),
+         p6 = 1 - pnorm(`tau[5]`, mean = 0 + male * `beta[1]`)) %&gt;%
+  # wrangle
+  pivot_longer(starts_with(&quot;p&quot;), values_to = &quot;p&quot;) %&gt;% 
+  mutate(rating = str_extract(name, &quot;\\d&quot;) %&gt;% as.double()) %&gt;% 
+  # compute p_k * k
+  mutate(`p * rating` = p * rating) %&gt;% 
+  # sum those values within each posterior draw, by the male dummy
+  group_by(.draw, male) %&gt;% 
+  summarise(mean_rating = sum(`p * rating`)) %&gt;% 
+  mutate(sex = ifelse(male == 0, &quot;female&quot;, &quot;male&quot;)) %&gt;% 
+  
+  # the trick with and without fct_rev() helps order the axes, colors, and legend labels
+  ggplot(aes(x = mean_rating, y = fct_rev(sex), fill = sex)) +
+  stat_halfeye(.width = .95) +
+  geom_vline(xintercept = m_male, linetype = 2, color = &quot;blue3&quot;) +
+  geom_vline(xintercept = m_female, linetype = 2, color = &quot;red3&quot;) +
+  scale_fill_manual(NULL, values = c(alpha(&quot;red3&quot;, 0.5), alpha(&quot;blue3&quot;, 0.5))) +
+  labs(title = &quot;The postrior for the mean of the rating values, by sex&quot;,
+       subtitle = &quot;The dashed vertical lines mark off the sample means, by sex. The posterior distributions\nare based on the simple conditional cumulative ordinal model fit2.&quot;,
+       x = expression(mu[rating]),
+       y = NULL) +
+  xlim(2, 4) +
+  theme(axis.text.y = element_text(hjust = 0))</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-23-1.png" width="672" /></p>
+<p>By making the <code>mean</code> arguments within <code>pnorm()</code> conditional on our dummy <code>male</code>, we used our <code>fit2</code> model to compute posteriors around the means of <code>rating</code> with great success.</p>
+</div>
+<div id="varying-dispersion." class="section level3">
+<h3>Varying dispersion.</h3>
+<p>If we have reason to presume differences in latent standard deviations, we can explicitly add <span class="math inline">\(\sigma\)</span> in the likelihood and then attach a linear model to <span class="math inline">\(\log(\sigma_i)\)</span>. As in other contexts, it’s generally a good idea to model <span class="math inline">\(\log(\sigma_i)\)</span> instead of <span class="math inline">\(\sigma_i\)</span> because the former will ensure the model will only predict positive values. This would look like</p>
+<p><span class="math display">\[
+\begin{align*}
+p(\text{rating} = k | \{ \tau_k \}, \mu_i, \color{blue}{\sigma_i}) &amp; = \Phi([\tau_k - \mu_i] \color{blue}{/ \sigma_i}) - \Phi([\tau_{k - 1} - \mu_i] \color{blue}{/ \sigma_i}) \\
+\mu_i &amp; = \beta_0 + \sum_1^l \beta_l x_l \\
+\color{blue}{\log(\sigma_i)} &amp; \color{blue}= \color{blue}{\eta_0 + \sum_1^m \eta_m x_m} \\
+\beta_0 &amp; = 0 \\
+\color{blue}{\eta_0} &amp; \color{blue}= \color{blue}0,
+\end{align*}
+\]</span></p>
+<p>where <span class="math inline">\(\eta_0\)</span> is the intercept for the logged latent standard deviation and <span class="math inline">\(\sum_1^m \eta_m x_m\)</span> is the additive effect of the full set of <span class="math inline">\(m\)</span> predictor variables and their <span class="math inline">\(\eta_m\)</span> coefficients. Now <span class="math inline">\(\eta_0\)</span> is set to zero for identification purposes. Recall that <span class="math inline">\(\exp(0) = 1\)</span>, which means that the default is still that <span class="math inline">\(\sigma_i = 1\)</span> when all predictors are set to zero. With this model, it is possible the <span class="math inline">\(l\)</span> and <span class="math inline">\(m\)</span> predictor sets are the same. Here we differentiate between them just to make clear that they can differ, as needed.</p>
+<p>A technical thing to keep in mind is that <strong>brms</strong> actually parameterizes cumulative probit models in terms of the discrimination parameter <span class="math inline">\(\alpha\)</span>, rather than <span class="math inline">\(\sigma\)</span>. Their relation is simple in that the one is the reciprocal of the other,</p>
+<p><span class="math display">\[
+\begin{align*}
+\sigma &amp; = \frac{1}{\alpha}, \text{and} \\
+\alpha &amp; = \frac{1}{\sigma}.
+\end{align*}
+\]</span></p>
+<p>It’s also the case that when you fit a model without a linear model attached to the discrimination parameter,</p>
+<p><span class="math display">\[
+\sigma = \frac{1}{\alpha} = \frac{1}{1} = 1.
+\]</span></p>
+<p>However, things become more complicated when you want to model <span class="math inline">\(\alpha\)</span>. First, here’s the updated likelihood:</p>
+<p><span class="math display">\[
+\begin{align*}
+p(\text{rating} = k | \{ \tau_k \}, \mu_i, \color{blue}{\alpha_i}) &amp; = \Phi(\color{blue}{\alpha_i}[\tau_k - \mu_i]) - \Phi(\color{blue}{\alpha_i}[\tau_{k - 1} - \mu_i]) \\
+\mu_i &amp; = \beta_0 + \sum_1^l \beta_l x_l \\
+\log(\color{blue}{\alpha_i}) &amp; = \eta_0 + \sum_1^m \eta_m x_m \\
+\beta_0 &amp; = 0 \\
+\eta_0 &amp; = 0.
+\end{align*}
+\]</span></p>
+<p>If you want to convert <span class="math inline">\(\log(\alpha_i)\)</span> to the <span class="math inline">\(\sigma\)</span> metric, you need the transformation</p>
+<p><span class="math display">\[
+\sigma = \frac{1}{\exp(\log \alpha)},
+\]</span></p>
+<p>which puts the priors on the linear model for <span class="math inline">\(\log(\alpha_i)\)</span> on an unfamiliar metric. As is often the case, something like <span class="math inline">\(\mathcal N(0, 1)\)</span> is a good starting point. Here’s what it would look like if we simulated <span class="math inline">\(100{,}000\)</span> draws from that prior and then converted them to the <span class="math inline">\(1 / \exp(\cdot)\)</span> metric.</p>
+<pre class="r"><code>set.seed(1)
+
+tibble(prior = rnorm(n = 1e5, mean = 0, sd = 1)) %&gt;%
+  mutate(prior = 1 / exp(prior)) %&gt;%
+  
+  ggplot(aes(x = prior)) +
+  geom_histogram(binwidth = 0.1) +
+  # the right tail is very long
+  coord_cartesian(xlim = c(0, 10))</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-24-1.png" width="672" /></p>
+<p>We might extend this approach further to consider zero-centered normal priors with different values for the <span class="math inline">\(\sigma\)</span> hyperparameter.</p>
+<pre class="r"><code>set.seed(1)
+
+tibble(sigma_hyperparameter = 1:10 / 10) %&gt;% 
+  mutate(x = map(sigma_hyperparameter, ~ rnorm(n = 1e5, sd = .x))) %&gt;% 
+  unnest(x) %&gt;% 
+  mutate(x = 1 / exp(x)) %&gt;% 
+  group_by(sigma_hyperparameter) %&gt;% 
+  summarise(m = mean(x),
+            mdn = median(x),
+            s = sd(x),
+            q2.5 = quantile(x, prob = .025),
+            q97.5 = quantile(x, prob = .975)) %&gt;% 
+  mutate_all(round, digits = 2)</code></pre>
+<pre><code>## # A tibble: 10 × 6
+##    sigma_hyperparameter     m   mdn     s  q2.5 q97.5
+##                   &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;
+##  1                  0.1  1.01     1  0.1   0.82  1.22
+##  2                  0.2  1.02     1  0.21  0.67  1.48
+##  3                  0.3  1.05     1  0.32  0.56  1.8 
+##  4                  0.4  1.08     1  0.45  0.46  2.19
+##  5                  0.5  1.13     1  0.6   0.38  2.66
+##  6                  0.6  1.2      1  0.78  0.31  3.24
+##  7                  0.7  1.28     1  1     0.25  3.93
+##  8                  0.8  1.38     1  1.33  0.21  4.82
+##  9                  0.9  1.5      1  1.72  0.17  5.85
+## 10                  1    1.64     1  2.12  0.14  7.03</code></pre>
+<p>The median is always at <span class="math inline">\(1\)</span>, with varying levels of dispersion. But this doesn’t seem principled. It might be better to think in terms of how much change would be reasonable to see on <span class="math inline">\(\sigma\)</span>. In the present example, our sole predictor variable will be the dummy variable <code>male</code>. I’m not sure how much more or less variation we’d expect to see between the sexes on the Neuroticism ratings, but I’d be shocked if the standard deviation for one was more than twice the size of the other. Thus, since the reference category will be set to <span class="math inline">\(\sigma = 1\)</span>, we want a distribution where the bulk of the prior mass is set to half and twice that value.</p>
+<pre class="r"><code>sigma &lt;- c(0.5, 1, 2)</code></pre>
+<p>Now convert those to <span class="math inline">\(\alpha\)</span> values.</p>
+<pre class="r"><code>alpha &lt;- 1 / sigma</code></pre>
+<p>Then, take the log of the <span class="math inline">\(\alpha\)</span> values.</p>
+<pre class="r"><code>log(alpha)</code></pre>
+<pre><code>## [1]  0.6931472  0.0000000 -0.6931472</code></pre>
+<p>If <span class="math inline">\(\sigma_\text{men}\)</span> were half the size of <span class="math inline">\(\sigma_\text{women}\)</span>, we’d expect <span class="math inline">\(\eta_1 = 0.693\)</span>. Similarly, if <span class="math inline">\(\sigma_\text{men}\)</span> were <em>twice</em> the size of <span class="math inline">\(\sigma_\text{women}\)</span>, we’d expect <span class="math inline">\(\eta_1 = -0.693\)</span>. Thus the prior <span class="math inline">\(\eta_i \sim \mathcal N(0, 0.693 / 2 \approx 0.347)\)</span> would put <span class="math inline">\(95 \%\)</span> of the prior mass within the desired range.</p>
+<p>We can compute that value with <span class="math inline">\(\log(2) / 2\)</span>, too.</p>
+<pre class="r"><code>log(2) / 2</code></pre>
+<pre><code>## [1] 0.3465736</code></pre>
+<p>Here’s what that would look like in a histogram.</p>
+<pre class="r"><code>set.seed(1)
+
+tibble(prior = rnorm(n = 1e5, mean = 0, sd = log(2) / 2)) %&gt;%
+  mutate(prior = 1 / exp(prior)) %&gt;%
+  
+  ggplot(aes(x = prior)) +
+  geom_histogram(binwidth = 0.1) +
+  coord_cartesian(xlim = c(0, 10))</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-30-1.png" width="672" /></p>
+<p>With that all in mind, we can now update our model formula to:</p>
+<p><span class="math display">\[
+\begin{align*}
+p(\text{rating} = k | \{ \tau_k \}, \mu_i, \alpha_i) &amp; = \Phi(\alpha_i[\tau_k - \mu_i]) - \Phi(\alpha_i[\tau_{k - 1} - \mu_i]) \\
+\mu_i          &amp; = \beta_1 \text{male}_i \\ 
+\log(\alpha_i) &amp; = \eta_1 \text{male}_i\\
+\tau_1 &amp; \sim \mathcal N(-0.97, 1) \\
+\tau_2 &amp; \sim \mathcal N(-0.43, 1) \\
+\tau_3 &amp; \sim \mathcal N(0, 1) \\
+\tau_4 &amp; \sim \mathcal N(0.43, 1) \\
+\tau_5 &amp; \sim \mathcal N(0.97, 1) \\
+\beta_1 &amp; \sim \mathcal N(0, 1) \\
+\eta_1 &amp; \sim \mathcal N(0, 0.347).
+\end{align*}
+\]</span></p>
+<p>Here’s how to fit the model with <strong>brms</strong>.</p>
+<pre class="r"><code># 49.94408 secs
+fit3 &lt;- brm(
+  data = d,
+  family = cumulative(probit),
+  bf(rating ~ 1 + male) +
+    lf(disc ~ 0 + male,
+       # this is really important
+       cmc = FALSE),
+  prior = c(prior(normal(-0.97, 1), class = Intercept, coef = 1),
+            prior(normal(-0.43, 1), class = Intercept, coef = 2),
+            prior(normal( 0.00, 1), class = Intercept, coef = 3),
+            prior(normal( 0.43, 1), class = Intercept, coef = 4),
+            prior(normal( 0.97, 1), class = Intercept, coef = 5),
+            prior(normal(0, 1), class = b),
+            # log(2) / 2 = 0.347
+            prior(normal(0, log(2) / 2), class = b, dpar = disc)),
+  cores = 4,
+  seed = 1,
+  init_r = 0.2
+)</code></pre>
+<p>Note how used the <code>0 + ...</code> syntax in the first line in the <code>lf()</code> function that set we set <code>cmc = FALSE</code> in the second line. As Bürkner noted in his <span class="citation">(<a href="#ref-burknerBayesianItemResponse2020" role="doc-biblioref">2020a</a>)</span> tutorial, it’s critical that you do this when attaching a model to <span class="math inline">\(\log(\alpha_i)\)</span>. If you leave these bits out, you might find that you are no longer keeping the reference category for <span class="math inline">\(\log(\alpha_i)\)</span> set to <span class="math inline">\(0\)</span>, which can wrack havoc on the model.</p>
+<p>Anyway, check the summary.</p>
+<pre class="r"><code>print(fit3)</code></pre>
+<pre><code>##  Family: cumulative 
+##   Links: mu = probit; disc = log 
+## Formula: rating ~ 1 + male 
+##          disc ~ 0 + male
+##    Data: d (Number of observations: 1000) 
+##   Draws: 4 chains, each with iter = 2000; warmup = 1000; thin = 1;
+##          total post-warmup draws = 4000
+## 
+## Population-Level Effects: 
+##              Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+## Intercept[1]    -0.97      0.06    -1.08    -0.86 1.00     2359     2981
+## Intercept[2]    -0.31      0.05    -0.41    -0.22 1.00     4558     3583
+## Intercept[3]    -0.00      0.05    -0.09     0.09 1.00     5101     3616
+## Intercept[4]     0.65      0.05     0.55     0.74 1.00     4746     3483
+## Intercept[5]     1.22      0.06     1.10     1.33 1.00     4543     3337
+## male            -0.20      0.07    -0.34    -0.08 1.00     4535     2831
+## disc_male        0.12      0.06     0.00     0.24 1.00     2799     2612
+## 
+## Draws were sampled using sampling(NUTS). For each parameter, Bulk_ESS
+## and Tail_ESS are effective sample size measures, and Rhat is the potential
+## scale reduction factor on split chains (at convergence, Rhat = 1).</code></pre>
+<p>It can be challenging to interpret the <code>disc_male</code> coefficient directly. Keep in mind that larger values mean smaller relative values. Given how the reference value is <span class="math inline">\(0\)</span>, which equivalent to <span class="math inline">\(\sigma = 1\)</span>, this is the estimate of the latent standard deviation for men.</p>
+<pre class="r"><code>1 / exp(0 + fixef(fit3)[&quot;disc_male&quot;, -2])</code></pre>
+<pre><code>##  Estimate      Q2.5     Q97.5 
+## 0.8873625 0.9976675 0.7883039</code></pre>
+<p>Here are the two sample standard deviations.</p>
+<pre class="r"><code>s_female </code></pre>
+<pre><code>## [1] 1.616471</code></pre>
+<pre class="r"><code>s_male</code></pre>
+<pre><code>## [1] 1.491827</code></pre>
+<p>Once again, let’s plot.</p>
+<pre class="r"><code>tibble(male  = 0:1,
+       mu    = c(0, fixef(fit3)[&quot;male&quot;, 1]),
+       sigma = 1 / exp(c(0, fixef(fit3)[&quot;disc_male&quot;, 1]))) %&gt;% 
+  expand(nesting(male, mu, sigma),
+         x = seq(from = -3.5, to = 3.5, length.out = 200)) %&gt;% 
+  mutate(d   = dnorm(x, mean = mu, sd = sigma),
+         sex = ifelse(male == 0, &quot;female&quot;, &quot;male&quot;)) %&gt;% 
+  
+  ggplot(aes(x = x, y = d, fill = sex)) +
+  geom_area(alpha = 1/2, position = &quot;identity&quot;) +
+  geom_vline(xintercept = fixef(fit3)[1:5, 1], linetype = 3) +
+  scale_fill_manual(NULL, values = c(&quot;red3&quot;, &quot;blue3&quot;)) +
+  scale_x_continuous(expression(Phi), breaks = -3:3,
+                     sec.axis = dup_axis(
+    name = NULL,
+    breaks = fixef(fit3)[1:5, 1] %&gt;% as.double(),
+    labels = parse(text = str_c(&quot;tau[&quot;, 1:5, &quot;]&quot;))
+    )) +
+  scale_y_continuous(NULL, breaks = NULL) +
+  labs(title = &quot;Latent distributions for fit3&quot;,
+       subtitle = expression(&quot;The shape for men is based on the posterior means of the &quot;*beta[1]*&quot; and &quot;*eta[1]*&quot; parameters.&quot;)) +
+  coord_cartesian(xlim = c(-3, 3))</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-34-1.png" width="672" /></p>
+<p>Note, however, that because this new model <code>fit3</code> now has separate <span class="math inline">\(\sigma\)</span> estimates by sex, the <span class="math inline">\(\beta_1\)</span> parameter isn’t quite in a standardized-mean-difference metric, anymore. To get it back in to a <span class="math inline">\(d\)</span> metric, we’ll have to use the full posterior distribution for <span class="math inline">\(\sigma_\text{female}\)</span> and <span class="math inline">\(\sigma_\text{male}\)</span> to compute a model-based pooled standard deviation, by which we can then standardize the <span class="math inline">\(\beta_1\)</span> coefficient.</p>
+<pre class="r"><code>as_draws_df(fit3) %&gt;% 
+  mutate(sigma_f = 1,
+         sigma_m = 1 / exp(b_disc_male)) %&gt;%
+  mutate(sigma_pooled = sqrt(((n_female - 1) * sigma_f^2 + (n_male - 1) * sigma_m^2) / (n_female + n_male - 2))) %&gt;% 
+  transmute(d = b_male / sigma_pooled) %&gt;% 
+  mean_qi(d) %&gt;% 
+  mutate_if(is.double, round, digits = 3)</code></pre>
+<pre><code>## # A tibble: 1 × 6
+##        d .lower .upper .width .point .interval
+##    &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt; &lt;chr&gt;  &lt;chr&gt;    
+## 1 -0.212 -0.345  -0.08   0.95 mean   qi</code></pre>
+<p>Also, consider the variance metric. Given that the standard deviation squared is the variance, <span class="math inline">\(\sigma^2\)</span>, an increase of doubling the standard deviation is the same as quadrupling the variance.</p>
+<pre class="r"><code>2^2</code></pre>
+<pre><code>## [1] 4</code></pre>
+<p>If you wanted to set up the model so that <span class="math inline">\(95\%\)</span> of the prior probability allowed for a doubling of the variance, you’d need to set the upper range to the square root of <span class="math inline">\(2\)</span>.</p>
+<pre class="r"><code>sqrt(2)</code></pre>
+<pre><code>## [1] 1.414214</code></pre>
+<p>Now that we’ve updated the model to account for differences in <span class="math inline">\(\sigma\)</span>, we might also want to update our workflow for computing the population means for <code>rating</code>. The trick is now the <code>sd</code> argument within the <code>pnorm()</code> function should be conditional on the values for males or females. Here’s one way how.</p>
+<pre class="r"><code>as_draws_df(fit3) %&gt;% 
+  # this also includes the column for b_disc_male
+  select(.draw, starts_with(&quot;b_&quot;)) %&gt;% 
+  set_names(&quot;.draw&quot;, str_c(&quot;tau[&quot;, 1:5, &quot;]&quot;), &quot;beta[1]&quot;, &quot;eta[1]&quot;) %&gt;% 
+  bind_rows(., .) %&gt;% 
+  mutate(male = rep(0:1, each = n() / 2)) %&gt;% 
+  # compute the conditional mu and sigma values
+  mutate(mu_i    = 0 + male * `beta[1]`,
+         sigma_i = 1 / exp(0 + male * `eta[1]`)) %&gt;%
+  # compute the p_k values conditional on the male dummy and the mu_i and sigma_i values
+  mutate(p1 = pnorm(`tau[1]`, mean = mu_i, sd = sigma_i),
+         p2 = pnorm(`tau[2]`, mean = mu_i, sd = sigma_i) - pnorm(`tau[1]`, mean = mu_i, sd = sigma_i),
+         p3 = pnorm(`tau[3]`, mean = mu_i, sd = sigma_i) - pnorm(`tau[2]`, mean = mu_i, sd = sigma_i),
+         p4 = pnorm(`tau[4]`, mean = mu_i, sd = sigma_i) - pnorm(`tau[3]`, mean = mu_i, sd = sigma_i),
+         p5 = pnorm(`tau[5]`, mean = mu_i, sd = sigma_i) - pnorm(`tau[4]`, mean = mu_i, sd = sigma_i),
+         p6 = 1 - pnorm(`tau[5]`, mean = mu_i, sd = sigma_i)) %&gt;%
+  # the rest is now the same as before
+  pivot_longer(starts_with(&quot;p&quot;), values_to = &quot;p&quot;) %&gt;% 
+  mutate(rating = str_extract(name, &quot;\\d&quot;) %&gt;% as.double()) %&gt;% 
+  mutate(`p * rating` = p * rating) %&gt;% 
+  group_by(.draw, male) %&gt;% 
+  summarise(mean_rating = sum(`p * rating`)) %&gt;% 
+  mutate(sex = ifelse(male == 0, &quot;female&quot;, &quot;male&quot;)) %&gt;% 
+  
+  ggplot(aes(x = mean_rating, y = fct_rev(sex), fill = sex)) +
+  stat_halfeye(.width = .95) +
+  geom_vline(xintercept = m_male, linetype = 2, color = &quot;blue3&quot;) +
+  geom_vline(xintercept = m_female, linetype = 2, color = &quot;red3&quot;) +
+  scale_fill_manual(NULL, values = c(alpha(&quot;red3&quot;, 0.5), alpha(&quot;blue3&quot;, 0.5))) +
+  labs(title = &quot;The postrior for the mean of the rating values, by sex&quot;,
+       subtitle = &quot;The dashed vertical lines mark off the sample means, by sex. The posterior distributions\nare based on the simple conditional cumulative ordinal model fit3.&quot;,
+       x = expression(mu[rating]),
+       y = NULL) +
+  xlim(2, 4) +
+  theme(axis.text.y = element_text(hjust = 0))</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-38-1.png" width="672" /></p>
+<p>The results are very similar to those from above.</p>
+</div>
+<div id="randomly-varying-latent-means." class="section level3">
+<h3>Randomly-varying latent means.</h3>
+<p>Up until now, we’ve been ignoring how this model has a multilevel structure. We have ratings nested within persons (<code>id</code>) and questions (<code>item</code>). Within cumulative probit models, the simplest way to account for that nesting is to add random intercepts to the latent mean, which will now be <span class="math inline">\(\mu_{ij}\)</span> for the <span class="math inline">\(i^\text{th}\)</span> person and the <span class="math inline">\(j^\text{th}\)</span> question.</p>
+<p>Starting slow, we’ll fist just add random intercepts for the persons with the model</p>
+<p><span class="math display">\[
+\begin{align*}
+p(\text{rating} = k | \{ \tau_k \}, \mu_i) &amp; = \Phi(\tau_k - \mu_i) - \Phi(\tau_{k - 1} - \mu_i) \\
+\mu_i          &amp; = 0 \color{blue}{+ u_i} \\ 
+\color{blue}{u_i} &amp; \color{blue}\sim \color{blue}{\mathcal N(0, \sigma_u)} \\
+\tau_1 &amp; \sim \mathcal N(-0.97, 1) \\
+\tau_2 &amp; \sim \mathcal N(-0.43, 1) \\
+\tau_3 &amp; \sim \mathcal N(0, 1) \\
+\tau_4 &amp; \sim \mathcal N(0.43, 1) \\
+\tau_5 &amp; \sim \mathcal N(0.97, 1) \\
+\color{blue}{\sigma_u} &amp; \color{blue}\sim \color{blue}{\operatorname{Exponential}(1)},
+\end{align*}
+\]</span></p>
+<p>where we’ve dropped the <code>male</code> predictor and the entire linear model for <span class="math inline">\(\log(\alpha_i)\)</span> for the sake of simplicity. They’ll come back in a bit. Given the baseline fixed-effects portion of the model is still on the standardized-normal metric, the good old <span class="math inline">\(\operatorname{Exponential}(1)\)</span> prior is a good choice for the level-2 standard deviation <span class="math inline">\(\sigma_u\)</span>. For more on the <span class="math inline">\(\operatorname{Exponential}(1)\)</span> prior, see <span class="citation"><a href="#ref-mcelreathStatisticalRethinkingBayesian2020" role="doc-biblioref">McElreath</a> (<a href="#ref-mcelreathStatisticalRethinkingBayesian2020" role="doc-biblioref">2020</a>)</span>.</p>
+<p>Here’s how to fit the model with <strong>brms</strong>.</p>
+<pre class="r"><code># 49.94408 secs
+fit4 &lt;- brm(
+  data = d,
+  family = cumulative(probit),
+  rating ~ 1 + (1 | id),
+  prior = c(prior(normal(-0.97, 1), class = Intercept, coef = 1),
+            prior(normal(-0.43, 1), class = Intercept, coef = 2),
+            prior(normal( 0.00, 1), class = Intercept, coef = 3),
+            prior(normal( 0.43, 1), class = Intercept, coef = 4),
+            prior(normal( 0.97, 1), class = Intercept, coef = 5),
+            prior(exponential(1), class = sd)),
+  cores = 4,
+  seed = 1,
+  init_r = 0.2
+)</code></pre>
+<p>Check the summary.</p>
+<pre class="r"><code>print(fit4)</code></pre>
+<pre><code>##  Family: cumulative 
+##   Links: mu = probit; disc = identity 
+## Formula: rating ~ 1 + (1 | id) 
+##    Data: d (Number of observations: 1000) 
+##   Draws: 4 chains, each with iter = 2000; warmup = 1000; thin = 1;
+##          total post-warmup draws = 4000
+## 
+## Group-Level Effects: 
+## ~id (Number of levels: 200) 
+##               Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+## sd(Intercept)     1.03      0.07     0.90     1.18 1.00     1095     2370
+## 
+## Population-Level Effects: 
+##              Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+## Intercept[1]    -1.33      0.10    -1.52    -1.15 1.00     1267     1809
+## Intercept[2]    -0.37      0.09    -0.54    -0.21 1.00     1286     2043
+## Intercept[3]     0.09      0.09    -0.08     0.25 1.00     1278     1982
+## Intercept[4]     1.04      0.09     0.86     1.22 1.00     1369     2298
+## Intercept[5]     1.86      0.10     1.66     2.07 1.00     1665     2743
+## 
+## Family Specific Parameters: 
+##      Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+## disc     1.00      0.00     1.00     1.00   NA       NA       NA
+## 
+## Draws were sampled using sampling(NUTS). For each parameter, Bulk_ESS
+## and Tail_ESS are effective sample size measures, and Rhat is the potential
+## scale reduction factor on split chains (at convergence, Rhat = 1).</code></pre>
+<p>In this case, the <span class="math inline">\(u_i\)</span> summaries from <code>ranef()</code> will be in the latent-mean metric. This is because the grand mean is still set to <span class="math inline">\(0\)</span> for identification purposes. Here’s what the posterior means for those parameters look like in a dot plot.</p>
+<pre class="r"><code>tibble(ranef = ranef(fit4)$id[, 1, &quot;Intercept&quot;]) %&gt;% 
+  
+  ggplot(aes(x = ranef)) + 
+  geom_rug(size = 1/6) +
+  geom_dotplot(binwidth = 1/6.5) +
+  scale_y_continuous(NULL, breaks = NULL) +
+  xlab(expression(mu[italic(i)]))</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-40-1.png" width="672" /></p>
+<p>Now it’s time to fit a proper cross-classified model accounting for the nesting within <span class="math inline">\(i\)</span> persons and <span class="math inline">\(j\)</span> questions. That will follow the equation</p>
+<p><span class="math display">\[
+\begin{align*}
+p(\text{rating} = k | \{ \tau_k \}, \mu_{i\color{blue}j}) &amp; = \Phi(\tau_k - \mu_{i\color{blue}j}) - \Phi(\tau_{k - 1} - \mu_{i\color{blue}j}) \\
+\mu_{i\color{blue}j} &amp; = 0 + u_i \color{blue}{+ v_j} \\ 
+u_i               &amp; \sim \mathcal N(0, \sigma_u) \\
+\color{blue}{v_j} &amp; \color{blue}\sim \color{blue}{\mathcal N(0, \sigma_v)} \\
+\tau_1 &amp; \sim \mathcal N(-0.97, 1) \\
+\tau_2 &amp; \sim \mathcal N(-0.43, 1) \\
+\tau_3 &amp; \sim \mathcal N(0, 1) \\
+\tau_4 &amp; \sim \mathcal N(0.43, 1) \\
+\tau_5 &amp; \sim \mathcal N(0.97, 1) \\
+\sigma_u               &amp; \sim \operatorname{Exponential}(1) \\
+\color{blue}{\sigma_v} &amp; \color{blue}\sim \color{blue}{\operatorname{Exponential}(1)}.
+\end{align*}
+\]</span></p>
+<p>At this point, we’re now fitting a Bayesian IRT model along the lines Bürkner showcased in his <span class="citation">(<a href="#ref-burknerBayesianItemResponse2020" role="doc-biblioref">2020a</a>)</span> tutorial. We have person-level parameters in <span class="math inline">\(u_i\)</span> and item-level parameters in <span class="math inline">\(v_j\)</span>.</p>
+<p>Fit the model.</p>
+<pre class="r"><code># 1.278795 secs
+fit5 &lt;- brm(
+  data = d,
+  family = cumulative(probit),
+  rating ~ 1 + (1 | id) + (1 | item),
+  prior = c(prior(normal(-0.97, 1), class = Intercept, coef = 1),
+            prior(normal(-0.43, 1), class = Intercept, coef = 2),
+            prior(normal( 0.00, 1), class = Intercept, coef = 3),
+            prior(normal( 0.43, 1), class = Intercept, coef = 4),
+            prior(normal( 0.97, 1), class = Intercept, coef = 5),
+            prior(exponential(1), class = sd)),
+  cores = 4,
+  seed = 1,
+  init_r = 0.2
+)</code></pre>
+<p>Check the summary.</p>
+<pre class="r"><code>print(fit5)</code></pre>
+<pre><code>##  Family: cumulative 
+##   Links: mu = probit; disc = identity 
+## Formula: rating ~ 1 + (1 | id) + (1 | item) 
+##    Data: d (Number of observations: 1000) 
+##   Draws: 4 chains, each with iter = 2000; warmup = 1000; thin = 1;
+##          total post-warmup draws = 4000
+## 
+## Group-Level Effects: 
+## ~id (Number of levels: 200) 
+##               Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+## sd(Intercept)     1.04      0.07     0.91     1.19 1.00     1497     2029
+## 
+## ~item (Number of levels: 5) 
+##               Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+## sd(Intercept)     0.21      0.12     0.07     0.52 1.00     1455     2003
+## 
+## Population-Level Effects: 
+##              Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+## Intercept[1]    -1.36      0.14    -1.64    -1.08 1.00     2167     2333
+## Intercept[2]    -0.38      0.13    -0.66    -0.13 1.00     2186     2486
+## Intercept[3]     0.08      0.13    -0.19     0.34 1.00     2196     2537
+## Intercept[4]     1.04      0.14     0.77     1.31 1.00     2396     2486
+## Intercept[5]     1.88      0.15     1.59     2.17 1.00     2731     2506
+## 
+## Family Specific Parameters: 
+##      Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+## disc     1.00      0.00     1.00     1.00   NA       NA       NA
+## 
+## Draws were sampled using sampling(NUTS). For each parameter, Bulk_ESS
+## and Tail_ESS are effective sample size measures, and Rhat is the potential
+## scale reduction factor on split chains (at convergence, Rhat = 1).</code></pre>
+<p>Given there are only five levels of <code>item</code>, we should not be surprised the posterior for <span class="math inline">\(\sigma_v\)</span> is much more uncertain relative to <span class="math inline">\(\sigma_u\)</span>. It should also not be shocking that the posterior for <span class="math inline">\(\sigma_v\)</span> is also centered around a relatively small value. These five questions are all from the Neuroticism scale and psychologists tend to publish scales with relatively homogeneous items.</p>
+<p>An issue that’s easy to miss with these two models is they’re holding the thresholds constant across both persons and items. At the moment, <strong>brms</strong> is not capable of hierarchically modeling the thresholds (see <a href="https://discourse.mc-stan.org/t/cumulative-models-for-multiple-likert-items/7282/24?u=solomon">this thread</a>), However, one can allow for differnt thresholds by question in a fixed-effects sort of way. Here’s what the updated statistical model would be</p>
+<p><span class="math display">\[
+\begin{align*}
+p(\text{rating} = k | \{ \tau_{k\color{blue}j} \}, \mu_{ij}) &amp; = \Phi(\tau_{k\color{blue}j} - \mu_{ij}) - \Phi(\tau_{k - 1,\color{blue}j} - \mu_{ij}) \\
+\mu_{ij} &amp; = 0 + u_i + v_j \\ 
+u_i &amp; \sim \mathcal N(0, \sigma_u) \\
+v_j &amp; \sim \mathcal N(0, \sigma_v) \\
+\tau_{1\color{blue}j} &amp; \sim \mathcal N(-0.97, 1) \\
+\tau_{2\color{blue}j} &amp; \sim \mathcal N(-0.43, 1) \\
+\tau_{3\color{blue}j} &amp; \sim \mathcal N(0, 1) \\
+\tau_{4\color{blue}j} &amp; \sim \mathcal N(0.43, 1) \\
+\tau_{5\color{blue}j} &amp; \sim \mathcal N(0.97, 1) \\
+\sigma_u &amp; \sim \operatorname{Exponential}(1) \\
+\sigma_v &amp; \sim \operatorname{Exponential}(1)
+\end{align*}
+\]</span></p>
+<p>where all the <span class="math inline">\(\tau\)</span> parameters vary across the <span class="math inline">\(j\)</span> levels of <code>item</code>. To fit such a model with <strong>brms</strong>, you use the <code>thres(gr = &lt;group&gt;)</code> helper function on the left-hand side of the model <code>formula</code>. If you want to continue to manually set different priors for the thresholds, you’ll now need to include the <code>group</code> argument within the <code>prior()</code> function. In my experience, don’t be surprised if you have to adjust <code>adapt_delta</code> at this point.</p>
+<pre class="r"><code># 3.59341 mins
+fit6 &lt;- brm(
+  data = d,
+  family = cumulative(probit),
+  rating | thres(gr = item) ~ 1 + (1 | id) + (1 | item),
+  prior = c(prior(normal(-0.97, 1), class = Intercept, coef = 1, group = N1),
+            prior(normal(-0.43, 1), class = Intercept, coef = 2, group = N1),
+            prior(normal( 0.00, 1), class = Intercept, coef = 3, group = N1),
+            prior(normal( 0.43, 1), class = Intercept, coef = 4, group = N1),
+            prior(normal( 0.97, 1), class = Intercept, coef = 5, group = N1),
+            
+            prior(normal(-0.97, 1), class = Intercept, coef = 1, group = N2),
+            prior(normal(-0.43, 1), class = Intercept, coef = 2, group = N2),
+            prior(normal( 0.00, 1), class = Intercept, coef = 3, group = N2),
+            prior(normal( 0.43, 1), class = Intercept, coef = 4, group = N2),
+            prior(normal( 0.97, 1), class = Intercept, coef = 5, group = N2),
+            
+            prior(normal(-0.97, 1), class = Intercept, coef = 1, group = N3),
+            prior(normal(-0.43, 1), class = Intercept, coef = 2, group = N3),
+            prior(normal( 0.00, 1), class = Intercept, coef = 3, group = N3),
+            prior(normal( 0.43, 1), class = Intercept, coef = 4, group = N3),
+            prior(normal( 0.97, 1), class = Intercept, coef = 5, group = N3),
+            
+            prior(normal(-0.97, 1), class = Intercept, coef = 1, group = N4),
+            prior(normal(-0.43, 1), class = Intercept, coef = 2, group = N4),
+            prior(normal( 0.00, 1), class = Intercept, coef = 3, group = N4),
+            prior(normal( 0.43, 1), class = Intercept, coef = 4, group = N4),
+            prior(normal( 0.97, 1), class = Intercept, coef = 5, group = N4),
+            
+            prior(normal(-0.97, 1), class = Intercept, coef = 1, group = N5),
+            prior(normal(-0.43, 1), class = Intercept, coef = 2, group = N5),
+            prior(normal( 0.00, 1), class = Intercept, coef = 3, group = N5),
+            prior(normal( 0.43, 1), class = Intercept, coef = 4, group = N5),
+            prior(normal( 0.97, 1), class = Intercept, coef = 5, group = N5),
+            
+            prior(exponential(1), class = sd)),
+  cores = 4,
+  seed = 1,
+  init_r = 0.2,
+  control = list(adapt_delta = .99)
+)</code></pre>
+<p>The summary is now quite lengthy.</p>
+<pre class="r"><code>print(fit6)</code></pre>
+<pre><code>##  Family: cumulative 
+##   Links: mu = probit; disc = identity 
+## Formula: rating | thres(gr = item) ~ 1 + (1 | id) + (1 | item) 
+##    Data: d (Number of observations: 1000) 
+##   Draws: 4 chains, each with iter = 2000; warmup = 1000; thin = 1;
+##          total post-warmup draws = 4000
+## 
+## Group-Level Effects: 
+## ~id (Number of levels: 200) 
+##               Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+## sd(Intercept)     1.06      0.08     0.91     1.22 1.01     1416     2119
+## 
+## ~item (Number of levels: 5) 
+##               Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+## sd(Intercept)     0.23      0.20     0.01     0.73 1.00     1523     2400
+## 
+## Population-Level Effects: 
+##                 Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+## Intercept[N1,1]    -1.30      0.25    -1.87    -0.85 1.00     2717     2195
+## Intercept[N1,2]    -0.46      0.24    -1.02    -0.02 1.00     2776     2162
+## Intercept[N1,3]    -0.01      0.24    -0.57     0.43 1.00     2809     2281
+## Intercept[N1,4]     1.12      0.25     0.56     1.57 1.00     3028     2808
+## Intercept[N1,5]     1.99      0.27     1.40     2.47 1.00     3520     2772
+## Intercept[N2,1]    -1.80      0.26    -2.33    -1.27 1.00     3003     2569
+## Intercept[N2,2]    -0.64      0.24    -1.14    -0.15 1.00     3191     2365
+## Intercept[N2,3]    -0.13      0.23    -0.64     0.35 1.00     3103     2017
+## Intercept[N2,4]     0.73      0.24     0.24     1.24 1.00     3093     2758
+## Intercept[N2,5]     1.75      0.25     1.24     2.28 1.00     3717     3134
+## Intercept[N3,1]    -1.43      0.25    -2.02    -0.99 1.00     2855     2498
+## Intercept[N3,2]    -0.34      0.24    -0.90     0.10 1.00     2965     2563
+## Intercept[N3,3]     0.04      0.24    -0.51     0.48 1.00     3047     2545
+## Intercept[N3,4]     1.08      0.25     0.52     1.52 1.00     3096     2459
+## Intercept[N3,5]     1.82      0.26     1.23     2.28 1.00     3424     2966
+## Intercept[N4,1]    -1.47      0.25    -2.03    -0.99 1.00     2880     2575
+## Intercept[N4,2]    -0.58      0.24    -1.15    -0.13 1.00     3112     2709
+## Intercept[N4,3]    -0.00      0.24    -0.54     0.45 1.00     3084     2786
+## Intercept[N4,4]     0.96      0.24     0.41     1.42 1.00     3264     2669
+## Intercept[N4,5]     1.89      0.27     1.32     2.39 1.00     3730     2695
+## Intercept[N5,1]    -1.18      0.25    -1.76    -0.74 1.00     2872     2875
+## Intercept[N5,2]    -0.23      0.24    -0.80     0.20 1.00     3071     2772
+## Intercept[N5,3]     0.22      0.24    -0.34     0.67 1.00     3108     2855
+## Intercept[N5,4]     1.04      0.24     0.48     1.48 1.00     3392     3014
+## Intercept[N5,5]     1.68      0.26     1.09     2.18 1.00     3633     2985
+## 
+## Family Specific Parameters: 
+##      Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+## disc     1.00      0.00     1.00     1.00   NA       NA       NA
+## 
+## Draws were sampled using sampling(NUTS). For each parameter, Bulk_ESS
+## and Tail_ESS are effective sample size measures, and Rhat is the potential
+## scale reduction factor on split chains (at convergence, Rhat = 1).</code></pre>
+<p>It might be easier to get a sense of the <span class="math inline">\(\tau_{kj}\)</span> posteriors in a coefficient plot.</p>
+<pre class="r"><code>posterior_summary(fit6)[1:25, ] %&gt;% 
+  data.frame() %&gt;% 
+  mutate(tau = rep(1:5, times = 5),
+         item = rep(1:5, each = 5)) %&gt;% 
+  mutate(tau = str_c(&quot;tau[&quot;, tau, &quot;]&quot;),
+         item = factor(item)) %&gt;% 
+  
+  ggplot(aes(y = Estimate, ymin = Q2.5, ymax = Q97.5, x = tau,
+             group = item, color = item)) +
+  geom_pointrange(position = position_dodge(width = -0.5), fatten = 1.5) +
+  scale_color_viridis_d(expression(item~(italic(j))), option = &quot;F&quot;, end = 0.8, direction = -1) +
+  scale_x_discrete(NULL, labels = ggplot2:::parse_safe) +
+  coord_flip() +
+  ylab(expression(Phi))</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-43-1.png" width="672" /></p>
+<p>You could use information criteria comparisons to decide on whether to allow them to vary across items or if it’s okay to prefer the more parsimonious model. IMO, thresholds across items are <em>a priori</em> different and should not be collapsed without strong theoretical or methodological justifications. In this case, I lose nothing by having them.</p>
+<p>Plus, there’s also the implications of the varying thresholds for the posterior-predictive distributions.</p>
+<pre class="r"><code>set.seed(1)
+pp_check(fit5, type = &quot;bars_grouped&quot;, group = &quot;item&quot;,
+         ndraws = 500, size = 1/2, fatten = 3/2) +
+  ylim(0, 80) +
+  labs(title = &quot;fit5&quot;,
+       subtitle = &quot;The thresholds are fixed across items.&quot;)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-44-1.png" width="672" /></p>
+<pre class="r"><code>set.seed(1)
+pp_check(fit6, type = &quot;bars_grouped&quot;, group = &quot;item&quot;,
+         ndraws = 500, size = 1/2, fatten = 3/2) +
+  ylim(0, 80) +
+  labs(title = &quot;fit6&quot;,
+       subtitle = &quot;The thresholds can now vary across items.&quot;)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-44-2.png" width="672" /></p>
+<p>Well okay, maybe I do lose something by letting the thresholds vary across questions. If you look at the parameter summaries for <code>fit5</code> and <code>fit6</code>, you’ll see the posterior standard deviations (see the <code>Est.Error</code> columns) are wider in <code>fit6</code>. This corresponds to the wider prediction intervals in the <code>pp_check()</code> plot for <code>fit6</code>, compared to the plot for <code>fit5</code>. You might think of this as trade-off of accuracy for precision or of reliability for validity. IMO, the trade-off was worth it. Allowing the thresholds to vary across the items makes for much better posterior predictions.</p>
+</div>
+<div id="randomly-varying-latent-standard-deviations." class="section level3">
+<h3>Randomly-varying latent standard deviations.</h3>
+<p>If the latent means can vary randomly, the latent dispersion parameters can vary randomly, too. Now <span class="math inline">\(\log(\alpha_{ij})\)</span> will vary across <span class="math inline">\(i\)</span> persons and <span class="math inline">\(j\)</span> questions with the Bayesian ordinal IRT model</p>
+<p>$$
+<span class="math display">\[\begin{align*}
+p(\text{rating} = k | \{ \tau_{kj} \}, \mu_{ij}, \color{blue}{\alpha_{ij}}) &amp; = \Phi(\color{blue}{\alpha_{ij}}[\tau_{kj} - \mu_{ij}]) - \Phi(\color{blue}{\alpha_{ij}}[\tau_{k - 1,j} - \mu_{ij}]) \\
+\mu_{ij} &amp; = 0 + u_i + v_j \\ 
+\color{blue}{\log(\alpha_{ij})} &amp; \color{blue}= \color{blue}{0 + w_i + x_j} \\
+u_i &amp; \sim \mathcal N(0, \sigma_u) \\
+v_j &amp; \sim \mathcal N(0, \sigma_v) \\
+
+\color{blue}{w_i} &amp; \color{blue}\sim \color{blue}{\mathcal N(0, \sigma_w)} \\
+\color{blue}{x_j} &amp; \color{blue}\sim \color{blue}{\mathcal N(0, \sigma_x)} \\
+
+\tau_{1j} &amp; \sim \mathcal N(-0.97, 1) \\
+\tau_{2j} &amp; \sim \mathcal N(-0.43, 1) \\
+\tau_{3j} &amp; \sim \mathcal N(0, 1) \\
+\tau_{4j} &amp; \sim \mathcal N(0.43, 1) \\
+\tau_{5j} &amp; \sim \mathcal N(0.97, 1) \\
+\sigma_u &amp; \sim \operatorname{Exponential}(1) \\
+\sigma_v &amp; \sim \operatorname{Exponential}(1) \\
+\color{blue}{\sigma_w} &amp; \color{blue}\sim \color{blue}{\operatorname{Exponential}(1)} \\
+\color{blue}{\sigma_x} &amp; \color{blue}\sim \color{blue}{\operatorname{Exponential}(1)}.
+\end{align*}\]</span>
+$$</p>
+<p>Though the <span class="math inline">\(\operatorname{Exponential}(1)\)</span> might be a good place to start with our new <span class="math inline">\(\sigma_w\)</span> and <span class="math inline">\(\sigma_x\)</span>, it might be best to ponder this a bit. Recall these are for the distribution of logged discrimination parameters. Since I’m no statistician or psychometrician, I’m not even sure what that means, which makes it hard to intuit whether the <span class="math inline">\(\operatorname{Exponential}(1)\)</span> prior makes sense for my data. A plot might help. Here we’ll simulate <span class="math inline">\(100{,}000\)</span> draws from the <span class="math inline">\(\operatorname{Exponential}(1)\)</span> prior, use those draws to simulate <span class="math inline">\(w_i\)</span> values from <span class="math inline">\(\mathcal N(0, \sigma_w)\)</span>, and then plot that distribution in the <span class="math inline">\(w_i\)</span>, <span class="math inline">\(\exp(w_i)\)</span> and <span class="math inline">\(1/\exp(w_i)\)</span> metrics.</p>
+<pre class="r"><code>set.seed(1)
+
+# simulate from the prior
+tibble(sigma_w = rexp(n = 1e5, rate = 1)) %&gt;% 
+  # simulate w_i draws
+  mutate(`italic(w[i])` = rnorm(n = n(), mean = 0, sd = sigma_w)) %&gt;% 
+  # transform
+  mutate(`exp(italic(w[i]))` = exp(`italic(w[i])`)) %&gt;% 
+  mutate(`1/exp(italic(w[i]))` = 1 / `exp(italic(w[i]))`) %&gt;% 
+  # wrangle
+  pivot_longer(-sigma_w) %&gt;% 
+  mutate(name = factor(name, levels = c(&quot;italic(w[i])&quot;, &quot;exp(italic(w[i]))&quot;, &quot;1/exp(italic(w[i]))&quot;))) %&gt;% 
+  # for computational simplicity, remove some values from the far right tail
+  filter(value &lt; 100) %&gt;% 
+  
+  # plot!
+  ggplot(aes(x = value)) +
+  geom_histogram(binwidth = 0.1) +
+  scale_y_continuous(NULL, breaks = NULL) +
+  coord_cartesian(xlim = c(-10, 10)) +
+  ggtitle(expression(&quot;Prior predictive distribution for &quot;*sigma[italic(w)]%~%Exponential(1))) +
+  facet_wrap(~ name, labeller = label_parsed, ncol = 1)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-46-1.png" width="672" /></p>
+<p>The mean and median for <span class="math inline">\(w_i\)</span> are both zero. Because of the very long right tails, both <span class="math inline">\(\exp(w_i)\)</span> and <span class="math inline">\(1/\exp(w_i)\)</span> have very large means and standard deviations. However, both <span class="math inline">\(\exp(w_i)\)</span> and <span class="math inline">\(1/\exp(w_i)\)</span> have medians at <span class="math inline">\(1\)</span>. The <span class="math inline">\(1/\exp(w_i)\)</span> distribution is the one that’s in the latent <span class="math inline">\(\sigma\)</span> metric and its percentile-based 95% interval ranges from <span class="math inline">\(0.05\)</span> to <span class="math inline">\(20.28\)</span>. That isn’t bad for a permissive level-2 standard deviation prior, but I think we can do better. If we set the mean of the exponential prior to <span class="math inline">\(0.463\)</span>, the resulting prior-predictive distribution of <span class="math inline">\(1/\exp(w_i)\)</span> will have a percentile-based 95% interval of <span class="math inline">\(0.25\)</span> to <span class="math inline">\(4\)</span>. Here’s what that looks like.</p>
+<pre class="r"><code>set.seed(1)
+
+# save for this first line, this workflow is the same as before
+tibble(sigma_w = rexp(n = 1e5, rate = 1 / 0.463)) %&gt;% 
+  mutate(`italic(w[i])` = rnorm(n = n(), mean = 0, sd = sigma_w)) %&gt;% 
+  mutate(`exp(italic(w[i]))` = exp(`italic(w[i])`)) %&gt;% 
+  mutate(`1/exp(italic(w[i]))` = 1 / `exp(italic(w[i]))`) %&gt;% 
+  pivot_longer(-sigma_w) %&gt;% 
+  mutate(name = factor(name, levels = c(&quot;italic(w[i])&quot;, &quot;exp(italic(w[i]))&quot;, &quot;1/exp(italic(w[i]))&quot;))) %&gt;% 
+  filter(value &lt; 100) %&gt;% 
+  
+  ggplot(aes(x = value)) +
+  geom_histogram(binwidth = 0.1) +
+  scale_y_continuous(NULL, breaks = NULL) +
+  coord_cartesian(xlim = c(-10, 10)) +
+  ggtitle(expression(&quot;Prior predictive distribution for &quot;*sigma[italic(w)]%~%Exponential(1/0.463))) +
+  facet_wrap(~ name, labeller = label_parsed, ncol = 1)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-48-1.png" width="672" /></p>
+<p>With that as our prior, our updated model formula will be</p>
+<p>$$
+<span class="math display">\[\begin{align*}
+p(\text{rating} = k | \{ \tau_{kj} \}, \mu_{ij}, \alpha_{ij}) &amp; = \Phi(\alpha_{ij}[\tau_{kj} - \mu_{ij}]) - \Phi(\alpha_{ij}[\tau_{k - 1,j} - \mu_{ij}]) \\
+\mu_{ij} &amp; = 0 + u_i + v_j \\ 
+\log(\alpha_{ij}) &amp; = 0 + w_i + x_j \\
+u_i &amp; \sim \mathcal N(0, \sigma_u) \\
+v_j &amp; \sim \mathcal N(0, \sigma_v) \\
+
+w_i &amp; \sim \mathcal N(0, \sigma_w) \\
+x_j &amp; \sim \mathcal N(0, \sigma_x) \\
+
+\tau_{1j} &amp; \sim \mathcal N(-0.97, 1) \\
+\tau_{2j} &amp; \sim \mathcal N(-0.43, 1) \\
+\tau_{3j} &amp; \sim \mathcal N(0, 1) \\
+\tau_{4j} &amp; \sim \mathcal N(0.43, 1) \\
+\tau_{5j} &amp; \sim \mathcal N(0.97, 1) \\
+\sigma_u &amp; \sim \operatorname{Exponential}(1) \\
+\sigma_v &amp; \sim \operatorname{Exponential}(1) \\
+\sigma_w &amp; \sim \operatorname{Exponential}(\color{blue}{1 / 0.463}) \\
+\sigma_x &amp; \sim \operatorname{Exponential}(\color{blue}{1 / 0.463}).
+\end{align*}\]</span>
+$$</p>
+<p>Put those new priors to work and fit the model.</p>
+<pre class="r"><code># 5.223564 mins
+fit7 &lt;- brm(
+  data = d,
+  family = cumulative(probit),
+  bf(rating | thres(gr = item) ~ 1 + (1 | id) + (1 | item)) +
+    lf(disc ~ 0 + (1 | id) + (1 | item)),
+  prior = c(prior(normal(-0.97, 1), class = Intercept, coef = 1, group = N1),
+            prior(normal(-0.43, 1), class = Intercept, coef = 2, group = N1),
+            prior(normal( 0.00, 1), class = Intercept, coef = 3, group = N1),
+            prior(normal( 0.43, 1), class = Intercept, coef = 4, group = N1),
+            prior(normal( 0.97, 1), class = Intercept, coef = 5, group = N1),
+            
+            prior(normal(-0.97, 1), class = Intercept, coef = 1, group = N2),
+            prior(normal(-0.43, 1), class = Intercept, coef = 2, group = N2),
+            prior(normal( 0.00, 1), class = Intercept, coef = 3, group = N2),
+            prior(normal( 0.43, 1), class = Intercept, coef = 4, group = N2),
+            prior(normal( 0.97, 1), class = Intercept, coef = 5, group = N2),
+            
+            prior(normal(-0.97, 1), class = Intercept, coef = 1, group = N3),
+            prior(normal(-0.43, 1), class = Intercept, coef = 2, group = N3),
+            prior(normal( 0.00, 1), class = Intercept, coef = 3, group = N3),
+            prior(normal( 0.43, 1), class = Intercept, coef = 4, group = N3),
+            prior(normal( 0.97, 1), class = Intercept, coef = 5, group = N3),
+            
+            prior(normal(-0.97, 1), class = Intercept, coef = 1, group = N4),
+            prior(normal(-0.43, 1), class = Intercept, coef = 2, group = N4),
+            prior(normal( 0.00, 1), class = Intercept, coef = 3, group = N4),
+            prior(normal( 0.43, 1), class = Intercept, coef = 4, group = N4),
+            prior(normal( 0.97, 1), class = Intercept, coef = 5, group = N4),
+            
+            prior(normal(-0.97, 1), class = Intercept, coef = 1, group = N5),
+            prior(normal(-0.43, 1), class = Intercept, coef = 2, group = N5),
+            prior(normal( 0.00, 1), class = Intercept, coef = 3, group = N5),
+            prior(normal( 0.43, 1), class = Intercept, coef = 4, group = N5),
+            prior(normal( 0.97, 1), class = Intercept, coef = 5, group = N5),
+            
+            prior(exponential(1), class = sd),
+            # here&#39;s the fancy new prior line
+            prior(exponential(1 / 0.463), class = sd, dpar = disc)),
+  cores = 4,
+  seed = 1,
+  init_r = 0.2,
+  control = list(adapt_delta = .99)
+)</code></pre>
+<p>Summarize.</p>
+<pre class="r"><code>print(fit7)</code></pre>
+<pre><code>##  Family: cumulative 
+##   Links: mu = probit; disc = log 
+## Formula: rating | thres(gr = item) ~ 1 + (1 | id) + (1 | item) 
+##          disc ~ 0 + (1 | id) + (1 | item)
+##    Data: d (Number of observations: 1000) 
+##   Draws: 4 chains, each with iter = 2000; warmup = 1000; thin = 1;
+##          total post-warmup draws = 4000
+## 
+## Group-Level Effects: 
+## ~id (Number of levels: 200) 
+##                    Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+## sd(Intercept)          1.19      0.14     0.92     1.49 1.00      567     1045
+## sd(disc_Intercept)     0.44      0.06     0.34     0.56 1.00     1322     2459
+## 
+## ~item (Number of levels: 5) 
+##                    Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+## sd(Intercept)          0.26      0.23     0.01     0.85 1.00     1451     1997
+## sd(disc_Intercept)     0.42      0.18     0.17     0.87 1.00     1101     1271
+## 
+## Population-Level Effects: 
+##                 Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+## Intercept[N1,1]    -1.32      0.30    -1.99    -0.77 1.00     1191     2072
+## Intercept[N1,2]    -0.50      0.26    -1.09    -0.02 1.00     2149     2864
+## Intercept[N1,3]    -0.06      0.25    -0.65     0.41 1.00     2637     2862
+## Intercept[N1,4]     1.04      0.28     0.40     1.56 1.00     1859     3117
+## Intercept[N1,5]     1.91      0.35     1.21     2.60 1.00     1311     2212
+## Intercept[N2,1]    -1.81      0.33    -2.47    -1.17 1.00     1012     2135
+## Intercept[N2,2]    -0.60      0.25    -1.08    -0.09 1.00     2020     2854
+## Intercept[N2,3]    -0.12      0.24    -0.58     0.40 1.00     2941     2942
+## Intercept[N2,4]     0.69      0.25     0.21     1.21 1.00     2323     2732
+## Intercept[N2,5]     1.67      0.32     1.07     2.34 1.00     1441     2250
+## Intercept[N3,1]    -1.52      0.33    -2.28    -0.96 1.00      980     1378
+## Intercept[N3,2]    -0.36      0.27    -0.98     0.11 1.00     1980     2461
+## Intercept[N3,3]     0.03      0.26    -0.56     0.51 1.00     2597     2703
+## Intercept[N3,4]     1.18      0.29     0.55     1.74 1.00     2283     2869
+## Intercept[N3,5]     2.08      0.37     1.36     2.83 1.00     1519     2576
+## Intercept[N4,1]    -1.89      0.36    -2.63    -1.24 1.00     1058     2321
+## Intercept[N4,2]    -0.73      0.28    -1.35    -0.23 1.00     2103     2903
+## Intercept[N4,3]    -0.02      0.26    -0.59     0.47 1.00     3276     3331
+## Intercept[N4,4]     1.21      0.30     0.58     1.81 1.00     2084     2892
+## Intercept[N4,5]     2.57      0.44     1.74     3.50 1.00     1276     2514
+## Intercept[N5,1]    -1.66      0.37    -2.53    -1.07 1.00     1009     1687
+## Intercept[N5,2]    -0.35      0.29    -1.04     0.13 1.00     2181     2105
+## Intercept[N5,3]     0.25      0.29    -0.42     0.74 1.00     2767     2573
+## Intercept[N5,4]     1.40      0.34     0.68     2.04 1.00     2143     2835
+## Intercept[N5,5]     2.40      0.42     1.58     3.25 1.00     1596     2798
+## 
+## Draws were sampled using sampling(NUTS). For each parameter, Bulk_ESS
+## and Tail_ESS are effective sample size measures, and Rhat is the potential
+## scale reduction factor on split chains (at convergence, Rhat = 1).</code></pre>
+<p>To get a better sense of what those new level-2 random <span class="math inline">\(\log(\alpha_{ij})\)</span> standard deviation estimates mean, let’s focus on the posterior for <span class="math inline">\(\sigma_w\)</span>, which is <span class="math inline">\(0.44, 95\% \text{CI}\ [0.34, 0.56]\)</span>. We can use the <code>ranef()</code> function to pull the summary statistics for the corresponding <span class="math inline">\(w_i\)</span> posteriors. To simplify things, we’ll just focus on the posterior means. After pulling the summaries, we’ll place them within a tibble, transform them to the <span class="math inline">\(\exp(w_i)\)</span> and <span class="math inline">\(1 / \exp(w_i)\)</span> metrics, and then plot like with the prior predictive distributions, before. But since we only have <span class="math inline">\(200\)</span> values to visualize, this time, we’ll use dot plots.</p>
+<pre class="r"><code>tibble(`italic(w[i])` = ranef(fit7)$id[, 1, &quot;disc_Intercept&quot;]) %&gt;% 
+  mutate(`exp(italic(w[i]))` = exp(`italic(w[i])`)) %&gt;% 
+  mutate(`1/exp(italic(w[i]))` = 1 / exp(`italic(w[i])`)) %&gt;% 
+  pivot_longer(everything()) %&gt;% 
+  mutate(name = factor(name, levels = c(&quot;italic(w[i])&quot;, &quot;exp(italic(w[i]))&quot;, &quot;1/exp(italic(w[i]))&quot;))) %&gt;% 
+  
+  ggplot(aes(x = value)) + 
+  geom_rug(size = 1/6) +
+  geom_dotplot(binwidth = 1/9) +
+  scale_y_continuous(NULL, breaks = NULL) +
+  xlab(&quot;posterior means&quot;) +
+  facet_wrap(~ name, labeller = label_parsed)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-50-1.png" width="672" /></p>
+<p>Now we turn to the task of using the model to compute the means of the <code>rating</code> variable, this time separately for each of the <span class="math inline">\(5\)</span> Neuroticism items. One could generalized the workflow we used for <code>fit1</code> through <code>fit3</code>, but I wouldn’t recommend that. The <code>brms::fitted()</code> function will be our friend, here. Though ultimately we’ll want to use <code>fitted()</code> with <code>summary = FALSE</code>, I’m going to save the results both ways to help explain the output.</p>
+<pre class="r"><code># define the new data
+nd &lt;- d %&gt;% distinct(item)
+
+# save the summarized results
+f_summary &lt;-
+  fitted(fit7,
+         newdata = nd,
+         # note this line
+         re_formula = ~ (1 | item))
+
+# save the un-summarized results
+f &lt;-
+  fitted(fit7,
+         newdata = nd,
+         re_formula = ~ (1 | item),
+         summary = F)</code></pre>
+<p>First take a look at the structure of <code>f_summary</code>.</p>
+<pre class="r"><code>f_summary %&gt;% str()</code></pre>
+<pre><code>##  num [1:5, 1:4, 1:6] 0.0423 0.0055 0.0852 0.0998 0.1538 ...
+##  - attr(*, &quot;dimnames&quot;)=List of 3
+##   ..$ : NULL
+##   ..$ : chr [1:4] &quot;Estimate&quot; &quot;Est.Error&quot; &quot;Q2.5&quot; &quot;Q97.5&quot;
+##   ..$ : chr [1:6] &quot;P(Y = 1)&quot; &quot;P(Y = 2)&quot; &quot;P(Y = 3)&quot; &quot;P(Y = 4)&quot; ...</code></pre>
+<p>We have a <span class="math inline">\(3\)</span>-dimensional array. The <span class="math inline">\(5\)</span> levels of the first dimension are the <span class="math inline">\(5\)</span> levels of <code>item</code>. The <span class="math inline">\(4\)</span> levels of the second dimension are the typical summary statistics, the posterior mean through the upper-level of the 95% CI. The <span class="math inline">\(6\)</span> levels of the third dimension let us divide up the results by the <span class="math inline">\(6\)</span> levels of <span class="math inline">\(k\)</span>, the <code>rating</code> levels <code>1</code> through <code>6</code>.</p>
+<p>But we don’t want summarized results. We want the posterior draws. Enter <code>f</code>.</p>
+<pre class="r"><code>f %&gt;% str()</code></pre>
+<pre><code>##  num [1:4000, 1:5, 1:6] 0.0644 0.049 0.0359 0.0493 0.0258 ...
+##  - attr(*, &quot;dimnames&quot;)=List of 3
+##   ..$ : chr [1:4000] &quot;1&quot; &quot;2&quot; &quot;3&quot; &quot;4&quot; ...
+##   ..$ : NULL
+##   ..$ : chr [1:6] &quot;1&quot; &quot;2&quot; &quot;3&quot; &quot;4&quot; ...</code></pre>
+<p>Now the dimension within the array is the <span class="math inline">\(4{,}000\)</span> posterior draws. The second dimension is our <span class="math inline">\(5\)</span> levels of <code>item</code> and the third dimension the <span class="math inline">\(6\)</span> levels of <span class="math inline">\(k\)</span>. Before we put this all to use, we’ll want to save a few values as external objects for the plotting.</p>
+<pre class="r"><code># sample means for the items
+m_n1 &lt;- d %&gt;% filter(item == &quot;N1&quot;) %&gt;% summarise(m = mean(rating)) %&gt;% pull()
+m_n2 &lt;- d %&gt;% filter(item == &quot;N2&quot;) %&gt;% summarise(m = mean(rating)) %&gt;% pull()
+m_n3 &lt;- d %&gt;% filter(item == &quot;N3&quot;) %&gt;% summarise(m = mean(rating)) %&gt;% pull()
+m_n4 &lt;- d %&gt;% filter(item == &quot;N4&quot;) %&gt;% summarise(m = mean(rating)) %&gt;% pull()
+m_n5 &lt;- d %&gt;% filter(item == &quot;N5&quot;) %&gt;% summarise(m = mean(rating)) %&gt;% pull()
+
+# save color values for the geom_vline() lines
+colors &lt;- viridis::viridis_pal(option = &quot;A&quot;, end = 0.85, direction = -1)(5)</code></pre>
+<p>Okay, within <code>rbind()</code>, we serially stack the levels of the third dimension within the <code>f</code> array so we can use our <strong>tidyverse</strong>-style wrangling. Then the workflow looks a lot like before.</p>
+<pre class="r"><code>rbind(f[, , 1],
+      f[, , 2],
+      f[, , 3],
+      f[, , 4],
+      f[, , 5],
+      f[, , 6]) %&gt;% 
+  data.frame() %&gt;% 
+  set_names(str_c(&quot;N&quot;, 1:5)) %&gt;% 
+  mutate(draw   = rep(1:4000, times = 6),
+         rating = rep(1:6, each = 4000)) %&gt;% 
+  pivot_longer(N1:N5, names_to = &quot;item&quot;, values_to = &quot;p&quot;) %&gt;% 
+  mutate(`p * k` = p * rating) %&gt;% 
+  group_by(draw, item) %&gt;% 
+  summarise(mean_rating = sum(`p * k`)) %&gt;% 
+  
+  ggplot(aes(x = mean_rating, y = fct_rev(item), fill = item)) +
+  stat_halfeye(.width = .95) +
+  geom_vline(xintercept = m_n1, linetype = 2, color = colors[1]) +
+  geom_vline(xintercept = m_n2, linetype = 2, color = colors[2]) +
+  geom_vline(xintercept = m_n3, linetype = 2, color = colors[3]) +
+  geom_vline(xintercept = m_n4, linetype = 2, color = colors[4]) +
+  geom_vline(xintercept = m_n5, linetype = 2, color = colors[5]) +
+  scale_fill_viridis_d(NULL, option = &quot;A&quot;, end = 0.85, direction = -1, alpha = 2/3) +
+  labs(title = &quot;The postrior for the mean of the rating values, by item&quot;,
+       subtitle = &quot;The dashed vertical lines mark off the sample means, by item. The posterior distributions\nare based on the multilevel unconditional distributional cumulative ordinal model fit7.&quot;,
+       x = expression(mu[rating]),
+       y = NULL) +
+  xlim(2, 4)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-55-1.png" width="672" /></p>
+<p>At first glance, it might be upsetting that out posteriors for the item-level means no longer tightly line up with the sample means. However, keep in mind these were computed with a multilevel model, which will impose partial pooling toward the grand mean. Based on decades of hard work within statistics, we know that our partially-pooled means will be more likely generalize to new data than our sample means. This is why we model. Though we do want to understand our sample data, we also want to make inferences about other data from the population.</p>
+<p>Now that we have a full model accounting for all five Neuroticism items, we can use a similar approach to compute the population-level sum score. First, we’ll compute the sample mean of the sum score and save the value as <code>m_sum_score</code>.</p>
+<pre class="r"><code>m_sum_score &lt;- d %&gt;% 
+  group_by(id) %&gt;% 
+  summarise(sum = sum(rating)) %&gt;% 
+  summarise(mean_sum = mean(sum)) %&gt;% 
+  pull()
+
+# what&#39;s the value?
+m_sum_score</code></pre>
+<pre><code>## [1] 16.1</code></pre>
+<p>Next we make a small amendment the workflow above. Instead of grouping by posterior <code>draw</code> and by <code>item</code> before the <code>summarise()</code> line, this time we only group by <code>draw</code>. As a consequence, the values for all the items will be summed within each posterior draw, making a vector of sum scores. Then we plot.</p>
+<pre class="r"><code>rbind(f[, , 1],
+      f[, , 2],
+      f[, , 3],
+      f[, , 4],
+      f[, , 5],
+      f[, , 6]) %&gt;% 
+  data.frame() %&gt;% 
+  set_names(str_c(&quot;N&quot;, 1:5)) %&gt;% 
+  mutate(draw   = rep(1:4000, times = 6),
+         rating = rep(1:6, each = 4000)) %&gt;% 
+  pivot_longer(N1:N5, names_to = &quot;item&quot;, values_to = &quot;p&quot;) %&gt;% 
+  mutate(`p * k` = p * rating) %&gt;% 
+  # notice we are no longer grouping by draw AND item
+  group_by(draw) %&gt;% 
+  summarise(mean_sum_score = sum(`p * k`)) %&gt;% 
+  
+  ggplot(aes(x = mean_sum_score, y = 0)) +
+  stat_halfeye(.width = .95) +
+  geom_vline(xintercept = m_sum_score, linetype = 2) +
+  scale_y_continuous(NULL, breaks = NULL) +
+  labs(title = &quot;The postrior for the mean of the Neuroticism sum cores&quot;,
+       subtitle = &quot;The dashed vertical lines mark off the sample means. The posterior distributions are based on\nthe multilevel unconditional distributional cumulative ordinal model fit7.&quot;,
+       x = expression(mu[Neuroticism~sum~score]),
+       y = NULL) +
+  xlim(10, 20)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-57-1.png" width="672" /></p>
+<p>The model does a great job capturing the Neuroticism sum scores.</p>
+<p>Now if you wanted to, you could expand this model further to include correlations between <span class="math inline">\(u_i\)</span> and <span class="math inline">\(w_i\)</span> and between <span class="math inline">\(v_j\)</span> and <span class="math inline">\(x_j\)</span>. That would change the model formula to something like</p>
+<p>$$
+<span class="math display">\[\begin{align*}
+p(\text{rating} = k | \{ \tau_{kj} \}, \mu_{ij}, \alpha_{ij}) &amp; = \Phi(\alpha_{ij}[\tau_{kj} - \mu_{ij}]) - \Phi(\alpha_{ij}[\tau_{k - 1,j} - \mu_{ij}]) \\
+\mu_{ij} &amp; = 0 + u_i + v_j \\ 
+\log(\alpha_{ij}) &amp; = 0 + w_i + x_j \\
+
+\begin{bmatrix} u_i \\ w_i \end{bmatrix} &amp; \sim \mathcal{MVN}(\mathbf 0, \mathbf{S_a \color{blue}{R_a}S_a}) \\
+\begin{bmatrix} v_j \\ x_j \end{bmatrix} &amp; \sim \mathcal{MVN}(\mathbf 0, \mathbf{S_b \color{blue}{R_b}S_b}) \\
+
+\mathbf{S_a} &amp; = \begin{bmatrix} \sigma_u &amp; 0 \\ 0 &amp; \sigma_w \end{bmatrix} \\
+\mathbf{S_b} &amp; = \begin{bmatrix} \sigma_v &amp; 0 \\ 0 &amp; \sigma_x \end{bmatrix} \\
+\color{blue}{\mathbf{R_a}} &amp; \color{blue}= \color{blue}{\begin{bmatrix} 1 &amp; \rho_a \\ \rho_a &amp; 1 \end{bmatrix}} \\
+\color{blue}{\mathbf{R_b}} &amp; \color{blue}= \color{blue}{\begin{bmatrix} 1 &amp; \rho_b \\ \rho_b &amp; 1 \end{bmatrix}} \\
+
+\tau_{1j} &amp; \sim \mathcal N(-0.97, 1) \\
+\tau_{2j} &amp; \sim \mathcal N(-0.43, 1) \\
+\tau_{3j} &amp; \sim \mathcal N(0, 1) \\
+\tau_{4j} &amp; \sim \mathcal N(0.43, 1) \\
+\tau_{5j} &amp; \sim \mathcal N(0.97, 1) \\
+\sigma_u &amp; \sim \operatorname{Exponential}(1) \\
+\sigma_v &amp; \sim \operatorname{Exponential}(1) \\
+\sigma_w &amp; \sim \operatorname{Exponential}(1 / 0.463) \\
+\sigma_x &amp; \sim \operatorname{Exponential}(1 / 0.463) \\
+\color{blue}{\rho_a} &amp; \color{blue}\sim \color{blue}{\operatorname{LKJ}(2)} \\
+\color{blue}{\rho_b} &amp; \color{blue}\sim \color{blue}{\operatorname{LKJ}(2)},
+\end{align*}\]</span>
+$$</p>
+<p>where though our four random parameters are now modeled as two bivariate-normal pairs, there really are only two new parameters: <span class="math inline">\(\rho_a\)</span> and <span class="math inline">\(\rho_b\)</span>. The LKJ priors for our two new parameters would be weakly regularizing. In my experience, so far, adding those two level-2 correlations can make for notably longer fitting times and they often result in computational complications like the need to further adjust <code>adapt_delta</code> and so on. So in the interest of space, I’m not going to fit this model. But it’s always a possibility to consider.</p>
+</div>
+<div id="full-conditional-distributional-model." class="section level3">
+<h3>Full conditional distributional model.</h3>
+<p>A while back, we put our level-1 predictor <code>male</code> to the side while we focused on expanding the random components. Now’s time to bring that predictor back and fit the full conditional distributional model</p>
+<p><span class="math display">\[
+\begin{align*}
+p(\text{rating} = k | \{ \tau_{kj} \}, \mu_{ij}, \alpha_{ij}) &amp; = \Phi(\alpha_{ij}[\tau_{kj} - \mu_{ij}]) - \Phi(\alpha_{ij}[\tau_{k - 1,j} - \mu_{ij}]) \\
+\mu_{ij}          &amp; = \color{blue}{\beta_1 \text{male}_i} + u_i + v_j \\ 
+\log(\alpha_{ij}) &amp; = \color{blue}{\eta_1 \text{male}_i}  + w_i + x_j \\
+u_i &amp; \sim \mathcal N(0, \sigma_u) \\
+v_j &amp; \sim \mathcal N(0, \sigma_v) \\
+w_i &amp; \sim \mathcal N(0, \sigma_w) \\
+x_j &amp; \sim \mathcal N(0, \sigma_x) \\
+\tau_{1j} &amp; \sim \mathcal N(-0.97, 1) \\
+\tau_{2j} &amp; \sim \mathcal N(-0.43, 1) \\
+\tau_{3j} &amp; \sim \mathcal N(0, 1) \\
+\tau_{4j} &amp; \sim \mathcal N(0.43, 1) \\
+\tau_{5j} &amp; \sim \mathcal N(0.97, 1) \\
+\color{blue}{\beta_1} &amp; \color{blue}\sim \color{blue}{\mathcal N(0, 1)} \\
+\color{blue}{\eta_1}  &amp; \color{blue}\sim \color{blue}{\mathcal N(0, 0.347)} \\
+\sigma_u &amp; \sim \operatorname{Exponential}(1) \\
+\sigma_v &amp; \sim \operatorname{Exponential}(1) \\
+\sigma_w &amp; \sim \operatorname{Exponential}(1 / 0.463) \\
+\sigma_x &amp; \sim \operatorname{Exponential}(1 / 0.463).
+\end{align*}
+\]</span></p>
+<p>At this point, the change to the <strong>brms</strong> code is trivial.</p>
+<pre class="r"><code># 5.223564 mins
+fit8 &lt;- brm(
+  data = d,
+  family = cumulative(probit),
+  bf(rating | thres(gr = item) ~ 1 + male + (1 | id) + (1 | item)) +
+    lf(disc                    ~ 0 + male + (1 | id) + (1 | item),
+       # don&#39;t forget this line
+       cmc = FALSE),
+  prior = c(prior(normal(-0.97, 1), class = Intercept, coef = 1, group = N1),
+            prior(normal(-0.43, 1), class = Intercept, coef = 2, group = N1),
+            prior(normal( 0.00, 1), class = Intercept, coef = 3, group = N1),
+            prior(normal( 0.43, 1), class = Intercept, coef = 4, group = N1),
+            prior(normal( 0.97, 1), class = Intercept, coef = 5, group = N1),
+            
+            prior(normal(-0.97, 1), class = Intercept, coef = 1, group = N2),
+            prior(normal(-0.43, 1), class = Intercept, coef = 2, group = N2),
+            prior(normal( 0.00, 1), class = Intercept, coef = 3, group = N2),
+            prior(normal( 0.43, 1), class = Intercept, coef = 4, group = N2),
+            prior(normal( 0.97, 1), class = Intercept, coef = 5, group = N2),
+            
+            prior(normal(-0.97, 1), class = Intercept, coef = 1, group = N3),
+            prior(normal(-0.43, 1), class = Intercept, coef = 2, group = N3),
+            prior(normal( 0.00, 1), class = Intercept, coef = 3, group = N3),
+            prior(normal( 0.43, 1), class = Intercept, coef = 4, group = N3),
+            prior(normal( 0.97, 1), class = Intercept, coef = 5, group = N3),
+            
+            prior(normal(-0.97, 1), class = Intercept, coef = 1, group = N4),
+            prior(normal(-0.43, 1), class = Intercept, coef = 2, group = N4),
+            prior(normal( 0.00, 1), class = Intercept, coef = 3, group = N4),
+            prior(normal( 0.43, 1), class = Intercept, coef = 4, group = N4),
+            prior(normal( 0.97, 1), class = Intercept, coef = 5, group = N4),
+            
+            prior(normal(-0.97, 1), class = Intercept, coef = 1, group = N5),
+            prior(normal(-0.43, 1), class = Intercept, coef = 2, group = N5),
+            prior(normal( 0.00, 1), class = Intercept, coef = 3, group = N5),
+            prior(normal( 0.43, 1), class = Intercept, coef = 4, group = N5),
+            prior(normal( 0.97, 1), class = Intercept, coef = 5, group = N5),
+            
+            # add those beta and eta priors back in
+            prior(normal(0, 1), class = b),
+            prior(normal(0, log(2) / 2), class = b, dpar = disc),
+            
+            prior(exponential(1), class = sd),
+            prior(exponential(1 / 0.463), class = sd, dpar = disc)),
+  cores = 4,
+  seed = 1,
+  init_r = 0.2,
+  control = list(adapt_delta = .99)
+)</code></pre>
+<p>Check one last model summary.</p>
+<pre class="r"><code>print(fit8)</code></pre>
+<pre><code>##  Family: cumulative 
+##   Links: mu = probit; disc = log 
+## Formula: rating | thres(gr = item) ~ 1 + male + (1 | id) + (1 | item) 
+##          disc ~ 0 + male + (1 | id) + (1 | item)
+##    Data: d (Number of observations: 1000) 
+##   Draws: 4 chains, each with iter = 2000; warmup = 1000; thin = 1;
+##          total post-warmup draws = 4000
+## 
+## Group-Level Effects: 
+## ~id (Number of levels: 200) 
+##                    Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+## sd(Intercept)          1.19      0.14     0.95     1.48 1.01      561     1269
+## sd(disc_Intercept)     0.45      0.06     0.34     0.57 1.00     1176     2156
+## 
+## ~item (Number of levels: 5) 
+##                    Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+## sd(Intercept)          0.23      0.22     0.01     0.80 1.00     1568     2267
+## sd(disc_Intercept)     0.39      0.18     0.13     0.83 1.01      692     1015
+## 
+## Population-Level Effects: 
+##                 Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+## Intercept[N1,1]    -1.41      0.28    -2.02    -0.88 1.01     1083     1934
+## Intercept[N1,2]    -0.57      0.24    -1.10    -0.11 1.00     1649     2840
+## Intercept[N1,3]    -0.13      0.23    -0.62     0.31 1.00     2094     2754
+## Intercept[N1,4]     0.99      0.26     0.44     1.49 1.00     1695     2870
+## Intercept[N1,5]     1.88      0.33     1.26     2.55 1.00     1190     2227
+## Intercept[N2,1]    -1.91      0.34    -2.57    -1.25 1.00      903     1806
+## Intercept[N2,2]    -0.68      0.25    -1.18    -0.14 1.00     1448     2595
+## Intercept[N2,3]    -0.19      0.24    -0.66     0.34 1.00     2032     2858
+## Intercept[N2,4]     0.63      0.24     0.17     1.18 1.00     2180     2880
+## Intercept[N2,5]     1.62      0.30     1.07     2.26 1.00     1541     2157
+## Intercept[N3,1]    -1.56      0.31    -2.23    -0.99 1.01      969     1801
+## Intercept[N3,2]    -0.41      0.25    -0.97     0.05 1.00     1992     2320
+## Intercept[N3,3]    -0.02      0.25    -0.57     0.43 1.00     2405     2756
+## Intercept[N3,4]     1.12      0.28     0.52     1.65 1.00     2068     2839
+## Intercept[N3,5]     2.02      0.35     1.35     2.71 1.00     1515     2714
+## Intercept[N4,1]    -1.93      0.34    -2.67    -1.30 1.01      930     1596
+## Intercept[N4,2]    -0.79      0.26    -1.38    -0.30 1.00     1480     2240
+## Intercept[N4,3]    -0.08      0.25    -0.64     0.40 1.00     2758     2591
+## Intercept[N4,4]     1.13      0.29     0.54     1.71 1.00     1781     2485
+## Intercept[N4,5]     2.48      0.42     1.68     3.35 1.00     1169     1994
+## Intercept[N5,1]    -1.66      0.33    -2.39    -1.06 1.01      985     1521
+## Intercept[N5,2]    -0.38      0.27    -0.99     0.09 1.00     1916     2387
+## Intercept[N5,3]     0.20      0.26    -0.36     0.68 1.00     2610     2768
+## Intercept[N5,4]     1.33      0.32     0.70     1.96 1.00     2081     2967
+## Intercept[N5,5]     2.31      0.41     1.52     3.13 1.00     1411     2346
+## male               -0.30      0.19    -0.68     0.07 1.01      561     1352
+## disc_male           0.07      0.10    -0.13     0.27 1.00     1711     2477
+## 
+## Draws were sampled using sampling(NUTS). For each parameter, Bulk_ESS
+## and Tail_ESS are effective sample size measures, and Rhat is the potential
+## scale reduction factor on split chains (at convergence, Rhat = 1).</code></pre>
+<p>The last time we had posteriors for <span class="math inline">\(\beta_1\)</span> and <span class="math inline">\(\eta_1\)</span> was way back with the much simpler <code>fit3</code>. It might be instructive to compare their posteriors from the two models.</p>
+<pre class="r"><code>bind_rows(
+  as_draws_df(fit3) %&gt;% select(contains(&quot;male&quot;)),
+  as_draws_df(fit8) %&gt;% select(contains(&quot;male&quot;))
+) %&gt;% 
+  set_names(&quot;beta[1]&quot;, &quot;eta[1]&quot;) %&gt;% 
+  mutate(fit = rep(c(&quot;fit3&quot;, &quot;fit8&quot;), each = n() / 2)) %&gt;% 
+  pivot_longer(-fit) %&gt;% 
+  
+  ggplot(aes(x = value, y = 0)) +
+  stat_halfeye(.width = .95) +
+  scale_y_continuous(NULL, breaks = NULL) +
+  xlab(&quot;marginal posterior&quot;) +
+  facet_grid(fit ~ name, labeller = label_parsed, scales = &quot;free&quot;)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-59-1.png" width="672" /></p>
+<p>For my money, the posteriors from the conditional distributional model <code>fit8</code> are more valid than those from the highly-constrained <code>fit3</code>. Now that <code>male</code> is back in the game, let’s plot the latent distributions again.</p>
+<pre class="r"><code>tibble(male  = 0:1,
+       mu    = c(0, fixef(fit8)[&quot;male&quot;, 1]),
+       sigma = 1 / exp(c(0, fixef(fit8)[&quot;disc_male&quot;, 1]))) %&gt;% 
+  expand(nesting(male, mu, sigma),
+         x = seq(from = -3.5, to = 3.5, length.out = 200)) %&gt;% 
+  mutate(d   = dnorm(x, mean = mu, sd = sigma),
+         sex = ifelse(male == 0, &quot;female&quot;, &quot;male&quot;)) %&gt;% 
+  
+  ggplot(aes(x = x, y = d, fill = sex)) +
+  geom_area(alpha = 1/2, position = &quot;identity&quot;) +
+  scale_fill_manual(NULL, values = c(&quot;red3&quot;, &quot;blue3&quot;)) +
+  scale_x_continuous(expression(Phi), breaks = -3:3) +
+  scale_y_continuous(NULL, breaks = NULL) +
+  labs(title = &quot;Latent distributions for fit8&quot;,
+       subtitle = expression(&quot;The shape for men is based on the posterior means of the &quot;*beta[1]*&quot; and &quot;*eta[1]*&quot; parameters.&quot;)) +
+  coord_cartesian(xlim = c(-3, 3)) +
+  theme(panel.grid = element_blank())</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-60-1.png" width="672" /></p>
+<p>Unlike with the previous latent density plots, we have left out the threshold lines for this one. With <span class="math inline">\(25\)</span> <span class="math inline">\(\tau_{kj}\)</span> parameters, showing them all would just clutter things up. But since we now our latent <span class="math inline">\(\mu\)</span> and <span class="math inline">\(\sigma\)</span> parameters vary across all <span class="math inline">\(200\)</span> participants, it might be fun to visualize those.</p>
+<pre class="r"><code>d %&gt;% 
+  distinct(id, male) %&gt;% 
+  mutate(beta0 = 0,
+         beta1 = fixef(fit8)[&quot;male&quot;, 1],
+         u_i = ranef(fit8)$id[, 1, &quot;Intercept&quot;],
+         eta0 = 0,
+         eta1 = fixef(fit8)[&quot;disc_male&quot;, 1],
+         w_i = ranef(fit8)$id[, 1, &quot;disc_Intercept&quot;]) %&gt;% 
+  mutate(mu_i = beta0 + beta1 * male + u_i,
+         sigma_i = 1 / exp(eta0 + eta1 * male + w_i)) %&gt;% 
+  expand(nesting(id, male, mu_i, sigma_i),
+         x = seq(from = -6.5, to = 6.5, length.out = 200)) %&gt;% 
+  mutate(d   = dnorm(x, mean = mu_i, sd = sigma_i),
+         sex = ifelse(male == 0, &quot;female&quot;, &quot;male&quot;)) %&gt;% 
+  # unnecessary, but keeps male on the left, which matches the position of the previous plot
+  mutate(sex = fct_rev(sex)) %&gt;% 
+  
+  ggplot(aes(x = x, y = d, fill = sex, color = sex, group = id)) +
+  geom_area(alpha = 1/20, size = 1/20, position = &quot;identity&quot;) +
+  scale_fill_manual(values = c(&quot;blue3&quot;, &quot;red3&quot;), breaks = NULL) +
+  scale_color_manual(values = c(&quot;blue3&quot;, &quot;red3&quot;), breaks = NULL) +
+  scale_x_continuous(expression(Phi), breaks = -3:3 * 2) +
+  scale_y_continuous(NULL, breaks = NULL) +
+  labs(title = &quot;Person-level latent distributions for fit8&quot;,
+       subtitle = expression(&quot;The shapes are based on the posterior means of the &quot;*beta[1]*&quot;, &quot;*eta[1]*&quot;, &quot;*italic(u[i])*&quot;, and &quot;*italic(w[i])*&quot; parameters.&quot;)) +
+  coord_cartesian(xlim = c(-5.7, 5.7)) +
+  theme(panel.grid = element_blank()) +
+  facet_wrap(~ sex)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-61-1.png" width="672" /></p>
+<p>As this is a fully cross-classified model, we can make a similar plot for the question-level latent densities.</p>
+<pre class="r"><code>d %&gt;% 
+  distinct(item) %&gt;% 
+  mutate(beta0 = 0,
+         beta1 = fixef(fit8)[&quot;male&quot;, 1],
+         v_i = ranef(fit8)$item[, 1, &quot;Intercept&quot;],
+         eta0 = 0,
+         eta1 = fixef(fit8)[&quot;disc_male&quot;, 1],
+         x_i = ranef(fit8)$item[, 1, &quot;disc_Intercept&quot;]) %&gt;% 
+  expand(nesting(item, beta0, beta1, v_i, eta0, eta1, x_i),
+         male = 0:1) %&gt;% 
+  mutate(mu_j = beta0 + beta1 * male + v_i,
+         sigma_j = 1 / exp(eta0 + eta1 * male + x_i)) %&gt;% 
+  expand(nesting(item, male, mu_j, sigma_j),
+         x = seq(from = -5, to = 5, length.out = 200)) %&gt;% 
+  mutate(d   = dnorm(x, mean = mu_j, sd = sigma_j),
+         sex = ifelse(male == 0, &quot;female&quot;, &quot;male&quot;)) %&gt;% 
+  # unnecessary, but keeps male on the left, which matches the position of the previous plots
+  mutate(sex = fct_rev(sex)) %&gt;% 
+  
+  ggplot(aes(x = x, y = d, fill = item, color = item, group = item)) +
+  geom_area(alpha = 1/4, size = 1/2, position = &quot;identity&quot;) +
+  
+  scale_fill_viridis_d(NULL, option = &quot;A&quot;, end = 0.85, direction = -1) +
+  scale_color_viridis_d(NULL, option = &quot;A&quot;, end = 0.85, direction = -1) +
+  scale_x_continuous(expression(Phi), breaks = -2:2 * 2) +
+  scale_y_continuous(NULL, breaks = NULL) +
+  labs(title = &quot;Question-level latent distributions for fit8&quot;,
+       subtitle = expression(&quot;The shapes are based on the posterior means of the &quot;*beta[1]*&quot;, &quot;*eta[1]*&quot;, &quot;*italic(v[j])*&quot;, and &quot;*italic(x[j])*&quot; parameters.&quot;)) +
+  coord_cartesian(xlim = c(-4.25, 4.25)) +
+  theme(panel.grid = element_blank()) +
+  facet_wrap(~ sex) </code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-62-1.png" width="672" /></p>
+<p>Even though you might think of <code>male</code> as a person-level variable, you still need to account for it when plotting the question-level distributions because the grand-mean values for <span class="math inline">\(\mu\)</span> and <span class="math inline">\(\sigma\)</span> are both conditional on <code>male</code>.</p>
+<p>Do bear in mind, though, that the latent means and spreads the items share a very tenuous relationship with the naïve sample statistics.</p>
+<pre class="r"><code>d %&gt;%
+  mutate(sex = ifelse(male == 0, &quot;female&quot;, &quot;male&quot;)) %&gt;%
+  # unnecessary, but keeps male on the left, which matches the position of the previous plots
+  mutate(sex = fct_rev(sex)) %&gt;%
+  group_by(sex, item) %&gt;%
+  summarise(m = mean(rating),
+            s = sd(rating)) %&gt;%
+  mutate_if(is.double, round, digits = 1) %&gt;%
+  mutate(stat = str_c(m, &quot; (&quot;, s, &quot;)&quot;)) %&gt;%
+  select(-m, -s) %&gt;%
+  pivot_wider(names_from = sex, values_from = stat)</code></pre>
+<pre><code>## # A tibble: 5 × 3
+##   item  male      female   
+##   &lt;chr&gt; &lt;chr&gt;     &lt;chr&gt;    
+## 1 N1    3.1 (1.5) 3.1 (1.6)
+## 2 N2    3.4 (1.4) 3.5 (1.6)
+## 3 N3    2.8 (1.3) 3.3 (1.7)
+## 4 N4    3.2 (1.6) 3.3 (1.5)
+## 5 N5    2.3 (1.4) 3.4 (1.6)</code></pre>
+<p>I believe this apparent mismatch is because of how the cumulative probit model uses thresholds and the normal CDF to describe relative probabilities among the ordinal categories. The latent means and standard deviations have very different meanings from the sample statistics. So it goes…</p>
+<p>From an IRT perspective, we can think of the <span class="math inline">\(\mu_j\)</span> and <span class="math inline">\(\alpha_j\)</span> parameters as item difficulty and discrimination parameters. Here we display them in a coefficient plot in the same way seen in Figure <span class="math inline">\(10\)</span> in Bürkner’s IRT <span class="citation">(<a href="#ref-burknerBayesianItemResponse2020" role="doc-biblioref">2020a</a>)</span> tutorial.</p>
+<pre class="r"><code>rbind(ranef(fit8)$item[, , &quot;Intercept&quot;],
+      ranef(fit8)$item[, , &quot;disc_Intercept&quot;] %&gt;% exp()) %&gt;% 
+  data.frame() %&gt;% 
+  mutate(item = rep(str_c(&quot;N&quot;, 1:5), times = 2),
+         parameter = rep(c(&quot;difficulty&quot;, &quot;discrimination&quot;), each = 5)) %&gt;% 
+  
+  ggplot(aes(x = Estimate, xmin = Q2.5, xmax = Q97.5, y = item)) +
+  geom_pointrange(fatten = 1.5) +
+  labs(title = &quot;IRT-based item parameters for fit8&quot;,
+       x = &quot;marginal posterior&quot;) +
+  facet_wrap(~ parameter)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-64-1.png" width="672" /></p>
+<p>I still haven’t figured out how to make item-characteristic curves for an ordinal model. If you know how, please chime in on twitter. And that last plot’s going to wrap this little blog post up. If you have any concerns about my equations or the workflows, herein, do chime in to twitter. This is a resource for us all and I’d hate to spread incorrect methods.</p>
+<p>Happy modeling, friends.</p>
+</div>
+</div>
+<div id="session-info" class="section level2">
+<h2>Session info</h2>
+<pre class="r"><code>sessionInfo()</code></pre>
+<pre><code>## R version 4.1.1 (2021-08-10)
+## Platform: x86_64-apple-darwin17.0 (64-bit)
+## Running under: macOS Catalina 10.15.7
+## 
+## Matrix products: default
+## BLAS:   /Library/Frameworks/R.framework/Versions/4.1/Resources/lib/libRblas.0.dylib
+## LAPACK: /Library/Frameworks/R.framework/Versions/4.1/Resources/lib/libRlapack.dylib
+## 
+## locale:
+## [1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+## 
+## attached base packages:
+## [1] stats     graphics  grDevices utils     datasets  methods   base     
+## 
+## other attached packages:
+##  [1] tidybayes_3.0.1 brms_2.16.2     Rcpp_1.0.7      forcats_0.5.1   stringr_1.4.0   dplyr_1.0.7     purrr_0.3.4    
+##  [8] readr_2.0.1     tidyr_1.1.3     tibble_3.1.6    ggplot2_3.3.5   tidyverse_1.3.1
+## 
+## loaded via a namespace (and not attached):
+##   [1] readxl_1.3.1         backports_1.3.0      plyr_1.8.6           igraph_1.2.6         svUnit_1.0.6        
+##   [6] splines_4.1.1        crosstalk_1.1.1      TH.data_1.0-10       rstantools_2.1.1     inline_0.3.19       
+##  [11] digest_0.6.28        htmltools_0.5.2      viridis_0.6.1        rsconnect_0.8.24     fansi_0.5.0         
+##  [16] magrittr_2.0.1       checkmate_2.0.0      tzdb_0.1.2           modelr_0.1.8         RcppParallel_5.1.4  
+##  [21] matrixStats_0.61.0   xts_0.12.1           sandwich_3.0-1       prettyunits_1.1.1    colorspace_2.0-2    
+##  [26] rvest_1.0.1          ggdist_3.0.0         haven_2.4.3          xfun_0.25            callr_3.7.0         
+##  [31] crayon_1.4.2         jsonlite_1.7.2       lme4_1.1-27.1        survival_3.2-11      zoo_1.8-9           
+##  [36] glue_1.5.0           gtable_0.3.0         emmeans_1.7.1-1      V8_3.4.2             distributional_0.2.2
+##  [41] pkgbuild_1.2.0       rstan_2.26.3         abind_1.4-5          scales_1.1.1         mvtnorm_1.1-2       
+##  [46] DBI_1.1.1            miniUI_0.1.1.1       viridisLite_0.4.0    xtable_1.8-4         tmvnsim_1.0-2       
+##  [51] diffobj_0.3.4        stats4_4.1.1         StanHeaders_2.26.3   DT_0.19              htmlwidgets_1.5.3   
+##  [56] httr_1.4.2           threejs_0.3.3        arrayhelpers_1.1-0   posterior_1.1.0.9000 ellipsis_0.3.2      
+##  [61] pkgconfig_2.0.3      loo_2.4.1            farver_2.1.0         sass_0.4.0           dbplyr_2.1.1        
+##  [66] utf8_1.2.2           labeling_0.4.2       tidyselect_1.1.1     rlang_0.4.12         reshape2_1.4.4      
+##  [71] later_1.3.0          cellranger_1.1.0     munsell_0.5.0        tools_4.1.1          cli_3.1.0           
+##  [76] generics_0.1.1       broom_0.7.9          ggridges_0.5.3       evaluate_0.14        fastmap_1.1.0       
+##  [81] yaml_2.2.1           fs_1.5.0             processx_3.5.2       knitr_1.33           nlme_3.1-152        
+##  [86] mime_0.11            projpred_2.0.2       xml2_1.3.2           compiler_4.1.1       bayesplot_1.8.1     
+##  [91] shinythemes_1.2.0    rstudioapi_0.13      curl_4.3.2           gamm4_0.2-6          reprex_2.0.1        
+##  [96] bslib_0.3.0          stringi_1.7.4        highr_0.9            ps_1.6.0             blogdown_1.5        
+## [101] Brobdingnag_1.2-6    lattice_0.20-44      Matrix_1.3-4         psych_2.1.6          nloptr_1.2.2.2      
+## [106] markdown_1.1         shinyjs_2.0.0        tensorA_0.36.2       vctrs_0.3.8          pillar_1.6.4        
+## [111] lifecycle_1.0.1      jquerylib_0.1.4      bridgesampling_1.1-2 estimability_1.3     httpuv_1.6.2        
+## [116] R6_2.5.1             bookdown_0.23        promises_1.2.0.1     gridExtra_2.3        codetools_0.2-18    
+## [121] boot_1.3-28          colourpicker_1.1.0   MASS_7.3-54          gtools_3.9.2         assertthat_0.2.1    
+## [126] withr_2.4.2          mnormt_2.0.2         shinystan_2.5.0      multcomp_1.4-17      mgcv_1.8-36         
+## [131] parallel_4.1.1       hms_1.1.0            grid_4.1.1           coda_0.19-4          minqa_1.2.4         
+## [136] rmarkdown_2.10       shiny_1.6.0          lubridate_1.7.10     base64enc_0.1-3      dygraphs_1.1.1.6</code></pre>
+</div>
+<div id="references" class="section level2 unnumbered">
+<h2>References</h2>
+<div id="refs" class="references csl-bib-body hanging-indent" line-spacing="2">
+<div id="ref-burknerBayesianItemResponse2020" class="csl-entry">
+Bürkner, P.-C. (2020a). Bayesian item response modeling in <span>R</span> with brms and <span>Stan</span>. <em>arXiv:1905.09501 [Stat]</em>. <a href="http://arxiv.org/abs/1905.09501">http://arxiv.org/abs/1905.09501</a>
+</div>
+<div id="ref-burknerBrmsPackageBayesian2017" class="csl-entry">
+Bürkner, P.-C. (2017). <span class="nocase">brms</span>: <span>An R</span> package for <span>Bayesian</span> multilevel models using <span>Stan</span>. <em>Journal of Statistical Software</em>, <em>80</em>(1), 1–28. <a href="https://doi.org/10.18637/jss.v080.i01">https://doi.org/10.18637/jss.v080.i01</a>
+</div>
+<div id="ref-burknerAdvancedBayesianMultilevel2018" class="csl-entry">
+Bürkner, P.-C. (2018). Advanced <span>Bayesian</span> multilevel modeling with the <span>R</span> package brms. <em>The R Journal</em>, <em>10</em>(1), 395–411. <a href="https://doi.org/10.32614/RJ-2018-017">https://doi.org/10.32614/RJ-2018-017</a>
+</div>
+<div id="ref-R-brms" class="csl-entry">
+Bürkner, P.-C. (2020b). <em><span class="nocase">brms</span>: <span>Bayesian</span> regression models using ’<span>Stan</span>’</em>. <a href="https://CRAN.R-project.org/package=brms">https://CRAN.R-project.org/package=brms</a>
+</div>
+<div id="ref-goldberg1999broad" class="csl-entry">
+Goldberg, L. R. (1999). A broad-bandwidth, public domain, personality inventory measuring the lower-level facets of several five-factor models. In I. Mervielde, I. Deary, F. De Fruyt, &amp; F. Ostendorf (Eds.), <em>Personality psychology in <span>Europe</span></em> (Vol. 7, pp. 7–28). <span>Tilburg University Press</span>.
+</div>
+<div id="ref-R-tidybayes" class="csl-entry">
+Kay, M. (2020). <em><span class="nocase">tidybayes</span>: <span>Tidy</span> data and ’geoms’ for <span>Bayesian</span> models</em>. <a href="https://mjskay.github.io/tidybayes/">https://mjskay.github.io/tidybayes/</a>
+</div>
+<div id="ref-kruschkeDoingBayesianData2015" class="csl-entry">
+Kruschke, J. K. (2015). <em>Doing <span>Bayesian</span> data analysis: <span>A</span> tutorial with <span>R</span>, <span>JAGS</span>, and <span>Stan</span></em>. <span>Academic Press</span>. <a href="https://sites.google.com/site/doingbayesiandataanalysis/">https://sites.google.com/site/doingbayesiandataanalysis/</a>
+</div>
+<div id="ref-kurzDoingBayesianData2021" class="csl-entry">
+Kurz, A. S. (2020a). <em>Doing <span>Bayesian</span> data analysis in brms and the tidyverse</em> (version 0.4.0). <a href="https://bookdown.org/content/3686/">https://bookdown.org/content/3686/</a>
+</div>
+<div id="ref-kurzStatisticalRethinkingBrms2020" class="csl-entry">
+Kurz, A. S. (2020b). <em>Statistical rethinking with brms, <span class="nocase">ggplot2</span>, and the tidyverse</em> (version 1.2.0). <a href="https://doi.org/10.5281/zenodo.3693202">https://doi.org/10.5281/zenodo.3693202</a>
+</div>
+<div id="ref-mcelreathStatisticalRethinkingBayesian2020" class="csl-entry">
+McElreath, R. (2020). <em>Statistical rethinking: <span>A Bayesian</span> course with examples in <span>R</span> and <span>Stan</span></em> (Second Edition). <span>CRC Press</span>. <a href="https://xcelab.net/rm/statistical-rethinking/">https://xcelab.net/rm/statistical-rethinking/</a>
+</div>
+<div id="ref-mcelreathStatisticalRethinkingBayesian2015" class="csl-entry">
+McElreath, R. (2015). <em>Statistical rethinking: <span>A Bayesian</span> course with examples in <span>R</span> and <span>Stan</span></em>. <span>CRC press</span>. <a href="https://xcelab.net/rm/statistical-rethinking/">https://xcelab.net/rm/statistical-rethinking/</a>
+</div>
+<div id="ref-R-base" class="csl-entry">
+R Core Team. (2020). <em>R: <span>A</span> language and environment for statistical computing</em>. <span>R Foundation for Statistical Computing</span>. <a href="https://www.R-project.org/">https://www.R-project.org/</a>
+</div>
+<div id="ref-R-psych" class="csl-entry">
+Revelle, W. (2021). <em><span class="nocase">psych</span>: <span>Procedures</span> for psychological, psychometric, and personality research</em>. <a href="https://CRAN.R-project.org/package=psych">https://CRAN.R-project.org/package=psych</a>
+</div>
+<div id="ref-revelle2010individual" class="csl-entry">
+Revelle, W., Wilt, J., &amp; Rosenthal, A. (2010). Individual differences in cognition: <span>New</span> methods for examining the personality-cognition link. In A. Gruszka, G. Matthews, &amp; B. Szymura (Eds.), <em>Handbook of individual differences in cognition: <span>Attention</span>, memory and executive control</em> (pp. 27–49). <span>Springer</span>.
+</div>
+<div id="ref-R-tidyverse" class="csl-entry">
+Wickham, H. (2019). <em><span class="nocase">tidyverse</span>: <span>Easily</span> install and load the ’tidyverse’</em>. <a href="https://CRAN.R-project.org/package=tidyverse">https://CRAN.R-project.org/package=tidyverse</a>
+</div>
+<div id="ref-wickhamWelcomeTidyverse2019" class="csl-entry">
+Wickham, H., Averick, M., Bryan, J., Chang, W., McGowan, L. D., François, R., Grolemund, G., Hayes, A., Henry, L., Hester, J., Kuhn, M., Pedersen, T. L., Miller, E., Bache, S. M., Müller, K., Ooms, J., Robinson, D., Seidel, D. P., Spinu, V., … Yutani, H. (2019). Welcome to the tidyverse. <em>Journal of Open Source Software</em>, <em>4</em>(43), 1686. <a href="https://doi.org/10.21105/joss.01686">https://doi.org/10.21105/joss.01686</a>
+</div>
+</div>
+</div>
