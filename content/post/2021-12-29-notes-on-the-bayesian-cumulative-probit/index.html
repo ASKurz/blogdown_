@@ -619,7 +619,7 @@ tibble(sigma_hyperparameter = 1:10 / 10) %&gt;%
 <p>We can compute that value with <span class="math inline">\(\log(2) / 2\)</span>, too.</p>
 <pre class="r"><code>log(2) / 2</code></pre>
 <pre><code>## [1] 0.3465736</code></pre>
-<p>Here’s what that would look like in a histogram.</p>
+<p>Here’s a histogram of what that would look like in the <span class="math inline">\(1 / \exp(\cdot)\)</span> metric.</p>
 <pre class="r"><code>set.seed(1)
 
 tibble(prior = rnorm(n = 1e5, mean = 0, sd = log(2) / 2)) %&gt;%
@@ -627,6 +627,7 @@ tibble(prior = rnorm(n = 1e5, mean = 0, sd = log(2) / 2)) %&gt;%
   
   ggplot(aes(x = prior)) +
   geom_histogram(binwidth = 0.1) +
+  xlab(expression(1/exp(prior))) +
   coord_cartesian(xlim = c(0, 10))</code></pre>
 <p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-30-1.png" width="672" /></p>
 <p>With that all in mind, we can now update our model formula to:</p>
@@ -665,7 +666,7 @@ fit3 &lt;- brm(
   seed = 1,
   init_r = 0.2
 )</code></pre>
-<p>Note how used the <code>0 + ...</code> syntax in the first line in the <code>lf()</code> function that set we set <code>cmc = FALSE</code> in the second line. As Bürkner noted in his <span class="citation">(<a href="#ref-burknerBayesianItemResponse2020" role="doc-biblioref">2020a</a>)</span> tutorial, it’s critical that you do this when attaching a model to <span class="math inline">\(\log(\alpha_i)\)</span>. If you leave these bits out, you might find that you are no longer keeping the reference category for <span class="math inline">\(\log(\alpha_i)\)</span> set to <span class="math inline">\(0\)</span>, which can wrack havoc on the model.</p>
+<p>Note how we used the <code>0 + ...</code> syntax in the first line in the <code>lf()</code> function and that set we set <code>cmc = FALSE</code> in the second line. As Bürkner noted in his <span class="citation">(<a href="#ref-burknerBayesianItemResponse2020" role="doc-biblioref">2020a</a>)</span> tutorial, it’s critical that you do this when attaching a model to <span class="math inline">\(\log(\alpha_i)\)</span>. If you leave these bits out, you might find that you are no longer keeping the reference category for <span class="math inline">\(\log(\alpha_i)\)</span> set to <span class="math inline">\(0\)</span>, which can wreak havoc on the model.</p>
 <p>Anyway, check the summary.</p>
 <pre class="r"><code>print(fit3)</code></pre>
 <pre><code>##  Family: cumulative 
@@ -689,7 +690,7 @@ fit3 &lt;- brm(
 ## Draws were sampled using sampling(NUTS). For each parameter, Bulk_ESS
 ## and Tail_ESS are effective sample size measures, and Rhat is the potential
 ## scale reduction factor on split chains (at convergence, Rhat = 1).</code></pre>
-<p>It can be challenging to interpret the <code>disc_male</code> coefficient directly. Keep in mind that larger values mean smaller relative values. Given how the reference value is <span class="math inline">\(0\)</span>, which equivalent to <span class="math inline">\(\sigma = 1\)</span>, this is the estimate of the latent standard deviation for men.</p>
+<p>It can be challenging to interpret the <code>disc_male</code> coefficient directly. Keep in mind that <em>larger</em> values mean <em>smaller</em> relative values on the <span class="math inline">\(\sigma\)</span> scale. Given how the reference value is <span class="math inline">\(0\)</span>, which equivalent to <span class="math inline">\(\sigma = 1\)</span>, this is the estimate of the latent standard deviation for men.</p>
 <pre class="r"><code>1 / exp(0 + fixef(fit3)[&quot;disc_male&quot;, -2])</code></pre>
 <pre><code>##  Estimate      Q2.5     Q97.5 
 ## 0.8873625 0.9976675 0.7883039</code></pre>
@@ -740,7 +741,7 @@ fit3 &lt;- brm(
 <p>If you wanted to set up the model so that <span class="math inline">\(95\%\)</span> of the prior probability allowed for a doubling of the variance, you’d need to set the upper range to the square root of <span class="math inline">\(2\)</span>.</p>
 <pre class="r"><code>sqrt(2)</code></pre>
 <pre><code>## [1] 1.414214</code></pre>
-<p>Now that we’ve updated the model to account for differences in <span class="math inline">\(\sigma\)</span>, we might also want to update our workflow for computing the population means for <code>rating</code>. The trick is now the <code>sd</code> argument within the <code>pnorm()</code> function should be conditional on the values for males or females. Here’s one way how.</p>
+<p>Anyway, now that we’ve updated the model to account for differences in <span class="math inline">\(\sigma\)</span>, we might also want to update our workflow for computing the population means for <code>rating</code>. The trick is now the <code>sd</code> argument within the <code>pnorm()</code> function should be conditional on the values for males or females. Here’s one way how.</p>
 <pre class="r"><code>as_draws_df(fit3) %&gt;% 
   # this also includes the column for b_disc_male
   select(.draw, starts_with(&quot;b_&quot;)) %&gt;% 
@@ -782,7 +783,7 @@ fit3 &lt;- brm(
 <div id="randomly-varying-latent-means." class="section level3">
 <h3>Randomly-varying latent means.</h3>
 <p>Up until now, we’ve been ignoring how this model has a multilevel structure. We have ratings nested within persons (<code>id</code>) and questions (<code>item</code>). Within cumulative probit models, the simplest way to account for that nesting is to add random intercepts to the latent mean, which will now be <span class="math inline">\(\mu_{ij}\)</span> for the <span class="math inline">\(i^\text{th}\)</span> person and the <span class="math inline">\(j^\text{th}\)</span> question.</p>
-<p>Starting slow, we’ll fist just add random intercepts for the persons with the model</p>
+<p>Starting slow, we’ll first just add random intercepts for the persons with the model</p>
 <p><span class="math display">\[
 \begin{align*}
 p(\text{rating} = k | \{ \tau_k \}, \mu_i) &amp; = \Phi(\tau_k - \mu_i) - \Phi(\tau_{k - 1} - \mu_i) \\
@@ -1029,7 +1030,7 @@ fit6 &lt;- brm(
 ## Draws were sampled using sampling(NUTS). For each parameter, Bulk_ESS
 ## and Tail_ESS are effective sample size measures, and Rhat is the potential
 ## scale reduction factor on split chains (at convergence, Rhat = 1).</code></pre>
-<p>It might be easier to get a sense of the <span class="math inline">\(\tau_{kj}\)</span> posteriors in a coefficient plot.</p>
+<p>It might be easier to get a sense of the <span class="math inline">\(\tau_{kj}\)</span> posteriors with a coefficient plot.</p>
 <pre class="r"><code>posterior_summary(fit6)[1:25, ] %&gt;% 
   data.frame() %&gt;% 
   mutate(tau = rep(1:5, times = 5),
@@ -1045,7 +1046,7 @@ fit6 &lt;- brm(
   coord_flip() +
   ylab(expression(Phi))</code></pre>
 <p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-43-1.png" width="672" /></p>
-<p>You could use information criteria comparisons to decide on whether to allow them to vary across items or if it’s okay to prefer the more parsimonious model. IMO, thresholds across items are <em>a priori</em> different and should not be collapsed without strong theoretical or methodological justifications. In this case, I lose nothing by having them.</p>
+<p>You could use information criteria comparisons to decide on whether to allow them to vary across items or if it’s okay to prefer the more parsimonious model. IMO, thresholds across items are <em>a priori</em> different and should not be collapsed without strong theoretical or methodological justifications. In this case, it seems like I lose nothing by having them.</p>
 <p>Plus, there’s also the implications of the varying thresholds for the posterior-predictive distributions.</p>
 <pre class="r"><code>set.seed(1)
 pp_check(fit5, type = &quot;bars_grouped&quot;, group = &quot;item&quot;,
@@ -1086,7 +1087,7 @@ v_j &amp; \sim \mathcal N(0, \sigma_v) \\
 \color{blue}{\sigma_w} &amp; \sim \color{blue}{\operatorname{Exponential}(1)} \\
 \color{blue}{\sigma_x} &amp; \sim \color{blue}{\operatorname{Exponential}(1)} \color{black}{.}
 \end{align*}\]</span></p>
-<p>Though the <span class="math inline">\(\operatorname{Exponential}(1)\)</span> might be a good place to start with our new <span class="math inline">\(\sigma_w\)</span> and <span class="math inline">\(\sigma_x\)</span>, it might be best to ponder this a bit. Recall these are for the distribution of logged discrimination parameters. Since I’m no statistician or psychometrician, I’m not even sure what that means, which makes it hard to intuit whether the <span class="math inline">\(\operatorname{Exponential}(1)\)</span> prior makes sense for my data. A plot might help. Here we’ll simulate <span class="math inline">\(100{,}000\)</span> draws from the <span class="math inline">\(\operatorname{Exponential}(1)\)</span> prior, use those draws to simulate <span class="math inline">\(w_i\)</span> values from <span class="math inline">\(\mathcal N(0, \sigma_w)\)</span>, and then plot that distribution in the <span class="math inline">\(w_i\)</span>, <span class="math inline">\(\exp(w_i)\)</span> and <span class="math inline">\(1/\exp(w_i)\)</span> metrics.</p>
+<p>Though the <span class="math inline">\(\operatorname{Exponential}(1)\)</span> prior might be a good place to start with our new <span class="math inline">\(\sigma_w\)</span> and <span class="math inline">\(\sigma_x\)</span>, let’s ponder this a bit. Recall these are for the distribution of logged discrimination parameters. Since I’m no statistician or psychometrician, I’m not even sure what that means, which makes it hard to intuit whether the <span class="math inline">\(\operatorname{Exponential}(1)\)</span> prior makes sense for my data. A plot might help. Here we’ll simulate <span class="math inline">\(100{,}000\)</span> draws from the <span class="math inline">\(\operatorname{Exponential}(1)\)</span> prior, use those draws to simulate <span class="math inline">\(w_i\)</span> values from <span class="math inline">\(\mathcal N(0, \sigma_w)\)</span>, and then plot that distribution in the <span class="math inline">\(w_i\)</span>, <span class="math inline">\(\exp(w_i)\)</span> and <span class="math inline">\(1/\exp(w_i)\)</span> metrics.</p>
 <pre class="r"><code>set.seed(1)
 
 # simulate from the prior
@@ -1333,7 +1334,7 @@ colors &lt;- viridis::viridis_pal(option = &quot;A&quot;, end = 0.85, direction 
        y = NULL) +
   xlim(2, 4)</code></pre>
 <p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-55-1.png" width="672" /></p>
-<p>At first glance, it might be upsetting that out posteriors for the item-level means no longer tightly line up with the sample means. However, keep in mind these were computed with a multilevel model, which will impose partial pooling toward the grand mean. Based on decades of hard work within statistics, we know that our partially-pooled means will be more likely generalize to new data than our sample means. This is why we model. Though we do want to understand our sample data, we also want to make inferences about other data from the population.</p>
+<p>At first glance, it might be upsetting that out posteriors for the item-level means no longer tightly line up with the sample means. However, keep in mind these were computed with a multilevel model, which will impose partial pooling toward the grand mean. Based on decades of hard work within statistics <span class="citation">(see <a href="#ref-efronSteinParadoxStatistics1977" role="doc-biblioref">Efron &amp; Morris, 1977</a>)</span>, we know that our partially-pooled means will be more likely generalize to new data than our sample means. This is why we model. Though we do want to understand our sample data, we also want to make inferences about other data from the population.</p>
 <p>Now that we have a full model accounting for all five Neuroticism items, we can use a similar approach to compute the population-level sum score. First, we’ll compute the sample mean of the sum score and save the value as <code>m_sum_score</code>.</p>
 <pre class="r"><code>m_sum_score &lt;- d %&gt;% 
   group_by(id) %&gt;% 
@@ -1731,6 +1732,9 @@ Bürkner, P.-C. (2018). Advanced <span>Bayesian</span> multilevel modeling with 
 </div>
 <div id="ref-R-brms" class="csl-entry">
 Bürkner, P.-C. (2020b). <em><span class="nocase">brms</span>: <span>Bayesian</span> regression models using ’<span>Stan</span>’</em>. <a href="https://CRAN.R-project.org/package=brms">https://CRAN.R-project.org/package=brms</a>
+</div>
+<div id="ref-efronSteinParadoxStatistics1977" class="csl-entry">
+Efron, B., &amp; Morris, C. (1977). Stein’s paradox in statistics. <em>Scientific American</em>, <em>236</em>(5), 119–127. <a href="https://doi.org/10.1038/scientificamerican0577-119">https://doi.org/10.1038/scientificamerican0577-119</a>
 </div>
 <div id="ref-goldberg1999broad" class="csl-entry">
 Goldberg, L. R. (1999). A broad-bandwidth, public domain, personality inventory measuring the lower-level facets of several five-factor models. In I. Mervielde, I. Deary, F. De Fruyt, &amp; F. Ostendorf (Eds.), <em>Personality psychology in <span>Europe</span></em> (Vol. 7, pp. 7–28). <span>Tilburg University Press</span>.
