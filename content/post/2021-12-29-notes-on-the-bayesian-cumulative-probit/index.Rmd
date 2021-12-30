@@ -122,7 +122,7 @@ $$p(\text{rating} = k | \{ \tau_k \}) = f(\tau_k) - f(\tau_{k - 1}),$$
 
 where $\tau_k$ is the $k^\text{th}$ threshold. On the left side of the equation, we stated the relative probabilities of the ordinal categories is conditional on our set of thresholds $\{ \tau_k \}$, which is a shorthand for writing out $\{k_1, k_2, k_3, k_4, k_5\}$. The $f(\cdot)$ operator is a stand-in for some cumulative distribution function, which will allow us to map the cumulative probabilities onto an unbounded parameter space divided up by the $K$ thresholds.
 
-Because of it's nice interpretative properties, I (and many others) like to use the cumulative standard normal distribution $\Phi$ as our function $f(\cdot)$, which means we can rewrite the equation as
+Because of its nice interpretative properties, I (and many others) like to use the cumulative standard normal distribution $\Phi$ as our function $f(\cdot)$, which means we can rewrite the equation as
 
 $$p(\text{rating} = k | \{ \tau_k \}) = \Phi(\tau_k) - \Phi(\tau_{k - 1}),$$
 
@@ -130,9 +130,9 @@ where, to be explicit, the parameters for $\Phi$ are fixed to $\mu = 0$ and $\si
 
 $$p(\text{rating} = k | \{ \tau_k \}) = \Phi([\tau_k - \mu] / \sigma) - \Phi([\tau_{k - 1} - \mu] / \sigma).$$
 
-But again, since those are both held constant as 0 and 1, respectively, substituting those values into the equation reduces to what it was, before. This is one of the nice things about starting off with the cumulative standard normal distribution.
+But again, since those are both held constant as $0$ and $1$, respectively, substituting those values into the equation reduces to what it was, before. This is one of the nice things about starting off with the cumulative standard normal distribution.
 
-Anyway, the thing to understand is that the area under the normal curve to the left of $\tau_k $ is defined as $\Phi(\tau_k)$, which is the cumulative probability mass for the $k^\text{th}$ rating. The reason we have to subtract the area to the left of $\Phi(\tau_{k - 1})$ from $\Phi(\tau_k)$ is so we can isolate a relative probability from a cumulative probability. This applies in the same way for all the middle ratings--`2` through `5` in our case. For the first and last ratings (`1` and `6`), we might add two *virtual* thresholds $-\infty$ and $\infty$, respectively. With the first rating, this means
+Anyway, the thing to understand is that the area under the normal curve to the left of $\tau_k$ is defined as $\Phi(\tau_k)$, which is the cumulative probability mass for the $k^\text{th}$ rating. The reason we have to subtract the area to the left of $\Phi(\tau_{k - 1})$ from $\Phi(\tau_k)$ is so we can isolate a relative probability from a cumulative probability. This applies in the same way for all the middle ratings--`2` through `5` in our case. For the first and last ratings (`1` and `6`), we might add two *virtual* thresholds $-\infty$ and $\infty$, respectively. With the first rating, this means
 
 $$
 \begin{align*}
@@ -153,8 +153,7 @@ p(\text{rating} = k | \{ \tau_k \}) & = \Phi(\color{blue}{\tau_{K + 1}}) - \Phi(
 \end{align*}
 $$
 
-It might help to visualize this. Consider a case where we have a rating variable with 6 values (`1` through `6`), each with equal proportions 
-($1 / 6 \approx .167$). Here's what that could look like mapped onto $\Phi$.
+It might help to visualize this. Consider a case where we have a rating variable with 6 values (`1` through `6`), each with equal proportions, $1 / 6 \approx .167$. Here's what that could look like mapped onto $\Phi$.
 
 ```{r}
 tibble(z = seq(from = -3.75, to = 3.75, length.out = 1e3)) %>% 
@@ -239,7 +238,7 @@ p(\text{rating} = k | \{ \tau_k \}) & = \Phi(\tau_k) - \Phi(\tau_{k - 1}) \\
 \end{align*}
 $$
 
-where the first line is the likelihood, which only contains the model parameters $\tau_k$. The second line is a simple non-committal prior for the thresholds, which places $95\%$ of the prior probability mass for each threshold between $-4$ and $4$. However, if we consider the plot above, we can come up with a less lazy default prior. If we want our starting assumption to be a uniform distribution between our `rating` data, we could update the model to
+where the first line is the likelihood, which only contains the model parameters $\tau_k$. The second line is a simple non-committal prior for the thresholds, which places $95\%$ of the prior probability mass for each threshold between $-4$ and $4$. However, if we consider the plot above, we can come up with default prior that are a little less lazy. If we want our starting assumption to be a uniform distribution between our `rating` data, we could update the model to
 
 $$
 \begin{align*}
@@ -556,7 +555,7 @@ tibble(male = 0:1,
        subtitle = expression("The reference category is female. "*beta[1]*" is reflected in the leftward shift for men."))
 ```
 
-As before, we might also want to use our conditional `fit2` to compute the population means for `ratiing`, by sex. We can extend our workflow from before by including the posterior draws for $\beta_1$. Then when we use the `pnorm()` functions to compute the conditional probabilities, we'll have to use $\beta_1$ to adjust the values in the `mean` argument within `pnorm()` to account for the $\mu_i = \beta_1 \text{male}_i$ portion of our statistical model.
+As before, we might also want to use our conditional `fit2` to compute the population means for `rating`, by sex. We can extend our workflow from before by including the posterior draws for $\beta_1$. Then when we use the `pnorm()` functions to compute the conditional probabilities, we'll have to use $\beta_1$ to adjust the values in the `mean` argument within `pnorm()` to account for the $\mu_i = \beta_1 \text{male}_i$ portion of our statistical model.
 
 ```{r, warning = F, message = F}
 as_draws_df(fit2) %>% 
@@ -605,11 +604,11 @@ If we have reason to presume differences in latent standard deviations, we can e
 
 $$
 \begin{align*}
-p(\text{rating} = k | \{ \tau_k \}, \mu_i, \color{blue}{\sigma_i}) & = \Phi([\tau_k - \mu_i] \color{blue}{/ \sigma_i}) - \Phi([\tau_{k - 1} - \mu_i] \color{blue}{/ \sigma_i}) \\
+p(\text{rating} = k | \{ \tau_k \}, \mu_i, \color{blue}{\sigma_i} ) & = \Phi([\tau_k - \mu_i] \color{blue}{/ \sigma_i}) - \Phi([\tau_{k - 1} - \mu_i] \color{blue}{/ \sigma_i} ) \\
 \mu_i & = \beta_0 + \sum_1^l \beta_l x_l \\
-\color{blue}{\log(\sigma_i)} & \color{blue}= \color{blue}{\eta_0 + \sum_1^m \eta_m x_m} \\
+\color{blue}{\log(\sigma_i)} & = \color{blue}{\eta_0 + \sum_1^m \eta_m x_m} \\
 \beta_0 & = 0 \\
-\color{blue}{\eta_0} & \color{blue}= \color{blue}0,
+\color{blue}{\eta_0} & = \color{blue}0,
 \end{align*}
 $$
 

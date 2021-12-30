@@ -91,12 +91,12 @@ glimpse(d)</code></pre>
 <p>Given a Likert-type variable <code>rating</code> for which there are <span class="math inline">\(K + 1 = 6\)</span> response options, you can model the relative probability of each ordinal category as</p>
 <p><span class="math display">\[p(\text{rating} = k | \{ \tau_k \}) = f(\tau_k) - f(\tau_{k - 1}),\]</span></p>
 <p>where <span class="math inline">\(\tau_k\)</span> is the <span class="math inline">\(k^\text{th}\)</span> threshold. On the left side of the equation, we stated the relative probabilities of the ordinal categories is conditional on our set of thresholds <span class="math inline">\(\{ \tau_k \}\)</span>, which is a shorthand for writing out <span class="math inline">\(\{k_1, k_2, k_3, k_4, k_5\}\)</span>. The <span class="math inline">\(f(\cdot)\)</span> operator is a stand-in for some cumulative distribution function, which will allow us to map the cumulative probabilities onto an unbounded parameter space divided up by the <span class="math inline">\(K\)</span> thresholds.</p>
-<p>Because of it’s nice interpretative properties, I (and many others) like to use the cumulative standard normal distribution <span class="math inline">\(\Phi\)</span> as our function <span class="math inline">\(f(\cdot)\)</span>, which means we can rewrite the equation as</p>
+<p>Because of its nice interpretative properties, I (and many others) like to use the cumulative standard normal distribution <span class="math inline">\(\Phi\)</span> as our function <span class="math inline">\(f(\cdot)\)</span>, which means we can rewrite the equation as</p>
 <p><span class="math display">\[p(\text{rating} = k | \{ \tau_k \}) = \Phi(\tau_k) - \Phi(\tau_{k - 1}),\]</span></p>
 <p>where, to be explicit, the parameters for <span class="math inline">\(\Phi\)</span> are fixed to <span class="math inline">\(\mu = 0\)</span> and <span class="math inline">\(\sigma = 1\)</span> for purposes of identification. However, if you wanted two write out the equation to explicitly include our fixed <span class="math inline">\(\mu\)</span> and <span class="math inline">\(\sigma\)</span> parameters, it could look like</p>
 <p><span class="math display">\[p(\text{rating} = k | \{ \tau_k \}) = \Phi([\tau_k - \mu] / \sigma) - \Phi([\tau_{k - 1} - \mu] / \sigma).\]</span></p>
-<p>But again, since those are both held constant as 0 and 1, respectively, substituting those values into the equation reduces to what it was, before. This is one of the nice things about starting off with the cumulative standard normal distribution.</p>
-<p>Anyway, the thing to understand is that the area under the normal curve to the left of $_k $ is defined as <span class="math inline">\(\Phi(\tau_k)\)</span>, which is the cumulative probability mass for the <span class="math inline">\(k^\text{th}\)</span> rating. The reason we have to subtract the area to the left of <span class="math inline">\(\Phi(\tau_{k - 1})\)</span> from <span class="math inline">\(\Phi(\tau_k)\)</span> is so we can isolate a relative probability from a cumulative probability. This applies in the same way for all the middle ratings–<code>2</code> through <code>5</code> in our case. For the first and last ratings (<code>1</code> and <code>6</code>), we might add two <em>virtual</em> thresholds <span class="math inline">\(-\infty\)</span> and <span class="math inline">\(\infty\)</span>, respectively. With the first rating, this means</p>
+<p>But again, since those are both held constant as <span class="math inline">\(0\)</span> and <span class="math inline">\(1\)</span>, respectively, substituting those values into the equation reduces to what it was, before. This is one of the nice things about starting off with the cumulative standard normal distribution.</p>
+<p>Anyway, the thing to understand is that the area under the normal curve to the left of <span class="math inline">\(\tau_k\)</span> is defined as <span class="math inline">\(\Phi(\tau_k)\)</span>, which is the cumulative probability mass for the <span class="math inline">\(k^\text{th}\)</span> rating. The reason we have to subtract the area to the left of <span class="math inline">\(\Phi(\tau_{k - 1})\)</span> from <span class="math inline">\(\Phi(\tau_k)\)</span> is so we can isolate a relative probability from a cumulative probability. This applies in the same way for all the middle ratings–<code>2</code> through <code>5</code> in our case. For the first and last ratings (<code>1</code> and <code>6</code>), we might add two <em>virtual</em> thresholds <span class="math inline">\(-\infty\)</span> and <span class="math inline">\(\infty\)</span>, respectively. With the first rating, this means</p>
 <p><span class="math display">\[
 \begin{align*}
 p(\text{rating} = k | \{ \tau_k \}) &amp; = \Phi(\tau_1) - \Phi(\color{blue}{\tau_0}) \\
@@ -113,8 +113,7 @@ p(\text{rating} = k | \{ \tau_k \}) &amp; = \Phi(\color{blue}{\tau_{K + 1}}) - \
   &amp; = \color{blue}1 - \Phi(\tau_K).
 \end{align*}
 \]</span></p>
-<p>It might help to visualize this. Consider a case where we have a rating variable with 6 values (<code>1</code> through <code>6</code>), each with equal proportions
-(<span class="math inline">\(1 / 6 \approx .167\)</span>). Here’s what that could look like mapped onto <span class="math inline">\(\Phi\)</span>.</p>
+<p>It might help to visualize this. Consider a case where we have a rating variable with 6 values (<code>1</code> through <code>6</code>), each with equal proportions, <span class="math inline">\(1 / 6 \approx .167\)</span>. Here’s what that could look like mapped onto <span class="math inline">\(\Phi\)</span>.</p>
 <pre class="r"><code>tibble(z = seq(from = -3.75, to = 3.75, length.out = 1e3)) %&gt;% 
   mutate(d = dnorm(x = z, mean = 0, sd = 1)) %&gt;% 
   
@@ -199,7 +198,7 @@ p(\text{rating} = k | \{ \tau_k \}) &amp; = \Phi(\tau_k) - \Phi(\tau_{k - 1}) \\
 \tau_k &amp; \sim \mathcal N(0, 2),
 \end{align*}
 \]</span></p>
-<p>where the first line is the likelihood, which only contains the model parameters <span class="math inline">\(\tau_k\)</span>. The second line is a simple non-committal prior for the thresholds, which places <span class="math inline">\(95\%\)</span> of the prior probability mass for each threshold between <span class="math inline">\(-4\)</span> and <span class="math inline">\(4\)</span>. However, if we consider the plot above, we can come up with a less lazy default prior. If we want our starting assumption to be a uniform distribution between our <code>rating</code> data, we could update the model to</p>
+<p>where the first line is the likelihood, which only contains the model parameters <span class="math inline">\(\tau_k\)</span>. The second line is a simple non-committal prior for the thresholds, which places <span class="math inline">\(95\%\)</span> of the prior probability mass for each threshold between <span class="math inline">\(-4\)</span> and <span class="math inline">\(4\)</span>. However, if we consider the plot above, we can come up with default prior that are a little less lazy. If we want our starting assumption to be a uniform distribution between our <code>rating</code> data, we could update the model to</p>
 <p><span class="math display">\[
 \begin{align*}
 p(\text{rating} = k | \{ \tau_k \}) &amp; = \Phi(\tau_k) - \Phi(\tau_{k - 1}) \\
@@ -493,7 +492,7 @@ n_male   &lt;- d %&gt;% filter(male == 1)   %&gt;% summarise(n = n()) %&gt;% pul
   labs(title = &quot;Latent distributions for fit2&quot;,
        subtitle = expression(&quot;The reference category is female. &quot;*beta[1]*&quot; is reflected in the leftward shift for men.&quot;))</code></pre>
 <p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-22-1.png" width="672" /></p>
-<p>As before, we might also want to use our conditional <code>fit2</code> to compute the population means for <code>ratiing</code>, by sex. We can extend our workflow from before by including the posterior draws for <span class="math inline">\(\beta_1\)</span>. Then when we use the <code>pnorm()</code> functions to compute the conditional probabilities, we’ll have to use <span class="math inline">\(\beta_1\)</span> to adjust the values in the <code>mean</code> argument within <code>pnorm()</code> to account for the <span class="math inline">\(\mu_i = \beta_1 \text{male}_i\)</span> portion of our statistical model.</p>
+<p>As before, we might also want to use our conditional <code>fit2</code> to compute the population means for <code>rating</code>, by sex. We can extend our workflow from before by including the posterior draws for <span class="math inline">\(\beta_1\)</span>. Then when we use the <code>pnorm()</code> functions to compute the conditional probabilities, we’ll have to use <span class="math inline">\(\beta_1\)</span> to adjust the values in the <code>mean</code> argument within <code>pnorm()</code> to account for the <span class="math inline">\(\mu_i = \beta_1 \text{male}_i\)</span> portion of our statistical model.</p>
 <pre class="r"><code>as_draws_df(fit2) %&gt;% 
   select(.draw, starts_with(&quot;b_&quot;)) %&gt;% 
   set_names(&quot;.draw&quot;, str_c(&quot;tau[&quot;, 1:5, &quot;]&quot;), &quot;beta[1]&quot;) %&gt;% 
@@ -538,11 +537,11 @@ n_male   &lt;- d %&gt;% filter(male == 1)   %&gt;% summarise(n = n()) %&gt;% pul
 <p>If we have reason to presume differences in latent standard deviations, we can explicitly add <span class="math inline">\(\sigma\)</span> in the likelihood and then attach a linear model to <span class="math inline">\(\log(\sigma_i)\)</span>. As in other contexts, it’s generally a good idea to model <span class="math inline">\(\log(\sigma_i)\)</span> instead of <span class="math inline">\(\sigma_i\)</span> because the former will ensure the model will only predict positive values. This would look like</p>
 <p><span class="math display">\[
 \begin{align*}
-p(\text{rating} = k | \{ \tau_k \}, \mu_i, \color{blue}{\sigma_i}) &amp; = \Phi([\tau_k - \mu_i] \color{blue}{/ \sigma_i}) - \Phi([\tau_{k - 1} - \mu_i] \color{blue}{/ \sigma_i}) \\
+p(\text{rating} = k | \{ \tau_k \}, \mu_i, \color{blue}{\sigma_i} ) &amp; = \Phi([\tau_k - \mu_i] \color{blue}{/ \sigma_i}) - \Phi([\tau_{k - 1} - \mu_i] \color{blue}{/ \sigma_i} ) \\
 \mu_i &amp; = \beta_0 + \sum_1^l \beta_l x_l \\
-\color{blue}{\log(\sigma_i)} &amp; \color{blue}= \color{blue}{\eta_0 + \sum_1^m \eta_m x_m} \\
+\color{blue}{\log(\sigma_i)} &amp; = \color{blue}{\eta_0 + \sum_1^m \eta_m x_m} \\
 \beta_0 &amp; = 0 \\
-\color{blue}{\eta_0} &amp; \color{blue}= \color{blue}0,
+\color{blue}{\eta_0} &amp; = \color{blue}0,
 \end{align*}
 \]</span></p>
 <p>where <span class="math inline">\(\eta_0\)</span> is the intercept for the logged latent standard deviation and <span class="math inline">\(\sum_1^m \eta_m x_m\)</span> is the additive effect of the full set of <span class="math inline">\(m\)</span> predictor variables and their <span class="math inline">\(\eta_m\)</span> coefficients. Now <span class="math inline">\(\eta_0\)</span> is set to zero for identification purposes. Recall that <span class="math inline">\(\exp(0) = 1\)</span>, which means that the default is still that <span class="math inline">\(\sigma_i = 1\)</span> when all predictors are set to zero. With this model, it is possible the <span class="math inline">\(l\)</span> and <span class="math inline">\(m\)</span> predictor sets are the same. Here we differentiate between them just to make clear that they can differ, as needed.</p>
