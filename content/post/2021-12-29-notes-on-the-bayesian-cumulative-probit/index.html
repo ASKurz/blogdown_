@@ -382,9 +382,9 @@ p(\text{rating} = k | \{ \tau_k \}) &amp; = \Phi(\tau_k) - \Phi(\tau_{k - 1}) \\
 <p>If we would like to add a predictor, the most natural way is probably to explicitly add <span class="math inline">\(\mu\)</span> in the likelihood and then attach a linear model to <span class="math inline">\(\mu_i\)</span>. This would look like</p>
 <p><span class="math display">\[
 \begin{align*}
-p(\text{rating} = k | \{ \tau_k \}, \color{blue}{\mu_i}) &amp; = \Phi(\tau_k \color{blue}{- \mu_i}) - \Phi(\tau_{k - 1} \color{blue}{- \mu_i}) \\
-\color{blue}{\mu_i} &amp; \color{blue}= \color{blue}{\beta_0 + \sum_1^l \beta_l x_l} \\
-\color{blue}{\beta_0} &amp; \color{blue}= \color{blue}0,
+p(\text{rating} = k | \{ \tau_k \}, \color{blue}{\mu_i}) &amp; = \Phi(\tau_k \color{blue}{- \mu_i} \color{black}{) - \Phi(\tau_{k - 1}} \color{blue}{- \mu_i} \color{black}) \\
+\color{blue}{\mu_i} &amp; = \color{blue}{\beta_0 + \sum_1^l \beta_l x_l} \\
+\color{blue}{\beta_0} &amp; = \color{blue}0,
 \end{align*}
 \]</span></p>
 <p>where <span class="math inline">\(\beta_0\)</span> is the intercept for the latent mean and <span class="math inline">\(\sum_1^l \beta_l x_l\)</span> is the additive effect of the full set of <span class="math inline">\(l\)</span> predictor variables and their <span class="math inline">\(\beta_l\)</span> coefficients. Now <span class="math inline">\(\beta_0\)</span> is the parameter we set to zero for identification purposes. As before, the <span class="math inline">\(\sigma\)</span> parameter will remain set to <span class="math inline">\(1\)</span>.</p>
@@ -537,7 +537,7 @@ n_male   &lt;- d %&gt;% filter(male == 1)   %&gt;% summarise(n = n()) %&gt;% pul
 <p>If we have reason to presume differences in latent standard deviations, we can explicitly add <span class="math inline">\(\sigma\)</span> in the likelihood and then attach a linear model to <span class="math inline">\(\log(\sigma_i)\)</span>. As in other contexts, it’s generally a good idea to model <span class="math inline">\(\log(\sigma_i)\)</span> instead of <span class="math inline">\(\sigma_i\)</span> because the former will ensure the model will only predict positive values. This would look like</p>
 <p><span class="math display">\[
 \begin{align*}
-p(\text{rating} = k | \{ \tau_k \}, \mu_i, \color{blue}{\sigma_i} ) &amp; = \Phi([\tau_k - \mu_i] \color{blue}{/ \sigma_i}) - \Phi([\tau_{k - 1} - \mu_i] \color{blue}{/ \sigma_i} ) \\
+p(\text{rating} = k | \{ \tau_k \}, \mu_i, \color{blue}{\sigma_i} \color{black}{)} &amp; = \color{black}{\Phi([\tau_k - \mu_i]} \color{blue}{/ \sigma_i} \color{black}{) - \Phi([\tau_{k - 1} - \mu_i]} \color{blue}{/ \sigma_i} \color{black}{)} \\
 \mu_i &amp; = \beta_0 + \sum_1^l \beta_l x_l \\
 \color{blue}{\log(\sigma_i)} &amp; = \color{blue}{\eta_0 + \sum_1^m \eta_m x_m} \\
 \beta_0 &amp; = 0 \\
@@ -559,9 +559,9 @@ p(\text{rating} = k | \{ \tau_k \}, \mu_i, \color{blue}{\sigma_i} ) &amp; = \Phi
 <p>However, things become more complicated when you want to model <span class="math inline">\(\alpha\)</span>. First, here’s the updated likelihood:</p>
 <p><span class="math display">\[
 \begin{align*}
-p(\text{rating} = k | \{ \tau_k \}, \mu_i, \color{blue}{\alpha_i}) &amp; = \Phi(\color{blue}{\alpha_i}[\tau_k - \mu_i]) - \Phi(\color{blue}{\alpha_i}[\tau_{k - 1} - \mu_i]) \\
+p(\text{rating} = k | \{ \tau_k \}, \mu_i, \color{blue}{\alpha_i} \color{black}{)} &amp; = \Phi(\color{blue}{\alpha_i} \color{black}{[\tau_k - \mu_i]) - \Phi( }\color{blue}{\alpha_i} \color{black}{[\tau_{k - 1} - \mu_i])} \\
 \mu_i &amp; = \beta_0 + \sum_1^l \beta_l x_l \\
-\log(\color{blue}{\alpha_i}) &amp; = \eta_0 + \sum_1^m \eta_m x_m \\
+\log(\color{blue}{\alpha_i} \color{black}{)} &amp; = \eta_0 + \sum_1^m \eta_m x_m \\
 \beta_0 &amp; = 0 \\
 \eta_0 &amp; = 0.
 \end{align*}
@@ -786,14 +786,14 @@ fit3 &lt;- brm(
 <p><span class="math display">\[
 \begin{align*}
 p(\text{rating} = k | \{ \tau_k \}, \mu_i) &amp; = \Phi(\tau_k - \mu_i) - \Phi(\tau_{k - 1} - \mu_i) \\
-\mu_i          &amp; = 0 \color{blue}{+ u_i} \\ 
-\color{blue}{u_i} &amp; \color{blue}\sim \color{blue}{\mathcal N(0, \sigma_u)} \\
+\mu_i          &amp; = 0 \color{blue}+ \color{blue}{u_i} \\ 
+\color{blue}{u_i} &amp; \sim \color{blue}{\mathcal N(0, \sigma_u)} \\
 \tau_1 &amp; \sim \mathcal N(-0.97, 1) \\
 \tau_2 &amp; \sim \mathcal N(-0.43, 1) \\
 \tau_3 &amp; \sim \mathcal N(0, 1) \\
 \tau_4 &amp; \sim \mathcal N(0.43, 1) \\
 \tau_5 &amp; \sim \mathcal N(0.97, 1) \\
-\color{blue}{\sigma_u} &amp; \color{blue}\sim \color{blue}{\operatorname{Exponential}(1)},
+\color{blue}{\sigma_u} &amp; \sim \color{blue}{\operatorname{Exponential}(1)},
 \end{align*}
 \]</span></p>
 <p>where we’ve dropped the <code>male</code> predictor and the entire linear model for <span class="math inline">\(\log(\alpha_i)\)</span> for the sake of simplicity. They’ll come back in a bit. Given the baseline fixed-effects portion of the model is still on the standardized-normal metric, the good old <span class="math inline">\(\operatorname{Exponential}(1)\)</span> prior is a good choice for the level-2 standard deviation <span class="math inline">\(\sigma_u\)</span>. For more on the <span class="math inline">\(\operatorname{Exponential}(1)\)</span> prior, see <span class="citation"><a href="#ref-mcelreathStatisticalRethinkingBayesian2020" role="doc-biblioref">McElreath</a> (<a href="#ref-mcelreathStatisticalRethinkingBayesian2020" role="doc-biblioref">2020</a>)</span>.</p>
@@ -857,14 +857,14 @@ fit4 &lt;- brm(
 p(\text{rating} = k | \{ \tau_k \}, \mu_{i\color{blue}j}) &amp; = \Phi(\tau_k - \mu_{i\color{blue}j}) - \Phi(\tau_{k - 1} - \mu_{i\color{blue}j}) \\
 \mu_{i\color{blue}j} &amp; = 0 + u_i \color{blue}{+ v_j} \\ 
 u_i               &amp; \sim \mathcal N(0, \sigma_u) \\
-\color{blue}{v_j} &amp; \color{blue}\sim \color{blue}{\mathcal N(0, \sigma_v)} \\
+\color{blue}{v_j} &amp; \sim \color{blue}{\mathcal N(0, \sigma_v)} \\
 \tau_1 &amp; \sim \mathcal N(-0.97, 1) \\
 \tau_2 &amp; \sim \mathcal N(-0.43, 1) \\
 \tau_3 &amp; \sim \mathcal N(0, 1) \\
 \tau_4 &amp; \sim \mathcal N(0.43, 1) \\
 \tau_5 &amp; \sim \mathcal N(0.97, 1) \\
 \sigma_u               &amp; \sim \operatorname{Exponential}(1) \\
-\color{blue}{\sigma_v} &amp; \color{blue}\sim \color{blue}{\operatorname{Exponential}(1)}.
+\color{blue}{\sigma_v} &amp; \sim \color{blue}{\operatorname{Exponential}(1)}.
 \end{align*}
 \]</span></p>
 <p>At this point, we’re now fitting a Bayesian IRT model along the lines Bürkner showcased in his <span class="citation">(<a href="#ref-burknerBayesianItemResponse2020" role="doc-biblioref">2020a</a>)</span> tutorial. We have person-level parameters in <span class="math inline">\(u_i\)</span> and item-level parameters in <span class="math inline">\(v_j\)</span>.</p>
@@ -1067,14 +1067,14 @@ pp_check(fit6, type = &quot;bars_grouped&quot;, group = &quot;item&quot;,
 <h3>Randomly-varying latent standard deviations.</h3>
 <p>If the latent means can vary randomly, the latent dispersion parameters can vary randomly, too. Now <span class="math inline">\(\log(\alpha_{ij})\)</span> will vary across <span class="math inline">\(i\)</span> persons and <span class="math inline">\(j\)</span> questions with the Bayesian ordinal IRT model</p>
 <p><span class="math display">\[\begin{align*}
-\small{p(\text{rating} = k | \{ \tau_{kj} \}, \mu_{ij}, \color{blue}{\alpha_{ij}})} &amp; \small{= \Phi(\color{blue}{\alpha_{ij}}[\tau_{kj} - \mu_{ij}]) - \Phi(\color{blue}{\alpha_{ij}}[\tau_{k - 1,j} - \mu_{ij}])} \\
+\small{p(\text{rating} = k | \{ \tau_{kj} \}, \mu_{ij}, \color{blue}{\alpha_{ij}} \color{black}{)}} &amp; = \small{\Phi(\color{blue}{\alpha_{ij}} \color{black}{[\tau_{kj} - \mu_{ij}]) - \Phi(} \color{blue}{\alpha_{ij}} \color{black}{[\tau_{k - 1,j} - \mu_{ij}])}} \\
 \mu_{ij} &amp; = 0 + u_i + v_j \\ 
-\color{blue}{\log(\alpha_{ij})} &amp; \color{blue}= \color{blue}{0 + w_i + x_j} \\
+\color{blue}{\log(\alpha_{ij})} &amp; = \color{blue}{0 + w_i + x_j} \\
 u_i &amp; \sim \mathcal N(0, \sigma_u) \\
 v_j &amp; \sim \mathcal N(0, \sigma_v) \\
 
-\color{blue}{w_i} &amp; \color{blue}\sim \color{blue}{\mathcal N(0, \sigma_w)} \\
-\color{blue}{x_j} &amp; \color{blue}\sim \color{blue}{\mathcal N(0, \sigma_x)} \\
+\color{blue}{w_i} &amp; \sim \color{blue}{\mathcal N(0, \sigma_w)} \\
+\color{blue}{x_j} &amp; \sim \color{blue}{\mathcal N(0, \sigma_x)} \\
 
 \tau_{1j} &amp; \sim \mathcal N(-0.97, 1) \\
 \tau_{2j} &amp; \sim \mathcal N(-0.43, 1) \\
@@ -1083,8 +1083,8 @@ v_j &amp; \sim \mathcal N(0, \sigma_v) \\
 \tau_{5j} &amp; \sim \mathcal N(0.97, 1) \\
 \sigma_u &amp; \sim \operatorname{Exponential}(1) \\
 \sigma_v &amp; \sim \operatorname{Exponential}(1) \\
-\color{blue}{\sigma_w} &amp; \color{blue}\sim \color{blue}{\operatorname{Exponential}(1)} \\
-\color{blue}{\sigma_x} &amp; \color{blue}\sim \color{blue}{\operatorname{Exponential}(1)}.
+\color{blue}{\sigma_w} &amp; \sim \color{blue}{\operatorname{Exponential}(1)} \\
+\color{blue}{\sigma_x} &amp; \sim \color{blue}{\operatorname{Exponential}(1)}.
 \end{align*}\]</span></p>
 <p>Though the <span class="math inline">\(\operatorname{Exponential}(1)\)</span> might be a good place to start with our new <span class="math inline">\(\sigma_w\)</span> and <span class="math inline">\(\sigma_x\)</span>, it might be best to ponder this a bit. Recall these are for the distribution of logged discrimination parameters. Since I’m no statistician or psychometrician, I’m not even sure what that means, which makes it hard to intuit whether the <span class="math inline">\(\operatorname{Exponential}(1)\)</span> prior makes sense for my data. A plot might help. Here we’ll simulate <span class="math inline">\(100{,}000\)</span> draws from the <span class="math inline">\(\operatorname{Exponential}(1)\)</span> prior, use those draws to simulate <span class="math inline">\(w_i\)</span> values from <span class="math inline">\(\mathcal N(0, \sigma_w)\)</span>, and then plot that distribution in the <span class="math inline">\(w_i\)</span>, <span class="math inline">\(\exp(w_i)\)</span> and <span class="math inline">\(1/\exp(w_i)\)</span> metrics.</p>
 <pre class="r"><code>set.seed(1)
@@ -1147,8 +1147,8 @@ x_j &amp; \sim \mathcal N(0, \sigma_x) \\
 \tau_{5j} &amp; \sim \mathcal N(0.97, 1) \\
 \sigma_u &amp; \sim \operatorname{Exponential}(1) \\
 \sigma_v &amp; \sim \operatorname{Exponential}(1) \\
-\sigma_w &amp; \sim \operatorname{Exponential}(\color{blue}{1 / 0.463}) \\
-\sigma_x &amp; \sim \operatorname{Exponential}(\color{blue}{1 / 0.463}).
+\sigma_w &amp; \sim \operatorname{Exponential}(\color{blue}{1 / 0.463} \color{black}{)} \\
+\sigma_x &amp; \sim \operatorname{Exponential}(\color{blue}{1 / 0.463} \color{black}{).}
 \end{align*}\]</span></p>
 <p>Put those new priors to work and fit the model.</p>
 <pre class="r"><code># 5.223564 mins
@@ -1378,13 +1378,13 @@ m_sum_score</code></pre>
 \mu_{ij} &amp; = 0 + u_i + v_j \\ 
 \log(\alpha_{ij}) &amp; = 0 + w_i + x_j \\
 
-\begin{bmatrix} u_i \\ w_i \end{bmatrix} &amp; \sim \mathcal{MVN}(\mathbf 0, \mathbf{S_a \color{blue}{R_a}S_a}) \\
-\begin{bmatrix} v_j \\ x_j \end{bmatrix} &amp; \sim \mathcal{MVN}(\mathbf 0, \mathbf{S_b \color{blue}{R_b}S_b}) \\
+\begin{bmatrix} u_i \\ w_i \end{bmatrix} &amp; \sim \mathcal{MVN}(\mathbf 0, \mathbf{S_a \color{blue}{R_a} \color{black}{S_a}}) \\
+\begin{bmatrix} v_j \\ x_j \end{bmatrix} &amp; \sim \mathcal{MVN}(\mathbf 0, \mathbf{S_b \color{blue}{R_b} \color{black}{S_b}}) \\
 
 \mathbf{S_a} &amp; = \begin{bmatrix} \sigma_u &amp; 0 \\ 0 &amp; \sigma_w \end{bmatrix} \\
 \mathbf{S_b} &amp; = \begin{bmatrix} \sigma_v &amp; 0 \\ 0 &amp; \sigma_x \end{bmatrix} \\
-\color{blue}{\mathbf{R_a}} &amp; \color{blue}= \color{blue}{\begin{bmatrix} 1 &amp; \rho_a \\ \rho_a &amp; 1 \end{bmatrix}} \\
-\color{blue}{\mathbf{R_b}} &amp; \color{blue}= \color{blue}{\begin{bmatrix} 1 &amp; \rho_b \\ \rho_b &amp; 1 \end{bmatrix}} \\
+\color{blue}{\mathbf{R_a}} &amp; = \color{blue}{\begin{bmatrix} 1 &amp; \rho_a \\ \rho_a &amp; 1 \end{bmatrix}} \\
+\color{blue}{\mathbf{R_b}} &amp; = \color{blue}{\begin{bmatrix} 1 &amp; \rho_b \\ \rho_b &amp; 1 \end{bmatrix}} \\
 
 \tau_{1j} &amp; \sim \mathcal N(-0.97, 1) \\
 \tau_{2j} &amp; \sim \mathcal N(-0.43, 1) \\
@@ -1395,8 +1395,8 @@ m_sum_score</code></pre>
 \sigma_v &amp; \sim \operatorname{Exponential}(1) \\
 \sigma_w &amp; \sim \operatorname{Exponential}(1 / 0.463) \\
 \sigma_x &amp; \sim \operatorname{Exponential}(1 / 0.463) \\
-\color{blue}{\rho_a} &amp; \color{blue}\sim \color{blue}{\operatorname{LKJ}(2)} \\
-\color{blue}{\rho_b} &amp; \color{blue}\sim \color{blue}{\operatorname{LKJ}(2)},
+\color{blue}{\rho_a} &amp; \sim \color{blue}{\operatorname{LKJ}(2)} \\
+\color{blue}{\rho_b} &amp; \sim \color{blue}{\operatorname{LKJ}(2)} \color{black}{,}
 \end{align*}\]</span></p>
 <p>where though our four random parameters are now modeled as two bivariate-normal pairs, there really are only two new parameters: <span class="math inline">\(\rho_a\)</span> and <span class="math inline">\(\rho_b\)</span>. The LKJ priors for our two new parameters would be weakly regularizing. In my experience, so far, adding those two level-2 correlations can make for notably longer fitting times and they often result in computational complications like the need to further adjust <code>adapt_delta</code> and so on. So in the interest of space, I’m not going to fit this model. But it’s always a possibility to consider.</p>
 </div>
@@ -1406,8 +1406,8 @@ m_sum_score</code></pre>
 <p><span class="math display">\[
 \begin{align*}
 \small{p(\text{rating} = k | \{ \tau_{kj} \}, \mu_{ij}, \alpha_{ij})} &amp; \small{= \Phi(\alpha_{ij}[\tau_{kj} - \mu_{ij}]) - \Phi(\alpha_{ij}[\tau_{k - 1,j} - \mu_{ij}])} \\
-\mu_{ij}          &amp; = \color{blue}{\beta_1 \text{male}_i} + u_i + v_j \\ 
-\log(\alpha_{ij}) &amp; = \color{blue}{\eta_1 \text{male}_i}  + w_i + x_j \\
+\mu_{ij}          &amp; = \color{blue}{\beta_1 \text{male}_i} \color{black}{+} u_i + v_j \\ 
+\log(\alpha_{ij}) &amp; = \color{blue}{\eta_1 \text{male}_i} \color{black}{+} w_i + x_j \\
 u_i &amp; \sim \mathcal N(0, \sigma_u) \\
 v_j &amp; \sim \mathcal N(0, \sigma_v) \\
 w_i &amp; \sim \mathcal N(0, \sigma_w) \\
@@ -1417,8 +1417,8 @@ x_j &amp; \sim \mathcal N(0, \sigma_x) \\
 \tau_{3j} &amp; \sim \mathcal N(0, 1) \\
 \tau_{4j} &amp; \sim \mathcal N(0.43, 1) \\
 \tau_{5j} &amp; \sim \mathcal N(0.97, 1) \\
-\color{blue}{\beta_1} &amp; \color{blue}\sim \color{blue}{\mathcal N(0, 1)} \\
-\color{blue}{\eta_1}  &amp; \color{blue}\sim \color{blue}{\mathcal N(0, 0.347)} \\
+\color{blue}{\beta_1} &amp; \sim \color{blue}{\mathcal N(0, 1)} \\
+\color{blue}{\eta_1}  &amp; \sim \color{blue}{\mathcal N(0, 0.347)} \\
 \sigma_u &amp; \sim \operatorname{Exponential}(1) \\
 \sigma_v &amp; \sim \operatorname{Exponential}(1) \\
 \sigma_w &amp; \sim \operatorname{Exponential}(1 / 0.463) \\
