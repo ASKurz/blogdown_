@@ -177,6 +177,8 @@ In retrospect, it might have been a good idea to have considered simulating the 
 
 The analysis from the pilot data suggested a post-treatment $d = 0.35$, $95\% \text{ CI} [0.05, 0.65]$. In the power analysis, we used $d = 0.2$ because (a) we wanted a conservative estimate and (b) it was the smallest effect size we were interested in reliably detecting.
 
+Relatedly, the results of this quick-and-dirty power analysis are focused in that I provide a single number ($N = 218$) required to reliably detect a single effect size ($d = 0.2$) for a single set of assumptions about missing data ($4\%$ at pre-treatment and $10\%$ at post-treatment). A slower and less-dirty analysis could return the required sample size for different combinations of effect sizes and missing-date rates. You might present such information with a series of power-curve plots or nicely-formatted charts.
+
 Had I intended to share a report like this for a broader audience, possibly as supplemental material for a paper, I might have explained my custom `sim_lmer()` code. Since this was originally meant for internal use, my main goal was to present the results with an extra bit of transparency and so that even if I somehow lost my original files, I would always have the basics of the code documented in the report I emailed to my boss.
 
 I should also add that even though it isn't spelled out in the code, I came to the $N = 218$ figure by iterating over several different sample size options. It seemed unnecessary to clutter up the file with those details.
