@@ -12,7 +12,7 @@ In my experience, Bayesian methods are easiest to use within the **R** computing
 
 * [*Applied Longitudinal Data Analysis in brms and the tidyverse*, version 0.0.2](https://bookdown.org/content/4253/) is a translation of the examples and figures from Singer and Willett's classic [*Applied longitudinal data analysis: Modeling change and event occurrence*](https://www.oxfordscholarship.com/view/10.1093/acprof:oso/9780195152968.001.0001/acprof-9780195152968). Caution: this project is in the very early stages.
 
-* [*Doing Bayesian data analysis in brms and the tidyverse*, version 0.4.0](https://bookdown.org/content/3686) is a translation of the code from the second edition of John K. Kruschke's [*Doing Bayesian Data Analysis*](https://sites.google.com/site/doingbayesiandataanalysis/).
+* [*Doing Bayesian data analysis in brms and the tidyverse*, version 1.0.0](https://bookdown.org/content/3686) is a translation of the code from the second edition of John K. Kruschke's [*Doing Bayesian Data Analysis*](https://sites.google.com/site/doingbayesiandataanalysis/).
 
 * [*Recoding Introduction to Mediation, Moderation, and Conditional Process Analysis*, version 1.2.0](https://bookdown.org/content/b472c7b3-ede5-40f0-9677-75c3704c7e5c/) is a translation of the code from the second edition of Andrew F. Hayes's [*Introduction to Mediation, Moderation, and Conditional Process Analysis*](http://afhayes.com/introduction-to-mediation-moderation-and-conditional-process-analysis.html).
 
