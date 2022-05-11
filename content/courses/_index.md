@@ -11,7 +11,7 @@ type: page
 Within the [Department of Applied Behavior Analysis at The Chicago School of Professional Psychology](https://www.thechicagoschool.edu/los-angeles/programs/phd-applied-behavior-analysis/), I have taught
 
 * one semester of *Statistical Analysis* (PA 652), a graduate level introduction to the Generalized Linear Mixed Model ([https://osf.io/3g8vf/](https://osf.io/3g8vf/)); and
-* one semester of *Research in Psychology and Education* (PA 650), an introduction to research design through the lens of the Generalized Linear Mixed Model ([https://osf.io/wcm6r/](https://osf.io/wcm6r/));
+* one semester of *Research in Psychology and Education* (PA 650), an introduction to research design through the lens of the Generalized Linear Mixed Model ([https://osf.io/wcm6r/](https://osf.io/wcm6r/)).
 
 ## University of Mississippi
 
