@@ -68,7 +68,7 @@ You'll want to be familiar with single-level and multilevel regression. For freq
 
 You should have a basic grounding in group-based experimental design. Given my background in clinical psychology, I recommend Shadish and colleagues' [-@shadish2002Experimental] *Experimental and quasi-experimental designs for generalized causal inference* or Kazdin's [-@kazdin2017ResearchDesign] *Research design in clinical psychology*. You might also check out Taback's [-@taback2022DesignAndAnalysis] *Design and analysis of experiments and observational studies using R* and its free companion website at [https://designexptr.org/index.html](https://designexptr.org/index.html).
 
-All code is in **R** [@R-base]. The data were simulated with help from the **faux** package [@R-faux], and the data wrangling and plotting relied heavily on the **tidyverse** [@R-tidyverse; @wickhamWelcomeTidyverse2019] and **ggdist** [@R-ggdist]. The multilevel models were fit with **lme4** [@R-lme4; @batesFittingLinearMixedeffects2015], and we post-processed those models with help from the **marginaleffects** package [@R-marginaleffects]. The guts of our simulation study also pull come functionality from the **broom** [@R-broom] and **broom.mixed** [@R-broom.mixed] packages.
+All code is in **R** [@R-base]. The data were simulated with help from the **faux** package [@R-faux], and the data wrangling and plotting relied heavily on the **tidyverse** [@R-tidyverse; @wickhamWelcomeTidyverse2019] and **ggdist** [@R-ggdist]. The multilevel models were fit with **lme4** [@R-lme4; @batesFittingLinearMixedeffects2015], and we post-processed those models with help from the **marginaleffects** package [@R-marginaleffects]. The guts of our simulation study also pull some functionality from the **broom** [@R-broom] and **broom.mixed** [@R-broom.mixed] packages.
 
 Load the primary **R** packages and adjust the global plotting theme.
 
@@ -168,7 +168,7 @@ The simple change-score model follows the formula
 $$
 \begin{align*}
 \text{post}_i - \text{pre}_i & \sim \mathcal N(\mu_i, \sigma_\epsilon) \\
-\mu_i & = \beta_0 + \color{red}{\beta_1} \color{black}{\text{tx}_i,}
+\mu_i & = \beta_0 + {\color{red}{\beta_1}} \text{tx}_i,
 \end{align*}
 $$
 
@@ -179,7 +179,7 @@ The terribly-named ANCOVA model follows the formula
 $$
 \begin{align*}
 \text{post}_i  & \sim \mathcal N(\mu_i, \sigma_\epsilon) \\
-\mu_i & = \beta_0 + \color{red}{\beta_1} \color{black}{\text{tx}_i + \beta_2 \text{pre}_i,}
+\mu_i & = \beta_0 + {\color{red}{\beta_1}} \text{tx}_i + \beta_2 \text{pre}_i,
 \end{align*}
 $$
 
@@ -215,7 +215,7 @@ The multilevel variant of the simple change-score model follows the formula
 $$
 \begin{align*}
 y_{it} & \sim \mathcal N(\mu_{it}, \sigma_\epsilon) \\
-\mu_{it} & = \beta_0 + \beta_1 \text{tx}_{it} + \beta_2 \text{time}_{it} + \color{red}{\beta_3} \color{black}{\text{tx}_{it}\text{time}_{it} + u_{0i}} \\
+\mu_{it} & = \beta_0 + \beta_1 \text{tx}_{it} + \beta_2 \text{time}_{it} + {\color{red}{\beta_3}} \text{tx}_{it}\text{time}_{it} + u_{0i} \\
 u_{0i} & \sim \mathcal N(0, \sigma_0),
 \end{align*}
 $$
@@ -227,7 +227,7 @@ The multilevel variant of the ANCOVA model follows the formula
 $$
 \begin{align*}
 y_{it} & \sim \mathcal N(\mu_{it}, \sigma_\epsilon) \\
-\mu_{it} & = \beta_0 + \beta_1 \text{time}_{it} + \color{red}{\beta_2} \color{black}{\text{tx}_{it}\text{time}_{it} + u_{0i}} \\
+\mu_{it} & = \beta_0 + \beta_1 \text{time}_{it} + {\color{red}{\beta_2}} \text{tx}_{it}\text{time}_{it} + u_{0i} \\
 u_{0i} & \sim \mathcal N(0, \sigma_0),
 \end{align*}
 $$
