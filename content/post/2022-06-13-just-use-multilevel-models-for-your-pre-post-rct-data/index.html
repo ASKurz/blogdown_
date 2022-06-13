@@ -57,7 +57,7 @@ link-citations: yes
 <h3>There may be disappointment.</h3>
 <p>I’m not going to dive deeply into the pre/post RCT methods literature, here. This post is an outgrowth of the many helpful exchanges in this twitter thread:</p>
 <p>{{% tweet "1533905226519937024" %}}</p>
-<p>For your own deep dive into the topic, you could spiderweb out from any of the great resources listed in the thread. For me, the most influential papers on my thinking, and thus on this post, were by <span class="citation">Van Breukelen (<a href="#ref-vanBreukelen2013ancova" role="doc-biblioref">2013</a>)</span> and <span class="citation">Bodner &amp; Bliese (<a href="#ref-bodner2018Detecting" role="doc-biblioref">2018</a>)</span>.</p>
+<p>For your own deep dive into the topic, you could spiderweb out from any of the great resources listed in the thread. For me, the most influential papers on my thinking, and thus on this post, were by <span class="citation">van Breukelen (<a href="#ref-vanBreukelen2013ancova" role="doc-biblioref">2013</a>)</span> and <span class="citation">Bodner &amp; Bliese (<a href="#ref-bodner2018Detecting" role="doc-biblioref">2018</a>)</span>.</p>
 </div>
 <div id="i-make-assumptions." class="section level3">
 <h3>I make assumptions.</h3>
@@ -468,7 +468,7 @@ sim.8 &lt;- tibble(seed = 1:1000) %&gt;%
 ## 6 change estimate    0.8       1    
 ## 7 change std.error   0.4       1.00 
 ## 8 change std.error   0.8       1.00</code></pre>
-<p>For each level of <span class="math inline">\(\rho\)</span>, the correlations between the point estimates and the standard errors are 1 for the change-score models (single-level compared with multilevel). Even though their statistical formulas and <strong>R</strong>-function syntax look different, the single-level and multilevel versions of the change-score model are equivalent. For the ANCOVA models, the correlations are <span class="math inline">\(\gt .99\)</span> between the point estimates in the single-level and multilevel versions, for each level of <span class="math inline">\(\rho\)</span>, but they are a bit lower for the standard errors. so the conventional single-level ANCOVA model is not completely reproduced by its multilevel counterpart. But the two are very close and the results of this mini simulation study suggest the multilevel version is slightly better with respect to parameter bias and efficiency.</p>
+<p>For each level of <span class="math inline">\(\rho\)</span>, the correlations between the point estimates and the standard errors are 1 for the change-score models (single-level compared with multilevel). Even though their statistical formulas and <strong>R</strong>-function syntax look different, the single-level and multilevel versions of the change-score model are equivalent. For the ANCOVA models, the correlations are <span class="math inline">\(\gt .99\)</span> between the point estimates in the single-level and multilevel versions, for each level of <span class="math inline">\(\rho\)</span>, but they are a bit lower for the standard errors. So the conventional single-level ANCOVA model is not completely reproduced by its multilevel counterpart. But the two are very close and the results of this mini simulation study suggest the multilevel version is slightly better with respect to parameter bias and efficiency.</p>
 </div>
 <div id="i-prefer-the-multilevel-change-score-and-ancova-models" class="section level2">
 <h2>I prefer the multilevel change-score and ANCOVA models</h2>
@@ -687,7 +687,7 @@ Singer, J. D., &amp; Willett, J. B. (2003). <em>Applied longitudinal data analys
 Taback, N. (2022). <em>Design and analysis of experiments and observational studies using <span>R</span></em>. <span>Chapman and Hall/CRC</span>. <a href="https://doi.org/10.1201/9781003033691">https://doi.org/10.1201/9781003033691</a>
 </div>
 <div id="ref-vanBreukelen2013ancova" class="csl-entry">
-Van Breukelen, G. J. (2013). <span>ANCOVA</span> versus <span>CHANGE</span> from baseline in nonrandomized studies: <span>The</span> difference. <em>Multivariate Behavioral Research</em>, <em>48</em>(6), 895–922. <a href="https://doi.org/10.1080/00273171.2013.831743">https://doi.org/10.1080/00273171.2013.831743</a>
+van Breukelen, G. J. (2013). <span>ANCOVA</span> versus <span>CHANGE</span> from baseline in nonrandomized studies: <span>The</span> difference. <em>Multivariate Behavioral Research</em>, <em>48</em>(6), 895–922. <a href="https://doi.org/10.1080/00273171.2013.831743">https://doi.org/10.1080/00273171.2013.831743</a>
 </div>
 <div id="ref-R-tidyverse" class="csl-entry">
 Wickham, H. (2021). <em><span class="nocase">tidyverse</span>: <span>Easily</span> install and load the ’tidyverse’</em>. <a href="https://CRAN.R-project.org/package=tidyverse">https://CRAN.R-project.org/package=tidyverse</a>

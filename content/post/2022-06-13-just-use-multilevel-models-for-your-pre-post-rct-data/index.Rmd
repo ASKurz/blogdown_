@@ -404,7 +404,7 @@ bind_rows(
   summarise(correlation = cor(`glm()`, `lmer()`))
 ```
 
-For each level of $\rho$, the correlations between the point estimates and the standard errors are 1 for the change-score models (single-level compared with multilevel). Even though their statistical formulas and **R**-function syntax look different, the single-level and multilevel versions of the change-score model are equivalent. For the ANCOVA models, the correlations are $\gt .99$ between the point estimates in the single-level and multilevel versions, for each level of $\rho$, but they are a bit lower for the standard errors. so the conventional single-level ANCOVA model is not completely reproduced by its multilevel counterpart. But the two are very close and the results of this mini simulation study suggest the multilevel version is slightly better with respect to parameter bias and efficiency.
+For each level of $\rho$, the correlations between the point estimates and the standard errors are 1 for the change-score models (single-level compared with multilevel). Even though their statistical formulas and **R**-function syntax look different, the single-level and multilevel versions of the change-score model are equivalent. For the ANCOVA models, the correlations are $\gt .99$ between the point estimates in the single-level and multilevel versions, for each level of $\rho$, but they are a bit lower for the standard errors. So the conventional single-level ANCOVA model is not completely reproduced by its multilevel counterpart. But the two are very close and the results of this mini simulation study suggest the multilevel version is slightly better with respect to parameter bias and efficiency.
 
 ## I prefer the multilevel change-score and ANCOVA models
 
