@@ -1,0 +1,706 @@
+---
+title: Just use multilevel models for your pre/post RCT data
+author: A. Solomon Kurz
+date: '2022-06-13'
+slug: ''
+categories: []
+tags:
+  - effect size
+  - longitudinal
+  - multilevel
+  - lme4
+  - R
+  - RCT
+  - tidyverse
+  - tutorial
+subtitle: ''
+summary: ''
+authors: []
+lastmod: '2022-06-13T09:49:06-05:00'
+featured: no
+image:
+  caption: ''
+  focal_point: ''
+  preview_only: no
+projects: []
+bibliography: /Users/solomonkurz/Dropbox/blogdown/content/post/my_blog.bib
+biblio-style: apalike
+csl: /Users/solomonkurz/Dropbox/blogdown/content/post/apa.csl  
+link-citations: yes
+---
+
+
+
+<div id="what" class="section level2">
+<h2>What?</h2>
+<p>If you’d like to study the effectiveness of a clinical treatment, one of the simplest and most widely used approaches it to</p>
+<ol style="list-style-type: lower-alpha">
+<li>recruit participants from the target population,</li>
+<li>measure the outcome variable during a pre-treatment assessment,</li>
+<li>randomly assign participants into
+<ul>
+<li>a control condition or</li>
+<li>an experimental treatment condition,</li>
+</ul></li>
+<li>treat the participants in the treatment condition, and</li>
+<li>measure the outcome variable again at the conclusion of treatment.</li>
+</ol>
+<p>You can describe this as a pre/post control group design, which in many settings we also call this a randomized controlled trial (RCT<a href="#fn1" class="footnote-ref" id="fnref1"><sup>1</sup></a>). Although this design cannot return valid causal estimates of the treatment effect at the participant level, it can return a valid causal estimate of the average treatment effect, in the population<a href="#fn2" class="footnote-ref" id="fnref2"><sup>2</sup></a>. In the methodological literature, the two most popular ways for estimating the average treatment effect are</p>
+<ul>
+<li>the simple change-score model and</li>
+<li>the so-called ANCOVA model.</li>
+</ul>
+<p>Much of the discussion around these models has centered around nicely-behaved Gaussian-type data of the kind you’d analyze with OLS. For simplicity, we’ll stay close to that paradigm in this post. However, we’ve also benefited from the rise of multilevel models over the past few decades and it turns out both the change-score and ANCOVA models can be largely reproduced within a multilevel model framework.</p>
+<p>The goal of this post is to introduce the change-score and ANCOVA models, introduce their multilevel-model counterparts, and compare their behavior in a couple quick simulation studies.</p>
+<p>Spoiler alert: The multilevel variant of the ANCOVA model is the winner.</p>
+<div id="there-may-be-disappointment." class="section level3">
+<h3>There may be disappointment.</h3>
+<p>I’m not going to dive deeply into the pre/post RCT methods literature, here. This post is an outgrowth of the many helpful exchanges in this twitter thread:</p>
+<p>{{% tweet "1533905226519937024" %}}</p>
+<p>For your own deep dive into the topic, you could spiderweb out from any of the great resources listed in the thread. For me, the most influential papers on my thinking, and thus on this post, were by <span class="citation">Van Breukelen (<a href="#ref-vanBreukelen2013ancova" role="doc-biblioref">2013</a>)</span> and <span class="citation">Bodner &amp; Bliese (<a href="#ref-bodner2018Detecting" role="doc-biblioref">2018</a>)</span>.</p>
+</div>
+<div id="i-make-assumptions." class="section level3">
+<h3>I make assumptions.</h3>
+<p>You’ll want to be familiar with single-level and multilevel regression. For frequentist resources, I recommend the texts by <span class="citation">Ismay &amp; Kim (<a href="#ref-ismay2022StatisticalInference" role="doc-biblioref">2022</a>)</span>, <span class="citation">Roback &amp; Legler (<a href="#ref-roback2021beyond" role="doc-biblioref">2021</a>)</span>, <span class="citation">Hoffman (<a href="#ref-hoffmanLongitudinalAnalysisModeling2015" role="doc-biblioref">2015</a>)</span>, or <span class="citation">Singer &amp; Willett (<a href="#ref-singerAppliedLongitudinalData2003" role="doc-biblioref">2003</a>)</span>. For the Bayesians in the room, I recommend the texts by Gelman and colleagues <span class="citation">(<a href="#ref-gelmanRegressionOtherStories2020" role="doc-biblioref">2020</a>)</span>, McElreath <span class="citation">(<a href="#ref-mcelreathStatisticalRethinkingBayesian2020" role="doc-biblioref">2020</a>, <a href="#ref-mcelreathStatisticalRethinkingBayesian2015" role="doc-biblioref">2015</a>)</span>, or Kruschke <span class="citation">(<a href="#ref-kruschkeDoingBayesianData2015" role="doc-biblioref">2015</a>)</span>.</p>
+<p>You should have a basic grounding in group-based experimental design. Given my background in clinical psychology, I recommend Shadish and colleagues’ <span class="citation">(<a href="#ref-shadish2002Experimental" role="doc-biblioref">2002</a>)</span> <em>Experimental and quasi-experimental designs for generalized causal inference</em> or Kazdin’s <span class="citation">(<a href="#ref-kazdin2017ResearchDesign" role="doc-biblioref">2017</a>)</span> <em>Research design in clinical psychology</em>. You might also check out Taback’s <span class="citation">(<a href="#ref-taback2022DesignAndAnalysis" role="doc-biblioref">2022</a>)</span> <em>Design and analysis of experiments and observational studies using R</em> and its free companion website at <a href="https://designexptr.org/index.html">https://designexptr.org/index.html</a>.</p>
+<p>All code is in <strong>R</strong> <span class="citation">(<a href="#ref-R-base" role="doc-biblioref">R Core Team, 2021</a>)</span>. The data were simulated with help from the <strong>faux</strong> package <span class="citation">(<a href="#ref-R-faux" role="doc-biblioref">DeBruine, 2021</a>)</span>, and the data wrangling and plotting relied heavily on the <strong>tidyverse</strong> <span class="citation">(<a href="#ref-wickhamWelcomeTidyverse2019" role="doc-biblioref">Wickham et al., 2019</a>; <a href="#ref-R-tidyverse" role="doc-biblioref">Wickham, 2021</a>)</span> and <strong>ggdist</strong> <span class="citation">(<a href="#ref-R-ggdist" role="doc-biblioref">Kay, 2021</a>)</span>. The multilevel models were fit with <strong>lme4</strong> <span class="citation">(<a href="#ref-batesFittingLinearMixedeffects2015" role="doc-biblioref">Bates et al., 2015</a>, <a href="#ref-R-lme4" role="doc-biblioref">2021</a>)</span>, and we post-processed those models with help from the <strong>marginaleffects</strong> package <span class="citation">(<a href="#ref-R-marginaleffects" role="doc-biblioref">Arel-Bundock, 2022</a>)</span>. The guts of our simulation study also pull come functionality from the <strong>broom</strong> <span class="citation">(<a href="#ref-R-broom" role="doc-biblioref">Robinson et al., 2021</a>)</span> and <strong>broom.mixed</strong> <span class="citation">(<a href="#ref-R-broom.mixed" role="doc-biblioref">Bolker &amp; Robinson, 2022</a>)</span> packages.</p>
+<p>Load the primary <strong>R</strong> packages and adjust the global plotting theme.</p>
+<pre class="r"><code># load
+library(faux)
+library(lme4)
+library(ggplot2)
+library(tibble)
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(purrr)
+library(ggdist)
+library(marginaleffects)
+
+# adjust the plotting theme
+theme_set(
+  theme_linedraw() +
+  theme(panel.grid = element_blank(),
+        strip.background = element_rect(fill = &quot;grey92&quot;, color = &quot;grey92&quot;),
+        strip.text = element_text(color = &quot;black&quot;, size = 10))
+)</code></pre>
+</div>
+<div id="we-need-data." class="section level3">
+<h3>We need data.</h3>
+<p>We’re going to be simulating a lot of data in this post, so we may as well start off with a custom data-simulating function. The <code>sim_data()</code> function will simulate <code>pre</code>/<code>post</code> outcome data for two equal-sized groups. Cases for which <code>tx == 0</code> are like those in a static no-treatment control group and those for which <code>tx == 1</code> are like those in an active treatment group. The <code>pre</code> and <code>post</code> outcome data follow a bivariate standard normal distribution for which the correlation is determined by the <code>rho</code> argument. The average causal effect in the treatment group is governed by the <code>tau</code> argument.</p>
+<pre class="r"><code>sim_data &lt;- function(seed = 1, n = 100, tau = 1, rho = .5) {
+  
+  # population values
+  m &lt;- 0
+  s &lt;- 1
+  
+  # simulate and save
+  set.seed(seed)
+  
+  rnorm_multi(
+    n = n,
+    mu = c(m, m),
+    sd = c(s, s), 
+    r = rho, 
+    varnames = list(&quot;pre&quot;, &quot;post&quot;)
+  ) %&gt;% 
+    mutate(tx = rep(0:1, each = n / 2)) %&gt;% 
+    mutate(post = ifelse(tx == 1, post + tau, post))
+  
+}
+
+# how does it work?
+dw &lt;- sim_data(seed = 1, n = 100, tau = 1, rho = .5)
+
+# what is this?
+head(dw)</code></pre>
+<pre><code>##          pre        post tx
+## 1 -0.2323416 -0.85270825  0
+## 2  0.1379818  0.18009772  0
+## 3 -0.2682148 -1.17913643  0
+## 4  1.3025393  1.46056809  0
+## 5  0.6126544 -0.04193022  0
+## 6 -1.5941901  0.17309717  0</code></pre>
+<p>By using the default <code>tau = 1</code>, we have simulated sample data from which the population-level average treatment effect is in the metric of a Cohen’s <span class="math inline">\(d = 1\)</span>. The <code>sim_data()</code> function returns the data in the wide format, which will work fine for conventional single-level regression. Here we’ll convert the <code>dw</code> data to the long format, to accommodate the multilevel models.</p>
+<pre class="r"><code>dl &lt;- dw %&gt;% 
+  mutate(id = 1:n()) %&gt;% 
+  pivot_longer(pre:post,
+               names_to = &quot;wave&quot;,
+               values_to = &quot;y&quot;) %&gt;% 
+  mutate(time = ifelse(wave == &quot;pre&quot;, 0, 1))
+
+# what is this?
+head(dl)</code></pre>
+<pre><code>## # A tibble: 6 × 5
+##      tx    id wave       y  time
+##   &lt;int&gt; &lt;int&gt; &lt;chr&gt;  &lt;dbl&gt; &lt;dbl&gt;
+## 1     0     1 pre   -0.232     0
+## 2     0     1 post  -0.853     1
+## 3     0     2 pre    0.138     0
+## 4     0     2 post   0.180     1
+## 5     0     3 pre   -0.268     0
+## 6     0     3 post  -1.18      1</code></pre>
+<p>Now the outcome variable <code>y</code> is measured on the two levels of <code>time</code> and the synthetic participants are indexed in the <code>id</code> column. With the data in the long format, here are what the participant-level data and their group means look like, over <code>time</code>.</p>
+<pre class="r"><code>dl %&gt;% 
+  ggplot(aes(x = time, y = y)) +
+  geom_line(aes(group = id),
+            size = 1/4, alpha = 3/4) +
+  stat_smooth(method = &quot;lm&quot;, se = F, size = 3, formula = y ~ x) +
+  scale_x_continuous(breaks = 0:1, labels = c(&quot;0 (pre)&quot;, &quot;1 (post)&quot;), expand = c(0.1, 0.1)) +
+  scale_y_continuous(sec.axis = dup_axis(name = NULL)) +
+  ggtitle(expression(&quot;100 draws from the population for which &quot;*tau==1)) +
+  facet_wrap(~ tx, labeller = label_both)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-5-1.png" width="672" /></p>
+<p>The thin semi-transparent black lines in the background are the synthetic participant-level data. The bold blue lines in the foreground are the group averages.</p>
+</div>
+</div>
+<div id="models" class="section level2">
+<h2>Models</h2>
+<p>First we’ll fit the two conventional single-level models. Then we’ll fit their multilevel analogues. For simplicity, we’ll be using a frequentist paradigm throughout this post.</p>
+<div id="single-level-models." class="section level3">
+<h3>Single level models.</h3>
+<p>The simple change-score model follows the formula</p>
+<p><span class="math display">\[
+\begin{align*}
+\text{post}_i - \text{pre}_i &amp; \sim \mathcal N(\mu_i, \sigma_\epsilon) \\
+\mu_i &amp; = \beta_0 + \color{red}{\beta_1} \color{black}{\text{tx}_i,}
+\end{align*}
+\]</span></p>
+<p>where the outcome variable is the difference in the <code>pre</code> and <code>post</code> variables. In software, you can compute and save this as a change-score variable in the data frame, or you can specify <code>pre - post</code> directly in the <code>glm()</code> function. The <span class="math inline">\(\beta_0\)</span> parameter is the population mean for the change in the control group. The <span class="math inline">\(\beta_1\)</span> parameter is the population level difference in pre/post change in the treatment group, compared to the control group. From a causal inference perspective, the <span class="math inline">\(\beta_1\)</span> parameter is also the average treatment effect in the population, which we’ve been calling <span class="math inline">\(\tau\)</span>.</p>
+<p>The terribly-named ANCOVA model follows the formula</p>
+<p><span class="math display">\[
+\begin{align*}
+\text{post}_i  &amp; \sim \mathcal N(\mu_i, \sigma_\epsilon) \\
+\mu_i &amp; = \beta_0 + \color{red}{\beta_1} \color{black}{\text{tx}_i + \beta_2 \text{pre}_i,}
+\end{align*}
+\]</span></p>
+<p>where the outcome variable is now just <code>post</code>. As a consequence, <span class="math inline">\(\beta_0\)</span> is now the population mean for the outcome variable in the control group and <span class="math inline">\(\beta_1\)</span> is the population level difference in <code>post</code> in the treatment group, compared to the control group. But because we’ve added <code>pre</code> as a covariate, both <span class="math inline">\(\beta_0\)</span> and <span class="math inline">\(\beta_1\)</span> are conditional on the outcome variable, as collected at baseline before random assignment. But just like with the simple change-score model, the <span class="math inline">\(\beta_1\)</span> parameter is still an estimate for the average treatment effect in the population, <span class="math inline">\(\tau\)</span>. As is typically the case with regression, the model intercept <span class="math inline">\(\beta_0\)</span> will be easier to interpret if the covariate <code>pre</code> is mean centered. Since we simulated our data to be in the standardized metric, we won’t have to worry about that, here.</p>
+<p>Here’s how use the <code>glm()</code> function to fit both models with maximum likelihood estimation.</p>
+<pre class="r"><code>w1 &lt;- glm(
+  data = dw,
+  family = gaussian,
+  (post - pre) ~ 1 + tx)
+
+w2 &lt;- glm(
+  data = dw,
+  family = gaussian,
+  post ~ 1 + tx + pre)</code></pre>
+<p>We might review their summaries.</p>
+<pre class="r"><code>summary(w1)</code></pre>
+<pre><code>## 
+## Call:
+## glm(formula = (post - pre) ~ 1 + tx, family = gaussian, data = dw)
+## 
+## Deviance Residuals: 
+##     Min       1Q   Median       3Q      Max  
+## -1.7619  -0.5126  -0.1191   0.5642   2.2397  
+## 
+## Coefficients:
+##             Estimate Std. Error t value Pr(&gt;|t|)    
+## (Intercept)  -0.1525     0.1352  -1.128    0.262    
+## tx            1.2294     0.1912   6.431 4.64e-09 ***
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## 
+## (Dispersion parameter for gaussian family taken to be 0.9134756)
+## 
+##     Null deviance: 127.303  on 99  degrees of freedom
+## Residual deviance:  89.521  on 98  degrees of freedom
+## AIC: 278.72
+## 
+## Number of Fisher Scoring iterations: 2</code></pre>
+<pre class="r"><code>summary(w2)</code></pre>
+<pre><code>## 
+## Call:
+## glm(formula = post ~ 1 + tx + pre, family = gaussian, data = dw)
+## 
+## Deviance Residuals: 
+##      Min        1Q    Median        3Q       Max  
+## -1.89775  -0.62342  -0.06044   0.56783   1.79228  
+## 
+## Coefficients:
+##             Estimate Std. Error t value Pr(&gt;|t|)    
+## (Intercept) -0.06354    0.11674  -0.544    0.587    
+## tx           1.17483    0.16403   7.163 1.54e-10 ***
+## pre          0.45511    0.09019   5.046 2.11e-06 ***
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## 
+## (Dispersion parameter for gaussian family taken to be 0.6705727)
+## 
+##     Null deviance: 114.002  on 99  degrees of freedom
+## Residual deviance:  65.046  on 97  degrees of freedom
+## AIC: 248.78
+## 
+## Number of Fisher Scoring iterations: 2</code></pre>
+<p>In both models, the <span class="math inline">\(\beta_1\)</span> estimates (the <code>tx</code> lines in the output) are just a little above the data-generating population value <code>tau = 1</code>. More importantly, notice how they have different point estimates and standard errors. Which is better? Methodologists have spilled a lot of ink on that topic…</p>
+</div>
+<div id="multilevel-models." class="section level3">
+<h3>Multilevel models.</h3>
+<p>The multilevel variant of the simple change-score model follows the formula</p>
+<p><span class="math display">\[
+\begin{align*}
+y_{it} &amp; \sim \mathcal N(\mu_{it}, \sigma_\epsilon) \\
+\mu_{it} &amp; = \beta_0 + \beta_1 \text{tx}_{it} + \beta_2 \text{time}_{it} + \color{red}{\beta_3} \color{black}{\text{tx}_{it}\text{time}_{it} + u_{0i}} \\
+u_{0i} &amp; \sim \mathcal N(0, \sigma_0),
+\end{align*}
+\]</span></p>
+<p>where now the outcome variable <code>y</code> varies across <span class="math inline">\(i\)</span> participants and <span class="math inline">\(t\)</span> time points. <span class="math inline">\(\beta_0\)</span> is the population mean at baseline for the control group and <span class="math inline">\(\beta_1\)</span> is the difference in the treatment group at baseline, compared to the control. The <span class="math inline">\(\beta_2\)</span> coefficient is the change over time for the control group and <span class="math inline">\(\beta_3\)</span> is the time-by-treatment interaction, which is also the same as the average treatment effect in the population, <span class="math inline">\(\tau\)</span>. Because there are only two time points, we cannot have both random intercepts and time-slopes. However, the model does account for participant-level deviations around the baseline grand mean via the <span class="math inline">\(u_{0i}\)</span> term, which is modeled as normally distributed with a mean of zero and a standard deviation <span class="math inline">\(\sigma_0\)</span>, which we estimate as part of the model.</p>
+<p>The multilevel variant of the ANCOVA model follows the formula</p>
+<p><span class="math display">\[
+\begin{align*}
+y_{it} &amp; \sim \mathcal N(\mu_{it}, \sigma_\epsilon) \\
+\mu_{it} &amp; = \beta_0 + \beta_1 \text{time}_{it} + \color{red}{\beta_2} \color{black}{\text{tx}_{it}\text{time}_{it} + u_{0i}} \\
+u_{0i} &amp; \sim \mathcal N(0, \sigma_0),
+\end{align*}
+\]</span></p>
+<p>where most of the model is the same as the previous one, but with the omission of a lower-level <span class="math inline">\(\beta\)</span> coefficient for the <code>tx</code> variable. By only including <code>tx</code> in an interaction with <code>time</code>, the <span class="math inline">\(\beta_0\)</span> coefficient now becomes a common mean for both experimental conditions at baseline. This is methodologically justified because the baseline measurements were taken <em>before</em> groups were randomized into experimental conditions, which effectively means all participants were drawn from the same population at that point. As a consequence, <span class="math inline">\(\beta_1\)</span> is now the population-average change in the outcome for those in the control condition, relative to the grand mean at baseline, and <span class="math inline">\(\beta_2\)</span> is the average treatment effect in the population, <span class="math inline">\(\tau\)</span>.</p>
+<p>Here’s how use the <code>lmer()</code> function to fit both models with restricted maximum likelihood estimation.</p>
+<pre class="r"><code># fit
+l1 &lt;- lmer(
+  data = dl,
+  y ~ 1 + tx + time + tx:time + (1 | id))
+
+l2 &lt;- lmer(
+  data = dl,
+  y ~ 1 + time + tx:time + (1 | id))
+
+# summarize
+summary(l1)</code></pre>
+<pre><code>## Linear mixed model fit by REML [&#39;lmerMod&#39;]
+## Formula: y ~ 1 + tx + time + tx:time + (1 | id)
+##    Data: dl
+## 
+## REML criterion at convergence: 514.8
+## 
+## Scaled residuals: 
+##      Min       1Q   Median       3Q      Max 
+## -1.92806 -0.62115  0.03663  0.52089  1.82216 
+## 
+## Random effects:
+##  Groups   Name        Variance Std.Dev.
+##  id       (Intercept) 0.3828   0.6187  
+##  Residual             0.4567   0.6758  
+## Number of obs: 200, groups:  id, 100
+## 
+## Fixed effects:
+##             Estimate Std. Error t value
+## (Intercept)   0.1632     0.1296   1.260
+## tx           -0.1001     0.1833  -0.546
+## time         -0.1525     0.1352  -1.128
+## tx:time       1.2294     0.1912   6.431
+## 
+## Correlation of Fixed Effects:
+##         (Intr) tx     time  
+## tx      -0.707              
+## time    -0.522  0.369       
+## tx:time  0.369 -0.522 -0.707</code></pre>
+<pre class="r"><code>summary(l2)</code></pre>
+<pre><code>## Linear mixed model fit by REML [&#39;lmerMod&#39;]
+## Formula: y ~ 1 + time + tx:time + (1 | id)
+##    Data: dl
+## 
+## REML criterion at convergence: 513.5
+## 
+## Scaled residuals: 
+##      Min       1Q   Median       3Q      Max 
+## -1.93249 -0.62147  0.04002  0.54235  1.82449 
+## 
+## Random effects:
+##  Groups   Name        Variance Std.Dev.
+##  id       (Intercept) 0.3801   0.6165  
+##  Residual             0.4558   0.6752  
+## Number of obs: 200, groups:  id, 100
+## 
+## Fixed effects:
+##             Estimate Std. Error t value
+## (Intercept)  0.11320    0.09143   1.238
+## time        -0.12520    0.12549  -0.998
+## time:tx      1.17479    0.16286   7.213
+## 
+## Correlation of Fixed Effects:
+##         (Intr) time  
+## time    -0.397       
+## time:tx  0.000 -0.649</code></pre>
+<p>Now our estimates for <span class="math inline">\(\tau\)</span> are listed in the <code>tx:time</code> rows of the <code>summary()</code> output.</p>
+</div>
+</div>
+<div id="but-which-one-is-the-best-simulation-study" class="section level2">
+<h2>But which one is the best? Simulation study</h2>
+<p>We might run a little simulation study to compare these four methods across several simulated data sets. To run the sim, we’ll need to extend our <code>sim_data()</code> function to a <code>sim_fit()</code> function. The first parts of the <code>sim_fit()</code> function are the same as with <code>sim_data()</code>. But this time, the function internally makes both wide and long versions of the data, fits all four models to the data, and extracts the summary results for the four versions of <span class="math inline">\(\tau\)</span>.</p>
+<pre class="r"><code>sim_fit &lt;- function(seed = 1, n = 100, tau = 1, rho = .5) {
+  
+  # population values
+  m &lt;- 0
+  s &lt;- 1
+  
+  # simulate wide
+  set.seed(seed)
+  
+  dw &lt;- 
+    rnorm_multi(
+      n = n,
+      mu = c(m, m),
+      sd = c(s, s), 
+      r = rho, 
+      varnames = list(&quot;pre&quot;, &quot;post&quot;)
+    ) %&gt;% 
+    mutate(tx = rep(0:1, each = n / 2)) %&gt;% 
+    mutate(post = ifelse(tx == 1, post + tau, post))
+  
+  # make long
+  dl &lt;- dw %&gt;% 
+    mutate(id = 1:n()) %&gt;% 
+    pivot_longer(pre:post,
+                 names_to = &quot;wave&quot;,
+                 values_to = &quot;y&quot;) %&gt;% 
+    mutate(time = ifelse(wave == &quot;pre&quot;, 0, 1))
+  
+  # fit the models
+  w1 &lt;- glm(
+    data = dw,
+    family = gaussian,
+    (post - pre) ~ 1 + tx)
+  
+  w2 &lt;- glm(
+    data = dw,
+    family = gaussian,
+    post ~ 1 + pre + tx)
+  
+  l1 &lt;- lmer(
+    data = dl,
+    y ~ 1 + tx + time + tx:time + (1 | id))
+  
+  l2 &lt;- lmer(
+    data = dl,
+    y ~ 1 + time + tx:time + (1 | id))
+  
+  # summarize
+  bind_rows(
+    broom::tidy(w1)[2, 2:4],
+    broom::tidy(w2)[3, 2:4],
+    broom.mixed::tidy(l1)[4, 4:6],
+    broom.mixed::tidy(l2)[3, 4:6]) %&gt;% 
+    mutate(method = rep(c(&quot;glm()&quot;, &quot;lmer()&quot;), each = 2),
+           model = rep(c(&quot;change&quot;, &quot;ANCOVA&quot;), times = 2))
+  
+}</code></pre>
+<p>Here’s how it works out of the box.</p>
+<pre class="r"><code>sim_fit()</code></pre>
+<pre><code>## # A tibble: 4 × 5
+##   estimate std.error statistic method model 
+##      &lt;dbl&gt;     &lt;dbl&gt;     &lt;dbl&gt; &lt;chr&gt;  &lt;chr&gt; 
+## 1     1.23     0.191      6.43 glm()  change
+## 2     1.17     0.164      7.16 glm()  ANCOVA
+## 3     1.23     0.191      6.43 lmer() change
+## 4     1.17     0.163      7.21 lmer() ANCOVA</code></pre>
+<p>Each estimate of <span class="math inline">\(\tau\)</span> is indexed by the function we used to fit the model (single-level with <code>glm()</code> or multilevel with <code>lmer()</code>) and by which conceptual model was used (the change-score model or the ANCOVA model).</p>
+<p>I’m going to keep the default settings at <code>n = 100</code> and <code>tau = 1</code>. We will run many iterations with different values for <code>seed</code>. To help shake out a subtle point, we’ll use two levels of <code>rho</code>. We’ll make 1,000 iterations with <code>rho = .4</code> and another 1,000 iterations with <code>rho = .8</code>.</p>
+<pre class="r"><code># rho = .4
+sim.4 &lt;- tibble(seed = 1:1000) %&gt;% 
+  mutate(tidy = map(seed, sim_fit, rho = .4)) %&gt;% 
+  unnest(tidy)
+
+# rho = .8
+sim.8 &lt;- tibble(seed = 1:1000) %&gt;% 
+  mutate(tidy = map(seed, sim_fit, rho = .8)) %&gt;% 
+  unnest(tidy)</code></pre>
+<p>On my 2-year-old laptop, each simulation took about a minute and a half. Your mileage may vary.</p>
+<p>The first question we might ask is: <em>How well did the different model types do with respect to parameter bias?</em> That is, how close are the point estimates to the data generating value <span class="math inline">\(\tau = 1\)</span> and do they, on average, converge to the data generating value? Here are the results in a dot plot.</p>
+<pre class="r"><code>bind_rows(
+  sim.4 %&gt;% mutate(rho = .4), 
+  sim.8 %&gt;% mutate(rho = .8)) %&gt;% 
+  mutate(type = str_c(model, &quot;, &quot;, method),
+         rho = str_c(&quot;rho==&quot;, rho)) %&gt;%
+  
+  ggplot(aes(x = estimate, y = type, slab_color = stat(x), slab_fill = stat(x))) +
+  geom_vline(xintercept = 1, color = &quot;grey67&quot;) +
+  stat_dotsinterval(.width = .5, slab_shape = 22) +
+  labs(title = expression(&quot;Parameter bias by model, algorithm, and pre/post correlation &quot;*(rho)),
+       x = expression(hat(tau)*&quot; (causal effect point estimate)&quot;),
+       y = NULL) +
+  scale_slab_fill_continuous(limits = c(0, NA)) +
+  scale_slab_color_continuous(limits = c(0, NA)) +
+  coord_cartesian(ylim = c(1.4, NA)) +
+  theme(axis.text.y = element_text(hjust = 0),
+        legend.position = &quot;none&quot;) +
+  facet_wrap(~ rho, labeller = label_parsed)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-12-1.png" width="672" /></p>
+<p>With out dot-plot method, each little blue square is one of the simulation iterations. The black dots and horizontal lines at the base of the distributions are the medians and interquartile ranges. Unbiased models will tend toward 1 and happily, all of our models appear unbiased, even regardless of <span class="math inline">\(\rho\)</span>. This is great! It means that no matter which of our four models you go with, it will be an unbiased estimator of the population average treatment effect. However, two important trends emerged. First, both variants of the ANCOVA model tended to have less spread around the true data-generating value–their estimates are less noisy. Second, on the whole, the models have less spread for higher values of <span class="math inline">\(\rho\)</span>.</p>
+<p>Now let’s look at the results from the perspective of estimation efficiency.</p>
+<pre class="r"><code>bind_rows(
+  sim.4 %&gt;% mutate(rho = .4), 
+  sim.8 %&gt;% mutate(rho = .8)) %&gt;% 
+  mutate(type = str_c(model, &quot;, &quot;, method),
+         rho = str_c(&quot;rho==&quot;, rho)) %&gt;% 
+  
+  ggplot(aes(x = std.error, y = type, slab_color = stat(x), slab_fill = stat(x))) +
+  stat_dotsinterval(.width = .5, slab_shape = 22) +
+  labs(title = expression(&quot;Parameter efficiency by model, algorithm, and pre/post correlation &quot;*(rho)),
+       x = expression(tau[s.e.]*&quot; (causal effect standard error)&quot;),
+       y = NULL) +
+  scale_slab_fill_continuous(limits = c(0, NA)) +
+  scale_slab_color_continuous(limits = c(0, NA)) +
+  coord_cartesian(ylim = c(1.4, NA)) +
+  theme(axis.text.y = element_text(hjust = 0),
+        legend.position = &quot;none&quot;) +
+  facet_wrap(~ rho, labeller = label_parsed)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-13-1.png" width="672" /></p>
+<p>To my eye, three patterns emerged. First, the ANCOVA models were more efficient (i.e., had lower standard errors) than the change-score models AND the multilevel version of the ANCOVA model is slightly more efficient than the conventional single-level ANCOVA. Second, the models were more efficient, on the whole, for larger values of <span class="math inline">\(\rho\)</span>. Third, the differences in efficiency among the models were less apparent for larger values of <span class="math inline">\(\rho\)</span>, which is not surprising because the methodological literature has shown that the change-score and ANCOVA models converge as <span class="math inline">\(\rho \rightarrow 1\)</span>. That’s a big part of the whole Lord’s-paradox discourse I’ve completely sidelined because, frankly, I find it uninteresting.</p>
+<p>If you look very closely at both plots, there’s one more pattern to see. For each level of <span class="math inline">\(\rho\)</span>, the results from the single-level and multilevel versions of the change-score model are identical. Though not as obvious, the results from the the single-level and multilevel versions of the ANCOVA model model are generally different, but very close. To help clarify, let’s look at a few Pearson’s correlation coefficients.</p>
+<pre class="r"><code>bind_rows(
+  sim.4 %&gt;% mutate(rho = .4), 
+  sim.8 %&gt;% mutate(rho = .8)) %&gt;% 
+  select(-statistic) %&gt;% 
+  pivot_longer(estimate:std.error, names_to = &quot;result&quot;) %&gt;% 
+  pivot_wider(names_from = &quot;method&quot;, values_from = value) %&gt;% 
+  group_by(model, result, rho) %&gt;% 
+  summarise(correlation = cor(`glm()`, `lmer()`))</code></pre>
+<pre><code>## # A tibble: 8 × 4
+## # Groups:   model, result [4]
+##   model  result      rho correlation
+##   &lt;chr&gt;  &lt;chr&gt;     &lt;dbl&gt;       &lt;dbl&gt;
+## 1 ANCOVA estimate    0.4       0.999
+## 2 ANCOVA estimate    0.8       0.997
+## 3 ANCOVA std.error   0.4       0.769
+## 4 ANCOVA std.error   0.8       0.903
+## 5 change estimate    0.4       1    
+## 6 change estimate    0.8       1    
+## 7 change std.error   0.4       1.00 
+## 8 change std.error   0.8       1.00</code></pre>
+<p>For each level of <span class="math inline">\(\rho\)</span>, the correlations between the point estimates and the standard errors are 1 for the change-score models (single-level compared with multilevel). Even though their statistical formulas and <strong>R</strong>-function syntax look different, the single-level and multilevel versions of the change-score model are equivalent. For the ANCOVA models, the correlations are <span class="math inline">\(\gt .99\)</span> between the point estimates in the single-level and multilevel versions, for each level of <span class="math inline">\(\rho\)</span>, but they are a bit lower for the standard errors. so the conventional single-level ANCOVA model is not completely reproduced by its multilevel counterpart. But the two are very close and the results of this mini simulation study suggest the multilevel version is slightly better with respect to parameter bias and efficiency.</p>
+</div>
+<div id="i-prefer-the-multilevel-change-score-and-ancova-models" class="section level2">
+<h2>I prefer the multilevel change-score and ANCOVA models</h2>
+<p>Parameter bias and efficiency with respect to the causal estimate <span class="math inline">\(\tau\)</span> are cool and all, but they’re not the only things to consider when choosing your analytic strategy. One of the things I love about the multilevel strategies is they both return estimates and 95% intervals for the population means at both time points for both conditions. For example, here’s how to compute those estimates from the multilevel ANCOVA model with the handy <code>marginaleffects::predictions()</code> function.</p>
+<pre class="r"><code>nd &lt;- crossing(time = 0:1,
+               tx   = 0:1) %&gt;% 
+  mutate(id = &quot;new&quot;)
+
+predictions(l2, 
+            include_random = FALSE,
+            newdata = nd,
+            # yes, this makes a difference
+            vcov = &quot;kenward-roger&quot;) %&gt;% 
+  select(time, tx, predicted, conf.low, conf.high)</code></pre>
+<pre><code>##   time tx  predicted    conf.low conf.high
+## 1    0  0  0.1132033 -0.06733426 0.2937408
+## 2    0  1  0.1132033 -0.06733426 0.2937408
+## 3    1  0 -0.0120005 -0.25432138 0.2303204
+## 4    1  1  1.1627909  0.92046998 1.4051118</code></pre>
+<p>Did you notice how we computed those 95% confidence intervals with the ultra sweet Kenward-Roger method <span class="citation">(see <a href="#ref-kuznetsova2017lmertest" role="doc-biblioref">Kuznetsova et al., 2017</a>; <a href="#ref-luke2017EvaluatingSignificance" role="doc-biblioref">Luke, 2017</a>)</span>? It’s enough to make a boy giggle. <em>But what would I do with these estimates?</em>, you may wonder. You can display the results of your model in a plot <span class="citation">(see <a href="#ref-mccabe2018improving" role="doc-biblioref">McCabe et al., 2018</a>)</span>! Here’s what that could look like with the results from both the multilevel change-model and the multilevel ANCOVA.</p>
+<pre class="r"><code>bind_rows(
+  # multilevel change-score
+  predictions(l1, 
+              include_random = FALSE,
+              newdata = nd,
+              vcov = &quot;kenward-roger&quot;),
+  # multilevel ANCOVA
+  predictions(l2, 
+              include_random = FALSE,
+              newdata = nd,
+              vcov = &quot;kenward-roger&quot;)) %&gt;% 
+  mutate(model = rep(c(&quot;change-score&quot;, &quot;ANCOVA&quot;), each = n() / 2)) %&gt;% 
+  mutate(model = factor(model, 
+                        levels = c(&quot;change-score&quot;, &quot;ANCOVA&quot;),
+                        labels = c(&quot;change-score\ny ~ 1 + tx + time + tx:time + (1 | id)&quot;, 
+                                   &quot;ANCOVA\ny ~ 1 + time + tx:time + (1 | id)&quot;)),
+         tx    = factor(tx, levels = 1:0)) %&gt;% 
+  
+  ggplot(aes(x = time, y = predicted, ymin = conf.low, ymax = conf.high, fill = tx, color = tx)) +
+  geom_ribbon(alpha = 1/3, size = 0) +
+  geom_line(size = 1) +
+  scale_fill_viridis_d(end = .6) +
+  scale_color_viridis_d(end = .6) +
+  scale_x_continuous(breaks = 0:1, labels = c(&quot;0 (pre)&quot;, &quot;1 (post)&quot;), expand = c(0.1, 0.1)) +
+  scale_y_continuous(&quot;y&quot;, sec.axis = dup_axis(name = NULL)) +
+  ggtitle(&quot;Population-mean trajectories via the multilevel models&quot;,
+          subtitle = &quot;The lines are the point estimates and the ribbons the Kenward-Roger-based 95% CIs.&quot;) +
+  facet_wrap(~ model)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-16-1.png" width="672" /></p>
+<p>The big difference between the two models is how they handled the first time point, the baseline assessment. The multilevel change-score model allowed the two conditions to have separate means. The multilevel ANCOVA, however, pooled the information from all participants to estimate a grand mean for the baseline assessment. This is methodologically justified, remember, because the baseline assessment occurs <em>before</em> random assignment to condition in a proper RCT. As a consequence, all participants are part of a common population at that point. Whether you like the change-score or ANCOVA approach, it’s only the multilevel framework that will allow you to plot the inferences of the model, this way.</p>
+<p>Among clinicians (e.g., my friends in clinical psychology), a natural question to ask is: <em>How much did the participants change in each condition?</em> The multilevel models also give us a natural way to quantify the population average change in each condition, along with high-quality 95% intervals. Here’s how to use <code>marginaleffects::comparisons()</code> to return those values.</p>
+<pre class="r"><code># multilevel change-score
+comparisons(l1, 
+            variables = list(time = 0:1),
+            re.form = NA,
+            vcov = &quot;kenward-roger&quot;) %&gt;%
+  summary(by = &quot;tx&quot;) </code></pre>
+<pre><code>## Average contrasts 
+##   tx  time  Effect Std. Error z value   Pr(&gt;|z|)   2.5 % 97.5 %
+## 1  0 1 - 0 -0.1525     0.1352  -1.128    0.25926 -0.4174 0.1124
+## 2  1 1 - 0  1.0769     0.1352   7.967 1.5543e-15  0.8120 1.3418
+## 
+## Model type:  lmerMod 
+## Prediction type:  response</code></pre>
+<pre class="r"><code># multilevel ANCOVA
+comparisons(l2, 
+            variables = list(time = 0:1),
+            re.form = NA,
+            vcov = &quot;kenward-roger&quot;) %&gt;%
+  summary(by = &quot;tx&quot;)</code></pre>
+<pre><code>## Average contrasts 
+##   tx  time  Effect Std. Error z value Pr(&gt;|z|)   2.5 % 97.5 %
+## 1  0 1 - 0 -0.1252     0.1259 -0.9943  0.32006 -0.3720 0.1216
+## 2  1 1 - 0  1.0496     0.1259  8.3355  &lt; 2e-16  0.8028 1.2964
+## 
+## Model type:  lmerMod 
+## Prediction type:  response</code></pre>
+<p>If you divide these pre-post differences by the pooled standard deviation at baseline, you’ll have the condition-specific Cohen’s <span class="math inline">\(d\)</span> effect sizes <span class="citation">(see <a href="#ref-feingoldEffectSizeForGMA2009" role="doc-biblioref">Feingold, 2009</a>)</span>. We already have that for the differences between conditions. That’s what we’ve been calling <span class="math inline">\(\tau\)</span>; that is, <span class="math inline">\(\tau\)</span> is the difference in differences.</p>
+<p>There are other reasons to prefer the multilevel framework. With multilevel software, you can accommodate missing values with full-information estimation. It’s also just one small step to adopt a generalized linear mixed model framework for all your non-Gaussian data needs. Bit those are fine topics for another day.</p>
+</div>
+<div id="wrap-it-up" class="section level2">
+<h2>Wrap it up</h2>
+<p>In this post, some of the high points we covered were:</p>
+<ul>
+<li>The simple change-score and ANCOVA models are the two popular approaches for analyzing pre/post RCT data.</li>
+<li>Though both approaches are typically used with a single-level OLS-type paradigm, they both have clear multilevel counterparts.</li>
+<li>The single-level and multilevel versions of both change-score and ANCOVA models are all unbiased.</li>
+<li>The ANCOVA models tend to be more efficient than the change-score models.</li>
+<li>Only the multilevel versions of the models allow researchers to plot the results of the model.</li>
+<li>The multilevel versions of the models allow researchers to express the results of the models in terms of change for both conditions.</li>
+</ul>
+<p>This post helped me clarify my thoughts on these models, and I hope you found some benefit, too. Happy modeling, friends.</p>
+</div>
+<div id="session-info" class="section level2">
+<h2>Session info</h2>
+<pre class="r"><code>sessionInfo()</code></pre>
+<pre><code>## R version 4.2.0 (2022-04-22)
+## Platform: x86_64-apple-darwin17.0 (64-bit)
+## Running under: macOS Catalina 10.15.7
+## 
+## Matrix products: default
+## BLAS:   /Library/Frameworks/R.framework/Versions/4.2/Resources/lib/libRblas.0.dylib
+## LAPACK: /Library/Frameworks/R.framework/Versions/4.2/Resources/lib/libRlapack.dylib
+## 
+## locale:
+## [1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+## 
+## attached base packages:
+## [1] stats     graphics  grDevices utils     datasets  methods   base     
+## 
+## other attached packages:
+##  [1] marginaleffects_0.5.0 ggdist_3.1.1          purrr_0.3.4          
+##  [4] stringr_1.4.0         tidyr_1.2.0           dplyr_1.0.9          
+##  [7] tibble_3.1.7          ggplot2_3.3.6         lme4_1.1-29          
+## [10] Matrix_1.4-1          faux_1.1.0           
+## 
+## loaded via a namespace (and not attached):
+##  [1] sass_0.4.1           viridisLite_0.4.0    jsonlite_1.8.0      
+##  [4] splines_4.2.0        bslib_0.3.1          assertthat_0.2.1    
+##  [7] distributional_0.3.0 highr_0.9            broom.mixed_0.2.9.4 
+## [10] yaml_2.3.5           globals_0.15.0       numDeriv_2016.8-1.1 
+## [13] pillar_1.7.0         backports_1.4.1      lattice_0.20-45     
+## [16] glue_1.6.2           digest_0.6.29        checkmate_2.1.0     
+## [19] minqa_1.2.4          colorspace_2.0-3     htmltools_0.5.2     
+## [22] pkgconfig_2.0.3      broom_0.8.0          listenv_0.8.0       
+## [25] bookdown_0.26        scales_1.2.0         mgcv_1.8-40         
+## [28] generics_0.1.2       farver_2.1.0         ellipsis_0.3.2      
+## [31] withr_2.5.0          furrr_0.3.0          pbkrtest_0.5.1      
+## [34] cli_3.3.0            magrittr_2.0.3       crayon_1.5.1        
+## [37] evaluate_0.15        fansi_1.0.3          future_1.25.0       
+## [40] parallelly_1.31.1    nlme_3.1-157         MASS_7.3-56         
+## [43] forcats_0.5.1        blogdown_1.10        tools_4.2.0         
+## [46] data.table_1.14.2    lifecycle_1.0.1      munsell_0.5.0       
+## [49] compiler_4.2.0       jquerylib_0.1.4      rlang_1.0.2         
+## [52] grid_4.2.0           nloptr_2.0.3         rstudioapi_0.13     
+## [55] labeling_0.4.2       rmarkdown_2.14       boot_1.3-28         
+## [58] gtable_0.3.0         codetools_0.2-18     lmerTest_3.1-3      
+## [61] DBI_1.1.2            R6_2.5.1             knitr_1.39          
+## [64] fastmap_1.1.0        utf8_1.2.2           insight_0.17.1      
+## [67] stringi_1.7.6        parallel_4.2.0       Rcpp_1.0.8.3        
+## [70] vctrs_0.4.1          tidyselect_1.1.2     xfun_0.31</code></pre>
+</div>
+<div id="references" class="section level2 unnumbered">
+<h2>References</h2>
+<div id="refs" class="references csl-bib-body hanging-indent" line-spacing="2">
+<div id="ref-R-marginaleffects" class="csl-entry">
+Arel-Bundock, V. (2022). <em><span class="nocase">marginaleffects</span>: <span>Marginal</span> effects, marginal means, predictions, and contrasts</em> [Manual]. <a href="https://vincentarelbundock.github.io/ marginaleffects/ https://github.com/vincentarelbundock/ marginaleffects">https://vincentarelbundock.github.io/ marginaleffects/ https://github.com/vincentarelbundock/ marginaleffects</a>
+</div>
+<div id="ref-batesFittingLinearMixedeffects2015" class="csl-entry">
+Bates, D., Mächler, M., Bolker, B., &amp; Walker, S. (2015). Fitting linear mixed-effects models using <span class="nocase">lme4</span>. <em>Journal of Statistical Software</em>, <em>67</em>(1), 1–48. <a href="https://doi.org/10.18637/jss.v067.i01">https://doi.org/10.18637/jss.v067.i01</a>
+</div>
+<div id="ref-R-lme4" class="csl-entry">
+Bates, D., Maechler, M., Bolker, B., &amp; Steven Walker. (2021). <em><span class="nocase">lme4</span>: <span>Linear</span> mixed-effects models using <span>Eigen</span>’ and <span>S4</span></em>. <a href="https://CRAN.R-project.org/package=lme4">https://CRAN.R-project.org/package=lme4</a>
+</div>
+<div id="ref-bodner2018Detecting" class="csl-entry">
+Bodner, T. E., &amp; Bliese, P. D. (2018). Detecting and differentiating the direction of change and intervention effects in randomized trials. <em>Journal of Applied Psychology</em>, <em>103</em>(1), 37. <a href="https://doi.org/10.1037/apl0000251">https://doi.org/10.1037/apl0000251</a>
+</div>
+<div id="ref-R-broom.mixed" class="csl-entry">
+Bolker, B., &amp; Robinson, D. (2022). <em><span class="nocase">broom.mixed</span>: <span>Tidying</span> methods for mixed models</em> [Manual]. <a href="https://github.com/bbolker/broom.mixed">https://github.com/bbolker/broom.mixed</a>
+</div>
+<div id="ref-R-faux" class="csl-entry">
+DeBruine, L. (2021). <em><span class="nocase">faux</span>: <span>Simulation</span> for factorial designs</em> [Manual]. <a href="https://github.com/debruine/faux">https://github.com/debruine/faux</a>
+</div>
+<div id="ref-feingoldEffectSizeForGMA2009" class="csl-entry">
+Feingold, A. (2009). Effect sizes for growth-modeling analysis for controlled clinical trials in the same metric as for classical analysis. <em>Psychological Methods</em>, <em>14</em>(1), 43. <a href="https://doi.org/10.1037/a0014699">https://doi.org/10.1037/a0014699</a>
+</div>
+<div id="ref-gelmanRegressionOtherStories2020" class="csl-entry">
+Gelman, A., Hill, J., &amp; Vehtari, A. (2020). <em>Regression and other stories</em>. <span>Cambridge University Press</span>. <a href="https://doi.org/10.1017/9781139161879">https://doi.org/10.1017/9781139161879</a>
+</div>
+<div id="ref-hoffmanLongitudinalAnalysisModeling2015" class="csl-entry">
+Hoffman, L. (2015). <em>Longitudinal analysis: <span>Modeling</span> within-person fluctuation and change</em> (1 edition). <span>Routledge</span>. <a href="https://www.routledge.com/Longitudinal-Analysis-Modeling-Within-Person-Fluctuation-and-Change/Hoffman/p/book/9780415876025">https://www.routledge.com/Longitudinal-Analysis-Modeling-Within-Person-Fluctuation-and-Change/Hoffman/p/book/9780415876025</a>
+</div>
+<div id="ref-ismay2022StatisticalInference" class="csl-entry">
+Ismay, C., &amp; Kim, A. Y. (2022). <em>Statistical inference via data science; <span>A</span> moderndive into <span>R</span> and the tidyverse</em>. <a href="https://moderndive.com/">https://moderndive.com/</a>
+</div>
+<div id="ref-R-ggdist" class="csl-entry">
+Kay, M. (2021). <em><span class="nocase">ggdist</span>: <span>Visualizations</span> of distributions and uncertainty</em> [Manual]. <a href="https://CRAN.R-project.org/package=ggdist">https://CRAN.R-project.org/package=ggdist</a>
+</div>
+<div id="ref-kazdin2017ResearchDesign" class="csl-entry">
+Kazdin, A. E. (2017). <em>Research design in clinical psychology, 5th <span>Edition</span></em>. <span>Pearson</span>. <a href="https://www.pearson.com/">https://www.pearson.com/</a>
+</div>
+<div id="ref-kruschkeDoingBayesianData2015" class="csl-entry">
+Kruschke, J. K. (2015). <em>Doing <span>Bayesian</span> data analysis: <span>A</span> tutorial with <span>R</span>, <span>JAGS</span>, and <span>Stan</span></em>. <span>Academic Press</span>. <a href="https://sites.google.com/site/doingbayesiandataanalysis/">https://sites.google.com/site/doingbayesiandataanalysis/</a>
+</div>
+<div id="ref-kuznetsova2017lmertest" class="csl-entry">
+Kuznetsova, A., Brockhoff, P. B., &amp; Christensen, R. H. (2017). <span class="nocase">lmerTest</span> package: <span>Tests</span> in linear mixed effects models. <em>Journal of Statistical Software</em>, <em>82</em>(13), 1–26. <a href="https://doi.org/10.18637/jss.v082.i13">https://doi.org/10.18637/jss.v082.i13</a>
+</div>
+<div id="ref-luke2017EvaluatingSignificance" class="csl-entry">
+Luke, S. G. (2017). Evaluating significance in linear mixed-effects models in <span>R</span>. <em>Behavior Research Methods</em>, <em>49</em>(4), 1494–1502. <a href="https://doi.org/10.3758/s13428-016-0809-y">https://doi.org/10.3758/s13428-016-0809-y</a>
+</div>
+<div id="ref-mccabe2018improving" class="csl-entry">
+McCabe, C. J., Kim, D. S., &amp; King, K. M. (2018). Improving present practices in the visual display of interactions. <em>Advances in Methods and Practices in Psychological Science</em>, <em>1</em>(2), 147–165. <a href="https://doi.org/10.1177/2515245917746792">https://doi.org/10.1177/2515245917746792</a>
+</div>
+<div id="ref-mcelreathStatisticalRethinkingBayesian2020" class="csl-entry">
+McElreath, R. (2020). <em>Statistical rethinking: <span>A Bayesian</span> course with examples in <span>R</span> and <span>Stan</span></em> (Second Edition). <span>CRC Press</span>. <a href="https://xcelab.net/rm/statistical-rethinking/">https://xcelab.net/rm/statistical-rethinking/</a>
+</div>
+<div id="ref-mcelreathStatisticalRethinkingBayesian2015" class="csl-entry">
+McElreath, R. (2015). <em>Statistical rethinking: <span>A Bayesian</span> course with examples in <span>R</span> and <span>Stan</span></em>. <span>CRC press</span>. <a href="https://xcelab.net/rm/statistical-rethinking/">https://xcelab.net/rm/statistical-rethinking/</a>
+</div>
+<div id="ref-R-base" class="csl-entry">
+R Core Team. (2021). <em>R: <span>A</span> language and environment for statistical computing</em>. <span>R Foundation for Statistical Computing</span>. <a href="https://www.R-project.org/">https://www.R-project.org/</a>
+</div>
+<div id="ref-roback2021beyond" class="csl-entry">
+Roback, P., &amp; Legler, J. (2021). <em>Beyond multiple linear regression: <span>Applied</span> generalized linear models and multilevel models in <span>R</span></em>. <span>CRC Press</span>. <a href="https://bookdown.org/roback/bookdown-BeyondMLR/">https://bookdown.org/roback/bookdown-BeyondMLR/</a>
+</div>
+<div id="ref-R-broom" class="csl-entry">
+Robinson, D., Hayes, A., &amp; Couch, S. (2021). <em><span class="nocase">broom</span>: <span>Convert</span> statistical objects into tidy tibbles</em> [Manual]. <a href="https://CRAN.R-project.org/package=broom">https://CRAN.R-project.org/package=broom</a>
+</div>
+<div id="ref-shadish2002Experimental" class="csl-entry">
+Shadish, W. R., Cook, T. D., &amp; Campbell, D. T. (2002). <em>Experimental and quasi-experimental designs for generalized causal inference</em>. <span>Houghton, Mifflin and Company</span>.
+</div>
+<div id="ref-singerAppliedLongitudinalData2003" class="csl-entry">
+Singer, J. D., &amp; Willett, J. B. (2003). <em>Applied longitudinal data analysis: <span>Modeling</span> change and event occurrence</em>. <span>Oxford University Press, USA</span>. <a href="https://oxford.universitypressscholarship.com/view/10.1093/acprof:oso/9780195152968.001.0001/acprof-9780195152968">https://oxford.universitypressscholarship.com/view/10.1093/acprof:oso/9780195152968.001.0001/acprof-9780195152968</a>
+</div>
+<div id="ref-taback2022DesignAndAnalysis" class="csl-entry">
+Taback, N. (2022). <em>Design and analysis of experiments and observational studies using <span>R</span></em>. <span>Chapman and Hall/CRC</span>. <a href="https://doi.org/10.1201/9781003033691">https://doi.org/10.1201/9781003033691</a>
+</div>
+<div id="ref-vanBreukelen2013ancova" class="csl-entry">
+Van Breukelen, G. J. (2013). <span>ANCOVA</span> versus <span>CHANGE</span> from baseline in nonrandomized studies: <span>The</span> difference. <em>Multivariate Behavioral Research</em>, <em>48</em>(6), 895–922. <a href="https://doi.org/10.1080/00273171.2013.831743">https://doi.org/10.1080/00273171.2013.831743</a>
+</div>
+<div id="ref-R-tidyverse" class="csl-entry">
+Wickham, H. (2021). <em><span class="nocase">tidyverse</span>: <span>Easily</span> install and load the ’tidyverse’</em>. <a href="https://CRAN.R-project.org/package=tidyverse">https://CRAN.R-project.org/package=tidyverse</a>
+</div>
+<div id="ref-wickhamWelcomeTidyverse2019" class="csl-entry">
+Wickham, H., Averick, M., Bryan, J., Chang, W., McGowan, L. D., François, R., Grolemund, G., Hayes, A., Henry, L., Hester, J., Kuhn, M., Pedersen, T. L., Miller, E., Bache, S. M., Müller, K., Ooms, J., Robinson, D., Seidel, D. P., Spinu, V., … Yutani, H. (2019). Welcome to the tidyverse. <em>Journal of Open Source Software</em>, <em>4</em>(43), 1686. <a href="https://doi.org/10.21105/joss.01686">https://doi.org/10.21105/joss.01686</a>
+</div>
+</div>
+</div>
+<div class="footnotes footnotes-end-of-document">
+<hr />
+<ol>
+<li id="fn1"><p>The term <strong>RCT</strong> can apply to a broader class of designs, such as those including more than two conditions, more than two assessment periods, and so on. For the sake of this blog post, we’ll ignore those complications.<a href="#fnref1" class="footnote-back">↩︎</a></p></li>
+<li id="fn2"><p>That whole “in the population” bit is a big ol’ can of worms. In short, recruit participants who are similar to those who you’d like to generalize to. Otherwise, chaos may ensue.<a href="#fnref2" class="footnote-back">↩︎</a></p></li>
+</ol>
+</div>
