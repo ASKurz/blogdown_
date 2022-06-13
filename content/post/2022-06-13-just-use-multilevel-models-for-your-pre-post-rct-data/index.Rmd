@@ -478,7 +478,7 @@ comparisons(l2,
 
 If you divide these pre-post differences by the pooled standard deviation at baseline, you'll have the condition-specific Cohen's $d$ effect sizes [see @feingoldEffectSizeForGMA2009]. We already have that for the differences between conditions. That's what we've been calling $\tau$; that is, $\tau$ is the difference in differences. 
 
-There are other reasons to prefer the multilevel framework. With multilevel software, you can accommodate missing values with full-information estimation. It's also just one small step to adopt a generalized linear mixed model framework for all your non-Gaussian data needs. Bit those are fine topics for another day. 
+There are other reasons to prefer the multilevel framework. With multilevel software, you can accommodate missing values with full-information estimation. It's also just one small step further to adopt a *generalized* linear mixed model framework for all your non-Gaussian data needs. But those are fine topics for another day. 
 
 ## Wrap it up
 
