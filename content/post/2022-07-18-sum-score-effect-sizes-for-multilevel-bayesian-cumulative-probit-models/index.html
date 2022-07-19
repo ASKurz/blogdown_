@@ -36,12 +36,12 @@ link-citations: yes
 
 <div id="whatwhy" class="section level2">
 <h2>What/why?</h2>
-<p>This is a follow-up to my earlier post, <a href="https://solomonkurz.netlify.app/post/2021-12-29-notes-on-the-bayesian-cumulative-probit/"><em>Notes on the Bayesian cumulative probit</em></a>. If you haven’t browsed through that post or if you aren’t at least familiar with Bayesian cumulative probit models, you’ll want to go there, first. Comparatively speaking, this post will be short and focused. The topic we’re addressing is: <em>After you fit a full multilevel Bayesian cumulative probit model of several Likert-type items from a multi-item questionnaire, how can you use the model to compute an effect size in the sum-score metric?</em> This is our task. Buckle up.</p>
+<p>This is a follow-up to my earlier post, <a href="https://solomonkurz.netlify.app/post/2021-12-29-notes-on-the-bayesian-cumulative-probit/"><em>Notes on the Bayesian cumulative probit</em></a>. If you haven’t browsed through that post or if you aren’t at least familiar with Bayesian cumulative probit models, you’ll want to go there, first. Comparatively speaking, this post will be short and focused. The topic we’re addressing is: <em>After you fit a full multilevel Bayesian cumulative probit model of several Likert-type items from a multi-item questionnaire, how can you use the model to compute an effect size in the sum-score metric?</em></p>
 <p>Needless to say, I’m assuming my readers are familiar with the Bayesian generalized linear mixed model, in general, and with ordinal models in particular. For a refresher on the latter, check out <span class="citation">Bürkner &amp; Vuorre (<a href="#ref-burknerOrdinalRegressionModels2019" role="doc-biblioref">2019</a>)</span> and <span class="citation">Bürkner (<a href="#ref-burknerBayesianItemResponse2020" role="doc-biblioref">2020</a>)</span>.</p>
 </div>
 <div id="set-it-up" class="section level2">
 <h2>Set it up</h2>
-<p>All code is in <strong>R</strong> <span class="citation">(<a href="#ref-R-base" role="doc-biblioref">R Core Team, 2021</a>)</span>, with healthy doses of the <strong>tidyverse</strong> <span class="citation">(<a href="#ref-wickhamWelcomeTidyverse2019" role="doc-biblioref">Wickham et al., 2019</a>; <a href="#ref-R-tidyverse" role="doc-biblioref">Wickham, 2021</a>)</span> for data wrangling and plotting. All models are fit with <a href="https://github.com/paul-buerkner/brms"><strong>brms</strong></a> <span class="citation">(<a href="#ref-burknerBrmsPackageBayesian2017" role="doc-biblioref">Bürkner, 2017</a>, <a href="#ref-burknerAdvancedBayesianMultilevel2018" role="doc-biblioref">2018</a>, <a href="#ref-R-brms" role="doc-biblioref">2022</a>)</span> and we’ll make use of the <a href="https://mjskay.github.io/tidybayes/"><strong>tidybayes</strong> package</a> <span class="citation">(<a href="#ref-R-tidybayes" role="doc-biblioref">Kay, 2020</a>)</span> for some tricky data wrangling. We will also use the <strong>NatParksPalettes</strong> package <span class="citation">(<a href="#ref-R-NatParksPalettes" role="doc-biblioref">Blake, 2022</a>)</span> to select the color palette for our figures.</p>
+<p>All code is in <strong>R</strong> <span class="citation">(<a href="#ref-R-base" role="doc-biblioref">R Core Team, 2021</a>)</span>, with healthy doses of the <strong>tidyverse</strong> <span class="citation">(<a href="#ref-wickhamWelcomeTidyverse2019" role="doc-biblioref">Wickham et al., 2019</a>; <a href="#ref-R-tidyverse" role="doc-biblioref">Wickham, 2021</a>)</span> for data wrangling and plotting. All models are fit with <a href="https://github.com/paul-buerkner/brms"><strong>brms</strong></a> <span class="citation">(<a href="#ref-burknerBrmsPackageBayesian2017" role="doc-biblioref">Bürkner, 2017</a>, <a href="#ref-burknerAdvancedBayesianMultilevel2018" role="doc-biblioref">2018</a>, <a href="#ref-R-brms" role="doc-biblioref">2022</a>)</span> and we’ll make use of the <a href="https://mjskay.github.io/tidybayes/"><strong>tidybayes</strong> package</a> <span class="citation">(<a href="#ref-R-tidybayes" role="doc-biblioref">Kay, 2020</a>)</span> for some tricky data wrangling. We will also use the <a href="https://github.com/kevinsblake/NatParksPalettes"><strong>NatParksPalettes</strong> package</a> <span class="citation">(<a href="#ref-R-NatParksPalettes" role="doc-biblioref">Blake, 2022</a>)</span> to select the color palette for our figures.</p>
 <p>Here we load the packages and adjust the global plotting theme.</p>
 <pre class="r"><code># load
 library(tidyverse)
@@ -274,14 +274,14 @@ post %&gt;%
 <p>Okay, let’s get into our sum-score effect sizes.</p>
 </div>
 <div id="sum-score-effect-sizes" class="section level2">
-<h2>Sum score effect sizes</h2>
+<h2>Sum-score effect sizes</h2>
 <p>In this post, we will discuss three approaches for reporting sum-score contrasts as effect sizes. Those will include:</p>
 <ul>
 <li>unstandardized mean differences,</li>
 <li>standardized mean differences, and</li>
 <li>differences in POMP.</li>
 </ul>
-<p>But before we get to all that effect size goodness, we’ll first define how we can use our model to compute conditional sum scores and connect that approach to conditional item-level means.</p>
+<p>But before we get to all that effect-size goodness, we’ll first define how we can use our model to compute conditional sum scores, and connect that approach to conditional item-level means.</p>
 <div id="condtional-sum-scores-and-item-level-means." class="section level3">
 <h3>Condtional sum scores and item-level means.</h3>
 <p>In the earlier post, we said the mean of the criterion variable is the sum of the <span class="math inline">\(p_k\)</span> probabilities multiplied by the <span class="math inline">\(k\)</span> values of the criterion. We can express this in an equation as</p>
@@ -482,7 +482,8 @@ pomp %&gt;%
        x = &quot;percent of maximum possible (POMP)&quot;) +
   facet_wrap(~ name, scales = &quot;free&quot;)</code></pre>
 <p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-18-1.png" width="624" /></p>
-<p>The plot shows the average scores for both males and females are a little below the middle of the full range of the neuroticism sum-score range, which bodes well from a psychometric perspective. The right panel clarifies the mean for males is about 7% lower than the mean for females, plus or minus 8%. If you’re curious, here are the numeric summaries.</p>
+<p>The plot shows the average scores for both males and females are a little below the middle of the full range of the neuroticism sum-score range, which bodes well from a psychometric perspective. The right panel clarifies the mean for males is about 7% lower than the mean for females, plus or minus 8%. To my mind, a POMP difference of 7% is large enough to take note.</p>
+<p>If you’re curious, here are the numeric summaries.</p>
 <pre class="r"><code>pomp %&gt;% 
   group_by(name) %&gt;% 
   mean_qi(pomp) %&gt;% 
@@ -624,7 +625,7 @@ Wickham, H., Averick, M., Bryan, J., Chang, W., McGowan, L. D., François, R., G
 <hr />
 <ol>
 <li id="fn1"><p>Technically, proper Gaussian data range between <span class="math inline">\(-\infty\)</span> and <span class="math inline">\(\infty\)</span>. In the real world, researchers generally find it acceptable to use the Gaussian likelihood as long as the data distributions aren’t too close to a lower or upper boundary. What constitutes “too close” is up for debate, and probably has more to do with the pickiness of one’s peer reviewers than anything else.<a href="#fnref1" class="footnote-back">↩︎</a></p></li>
-<li id="fn2"><p>Okay, I’m getting a little lazy, here. If you recall, our <code>d</code> data are a random subset of the 2,800 row <code>bfi</code> data set from the <strong>psych</strong> package. If you compute the neuroticism sum score from the full data set, you can get a better sense of the population distribution. As it turns out, they’re unimodal, but not particularly symmetric or bell shaped.<a href="#fnref2" class="footnote-back">↩︎</a></p></li>
+<li id="fn2"><p>Okay, I’m getting a little lazy, here. If you recall, our <code>d</code> data are a random subset of the 2,800-row <code>bfi</code> data from the <strong>psych</strong> package. If you compute the neuroticism sum score from the full data set, you can get a better sense of the population distribution. As it turns out, they’re unimodal, but not particularly symmetric or bell shaped.<a href="#fnref2" class="footnote-back">↩︎</a></p></li>
 <li id="fn3"><p>Both examples of POMP used in the wild are co-authored by the great <a href="https://wiernik.org/">Brenton Wiernik</a>, who is the person who first introduced me to POMP scoring.<a href="#fnref3" class="footnote-back">↩︎</a></p></li>
 </ol>
 </div>
