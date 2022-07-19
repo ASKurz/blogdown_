@@ -45,13 +45,13 @@ load("fits/fit8.rda")
 
 ## What/why?
 
-This is a follow-up to my earlier post, [*Notes on the Bayesian cumulative probit*](https://solomonkurz.netlify.app/post/2021-12-29-notes-on-the-bayesian-cumulative-probit/). If you haven't browsed through that post or if you aren't at least familiar with Bayesian cumulative probit models, you'll want to go there, first. Comparatively speaking, this post will be short and focused. The topic we're addressing is: *After you fit a full multilevel Bayesian cumulative probit model of several Likert-type items from a multi-item questionnaire, how can you use the model to compute an effect size in the sum-score metric?* This is our task. Buckle up.
+This is a follow-up to my earlier post, [*Notes on the Bayesian cumulative probit*](https://solomonkurz.netlify.app/post/2021-12-29-notes-on-the-bayesian-cumulative-probit/). If you haven't browsed through that post or if you aren't at least familiar with Bayesian cumulative probit models, you'll want to go there, first. Comparatively speaking, this post will be short and focused. The topic we're addressing is: *After you fit a full multilevel Bayesian cumulative probit model of several Likert-type items from a multi-item questionnaire, how can you use the model to compute an effect size in the sum-score metric?*
 
 Needless to say, I'm assuming my readers are familiar with the Bayesian generalized linear mixed model, in general, and with ordinal models in particular. For a refresher on the latter, check out @burknerOrdinalRegressionModels2019 and @burknerBayesianItemResponse2020.
 
 ## Set it up
 
-All code is in **R** [@R-base], with healthy doses of the **tidyverse** [@R-tidyverse; @wickhamWelcomeTidyverse2019] for data wrangling and plotting. All models are fit with [**brms**](https://github.com/paul-buerkner/brms) [@R-brms; @burknerBrmsPackageBayesian2017; @burknerAdvancedBayesianMultilevel2018] and we'll make use of the [**tidybayes** package](https://mjskay.github.io/tidybayes/) [@R-tidybayes] for some tricky data wrangling. We will also use the **NatParksPalettes** package [@R-NatParksPalettes] to select the color palette for our figures.
+All code is in **R** [@R-base], with healthy doses of the **tidyverse** [@R-tidyverse; @wickhamWelcomeTidyverse2019] for data wrangling and plotting. All models are fit with [**brms**](https://github.com/paul-buerkner/brms) [@R-brms; @burknerBrmsPackageBayesian2017; @burknerAdvancedBayesianMultilevel2018] and we'll make use of the [**tidybayes** package](https://mjskay.github.io/tidybayes/) [@R-tidybayes] for some tricky data wrangling. We will also use the [**NatParksPalettes** package](https://github.com/kevinsblake/NatParksPalettes) [@R-NatParksPalettes] to select the color palette for our figures.
 
 Here we load the packages and adjust the global plotting theme.
 
@@ -255,7 +255,7 @@ This all has been fun, but we should discuss a few caveats. First, the $\beta_1$
 
 Okay, let's get into our sum-score effect sizes.
 
-## Sum score effect sizes
+## Sum-score effect sizes
 
 In this post, we will discuss three approaches for reporting sum-score contrasts as effect sizes. Those will include:
 
@@ -263,7 +263,7 @@ In this post, we will discuss three approaches for reporting sum-score contrasts
 * standardized mean differences, and
 * differences in POMP.
 
-But before we get to all that effect size goodness, we'll first define how we can use our model to compute conditional sum scores and connect that approach to conditional item-level means.
+But before we get to all that effect-size goodness, we'll first define how we can use our model to compute conditional sum scores, and connect that approach to conditional item-level means.
 
 ### Condtional sum scores and item-level means.
 
@@ -478,7 +478,9 @@ pomp %>%
   facet_wrap(~ name, scales = "free")
 ```
 
-The plot shows the average scores for both males and females are a little below the middle of the full range of the neuroticism sum-score range, which bodes well from a psychometric perspective. The right panel clarifies the mean for males is about 7% lower than the mean for females, plus or minus 8%. If you're curious, here are the numeric summaries.
+The plot shows the average scores for both males and females are a little below the middle of the full range of the neuroticism sum-score range, which bodes well from a psychometric perspective. The right panel clarifies the mean for males is about 7% lower than the mean for females, plus or minus 8%. To my mind, a POMP difference of 7% is large enough to take note.
+
+If you're curious, here are the numeric summaries.
 
 ```{r}
 pomp %>% 
@@ -524,7 +526,7 @@ sessionInfo()
 
 [^1]: Technically, proper Gaussian data range between $-\infty$ and $\infty$. In the real world, researchers generally find it acceptable to use the Gaussian likelihood as long as the data distributions aren't too close to a lower or upper boundary. What constitutes "too close" is up for debate, and probably has more to do with the pickiness of one's peer reviewers than anything else.
 
-[^2]: Okay, I'm getting a little lazy, here. If you recall, our `d` data are a random subset of the 2,800 row `bfi` data set from the **psych** package. If you compute the neuroticism sum score from the full data set, you can get a better sense of the population distribution. As it turns out, they're unimodal, but not particularly symmetric or bell shaped.
+[^2]: Okay, I'm getting a little lazy, here. If you recall, our `d` data are a random subset of the 2,800-row `bfi` data from the **psych** package. If you compute the neuroticism sum score from the full data set, you can get a better sense of the population distribution. As it turns out, they're unimodal, but not particularly symmetric or bell shaped.
 
 [^3]: Both examples of POMP used in the wild are co-authored by the great [Brenton Wiernik](https://wiernik.org/), who is the person who first introduced me to POMP scoring.
 
