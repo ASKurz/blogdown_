@@ -508,7 +508,7 @@ Okay friends, in this post we
 This topic is pushing the edges of my competence. If you have insights to add, chime in on twitter.
 
 ```{r echo = FALSE}
-blogdown::shortcode('tweet', '1476641792263131143')
+blogdown::shortcode('tweet', '1549458168937385986')
 ```
 
 Happy modeling, friends.
