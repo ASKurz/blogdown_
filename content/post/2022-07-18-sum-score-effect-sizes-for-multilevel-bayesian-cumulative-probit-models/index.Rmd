@@ -334,7 +334,7 @@ d %>%
   facet_grid(male ~ item, labeller = label_both)
 ```
 
-If you're shaken by the differences in the posterior means and the sample means, keep in mind that the posteriors are based on a multilevel model, which imposed partial pooling across persons and items. The job of the model is to compute the population parameters, not reproduce the sample estimates. To brush up on why we like partial pooling, check out the classic paper by [-@efronSteinParadoxStatistics1977] by Efron and Morris, [*Stein's paradox in statistics*](https://efron.ckirby.su.domains//other/Article1977.pdf), or my blog post on the topic, [*Stein's Paradox and what partial pooling can do for you*](https://solomonkurz.netlify.app/post/2019-02-23-stein-s-paradox-and-what-partial-pooling-can-do-for-you/).
+If you're shaken by the differences in the posterior means and the sample means, keep in mind that the posteriors are based on a multilevel model, which imposed partial pooling across persons and items. The job of the model is to compute the population parameters, not reproduce the sample estimates. To brush up on why we like partial pooling, check out the classic [-@efronSteinParadoxStatistics1977] paper by Efron and Morris, [*Stein's paradox in statistics*](https://efron.ckirby.su.domains//other/Article1977.pdf), or my blog post on the topic, [*Stein's Paradox and what partial pooling can do for you*](https://solomonkurz.netlify.app/post/2019-02-23-stein-s-paradox-and-what-partial-pooling-can-do-for-you/).
 
 Anyway, we only have to make one minor adjustment to our workflow to convert these results into a sum-score metric. In the first `group_by()` line, we just omit `item`. 
 
