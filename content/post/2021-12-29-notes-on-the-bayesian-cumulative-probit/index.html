@@ -31,17 +31,16 @@ csl: /Users/solomonkurz/Dropbox/blogdown/content/post/apa.csl
 link-citations: yes
 ---
 
-<script src="{{< blogdown/postref >}}index_files/header-attrs/header-attrs.js"></script>
 
 
 <div id="whatwhy" class="section level2">
 <h2>What/why?</h2>
-<p>Prompted by a couple of my research projects, I’ve been fitting a lot of ordinal models, lately. Because of its nice interpretive properties, I’m fond of using the cumulative probit. Though I’ve written about cumulative logit <span class="citation">(<a href="#ref-kurzStatisticalRethinkingBrms2020" role="doc-biblioref">Kurz, 2020b</a>, Section 11.1)</span> and probit models <span class="citation">(<a href="#ref-kurzDoingBayesianData2021" role="doc-biblioref">Kurz, 2020a</a>, Chapter 23)</span> before, I still didn’t feel grounded enough to make rational decisions about priors and parameter interpretations. In this post, I have collected my recent notes and reformatted them into something of a tutorial on the Bayesian cumulative probit model. Using a single psychometric data set, we explore a variety of models, starting with the simplest single-level thresholds-only model and ending with a conditional multilevel distributional model.</p>
+<p>Prompted by a couple of my research projects, I’ve been fitting a lot of ordinal models, lately. Because of its nice interpretive properties, I’m fond of using the cumulative probit. Though I’ve written about cumulative logit <span class="citation">(<a href="#ref-kurzStatisticalRethinkingBrms2020" role="doc-biblioref">Kurz, 2020b, sec. 11.1</a>)</span> and probit models <span class="citation">(<a href="#ref-kurzDoingBayesianData2021" role="doc-biblioref">Kurz, 2020a, Chapter 23</a>)</span> before, I still didn’t feel grounded enough to make rational decisions about priors and parameter interpretations. In this post, I have collected my recent notes and reformatted them into something of a tutorial on the Bayesian cumulative probit model. Using a single psychometric data set, we explore a variety of models, starting with the simplest single-level thresholds-only model and ending with a conditional multilevel distributional model.</p>
 <p>Be warned: This isn’t exactly a tutorial for beginners to the cumulative probit. For introductions, see some of the references cited within.</p>
 </div>
 <div id="set-it-up" class="section level2">
 <h2>Set it up</h2>
-<p>All code is in <strong>R</strong> <span class="citation">(<a href="#ref-R-base" role="doc-biblioref">R Core Team, 2020</a>)</span>, with healthy doses of the <strong>tidyverse</strong> <span class="citation">(<a href="#ref-R-tidyverse" role="doc-biblioref">Wickham, 2019</a>; <a href="#ref-wickhamWelcomeTidyverse2019" role="doc-biblioref">Wickham et al., 2019</a>)</span> for data wrangling and plotting. All models are fit with <a href="https://github.com/paul-buerkner/brms"><strong>brms</strong></a> <span class="citation">(<a href="#ref-burknerBrmsPackageBayesian2017" role="doc-biblioref">Bürkner, 2017</a>, <a href="#ref-burknerAdvancedBayesianMultilevel2018" role="doc-biblioref">2018</a>, <a href="#ref-R-brms" role="doc-biblioref">2020b</a>)</span>. In addition, there are a couple places where I make good use of the <a href="https://mjskay.github.io/tidybayes/"><strong>tidybayes</strong> package</a> <span class="citation">(<a href="#ref-R-tidybayes" role="doc-biblioref">Kay, 2020</a>)</span>.</p>
+<p>All code is in <strong>R</strong> <span class="citation">(<a href="#ref-R-base" role="doc-biblioref">R Core Team, 2021</a>)</span>, with healthy doses of the <strong>tidyverse</strong> <span class="citation">(<a href="#ref-wickhamWelcomeTidyverse2019" role="doc-biblioref">Wickham et al., 2019</a>; <a href="#ref-R-tidyverse" role="doc-biblioref">Wickham, 2021</a>)</span> for data wrangling and plotting. All models are fit with <a href="https://github.com/paul-buerkner/brms"><strong>brms</strong></a> <span class="citation">(<a href="#ref-burknerBrmsPackageBayesian2017" role="doc-biblioref">Bürkner, 2017</a>, <a href="#ref-burknerAdvancedBayesianMultilevel2018" role="doc-biblioref">2018</a>, <a href="#ref-R-brms" role="doc-biblioref">2022</a>)</span>. In addition, there are a couple places where I make good use of the <a href="https://mjskay.github.io/tidybayes/"><strong>tidybayes</strong> package</a> <span class="citation">(<a href="#ref-R-tidybayes" role="doc-biblioref">Kay, 2020</a>)</span>.</p>
 <p>Here we load the packages and adjust the global plotting theme.</p>
 <pre class="r"><code># load
 library(tidyverse)
@@ -54,7 +53,7 @@ theme_set(
              base_family = &quot;Times&quot;) +
   theme(panel.grid = element_blank())
 )</code></pre>
-<p>Our data will be a subset of the <code>bfi</code> data <span class="citation">(<a href="#ref-revelle2010individual" role="doc-biblioref">Revelle et al., 2010</a>)</span> from the <a href="https://CRAN.R-project.org/package=psych"><strong>psych</strong> package</a> <span class="citation">(<a href="#ref-R-psych" role="doc-biblioref">Revelle, 2021</a>)</span>. Here we load, subset, and wrangle the data to suit our needs.</p>
+<p>Our data will be a subset of the <code>bfi</code> data <span class="citation">(<a href="#ref-revelle2010individual" role="doc-biblioref">Revelle et al., 2010</a>)</span> from the <a href="https://CRAN.R-project.org/package=psych"><strong>psych</strong> package</a> <span class="citation">(<a href="#ref-R-psych" role="doc-biblioref">Revelle, 2022</a>)</span>. Here we load, subset, and wrangle the data to suit our needs.</p>
 <pre class="r"><code>set.seed(1)
 
 d &lt;- psych::bfi %&gt;% 
@@ -87,7 +86,7 @@ glimpse(d)</code></pre>
 </div>
 <div id="basics-of-the-ordered-probit" class="section level2">
 <h2>Basics of the ordered probit</h2>
-<p>I’ve had a difficult time understanding the notation used in these models. As McElreath <span class="citation">(<a href="#ref-mcelreathStatisticalRethinkingBayesian2015" role="doc-biblioref">2015, p. 335</a>)</span> remarked, there are a lot of different notational approaches for describing these models. In this post, I’ll be using a blend of sensibilities from McElreath, <span class="citation"><a href="#ref-burknerBayesianItemResponse2020" role="doc-biblioref">Bürkner</a> (<a href="#ref-burknerBayesianItemResponse2020" role="doc-biblioref">2020a</a>)</span>, and <span class="citation"><a href="#ref-kruschkeDoingBayesianData2015" role="doc-biblioref">Kruschke</a> (<a href="#ref-kruschkeDoingBayesianData2015" role="doc-biblioref">2015</a>)</span>. If you see flaws in my equations, do <a href="https://twitter.com/SolomonKurz/status/1476641792263131143">drop me a comment</a>.</p>
+<p>I’ve had a difficult time understanding the notation used in these models. As McElreath <span class="citation">(<a href="#ref-mcelreathStatisticalRethinkingBayesian2015" role="doc-biblioref">2015, p. 335</a>)</span> remarked, there are a lot of different notational approaches for describing these models. In this post, I’ll be using a blend of sensibilities from McElreath, <span class="citation">Bürkner (<a href="#ref-burknerBayesianItemResponse2020" role="doc-biblioref">2020</a>)</span>, and <span class="citation">Kruschke (<a href="#ref-kruschkeDoingBayesianData2015" role="doc-biblioref">2015</a>)</span>. If you see flaws in my equations, do <a href="https://twitter.com/SolomonKurz/status/1476641792263131143">drop me a comment</a>.</p>
 <p>Given a Likert-type variable <code>rating</code> for which there are <span class="math inline">\(K + 1 = 6\)</span> response options, you can model the relative probability of each ordinal category as</p>
 <p><span class="math display">\[p(\text{rating} = k | \{ \tau_k \}) = f(\tau_k) - f(\tau_{k - 1}),\]</span></p>
 <p>where <span class="math inline">\(\tau_k\)</span> is the <span class="math inline">\(k^\text{th}\)</span> threshold. On the left side of the equation, we stated the relative probabilities of the ordinal categories is conditional on our set of thresholds <span class="math inline">\(\{ \tau_k \}\)</span>, which is a shorthand for writing out <span class="math inline">\(\{k_1, k_2, k_3, k_4, k_5\}\)</span>. The <span class="math inline">\(f(\cdot)\)</span> operator is a stand-in for some cumulative distribution function, which will allow us to map the cumulative probabilities onto an unbounded parameter space divided up by the <span class="math inline">\(K\)</span> thresholds.</p>
@@ -99,8 +98,8 @@ glimpse(d)</code></pre>
 <p>Anyway, the thing to understand is that the area under the normal curve to the left of <span class="math inline">\(\tau_k\)</span> is defined as <span class="math inline">\(\Phi(\tau_k)\)</span>, which is the cumulative probability mass for the <span class="math inline">\(k^\text{th}\)</span> rating. The reason we have to subtract the area to the left of <span class="math inline">\(\Phi(\tau_{k - 1})\)</span> from <span class="math inline">\(\Phi(\tau_k)\)</span> is so we can isolate a relative probability from a cumulative probability. This applies in the same way for all the middle ratings–<code>2</code> through <code>5</code> in our case. For the first and last ratings (<code>1</code> and <code>6</code>), we might add two <em>virtual</em> thresholds <span class="math inline">\(-\infty\)</span> and <span class="math inline">\(\infty\)</span>, respectively. With the first rating, this means</p>
 <p><span class="math display">\[
 \begin{align*}
-p(\text{rating} = k | \{ \tau_k \}) &amp; = \Phi(\tau_1) - \Phi(\color{blue}{\tau_0} \color{black}{)} \\
-  &amp; = \Phi(\tau_1) - \Phi(\color{blue}{-\infty} \color{black}{)} \\
+p(\text{rating} = k | \{ \tau_k \}) &amp; = \Phi(\tau_1) - \Phi({\color{blue}{\tau_0}}) \\
+  &amp; = \Phi(\tau_1) - \Phi({\color{blue}{-\infty}} ) \\
   &amp; = \Phi(\tau_1) - \color{blue}0 \\
   &amp; = \Phi(\tau_1).
 \end{align*}
@@ -108,9 +107,9 @@ p(\text{rating} = k | \{ \tau_k \}) &amp; = \Phi(\tau_1) - \Phi(\color{blue}{\ta
 <p>In a similar way, for the last rating we have</p>
 <p><span class="math display">\[
 \begin{align*}
-p(\text{rating} = k | \{ \tau_k \}) &amp; = \Phi(\color{blue}{\tau_{K + 1}} \color{black}{) - \Phi(\tau_K)} \\
-  &amp; = \Phi(\color{blue}\infty \color{black}{) - \Phi(\tau_K)} \\
-  &amp; = \color{blue}1 \color{black}{-} \color{black}{\Phi(\tau_K)}.
+p(\text{rating} = k | \{ \tau_k \}) &amp; = \Phi({\color{blue}{\tau_{K + 1}}} ) - \Phi(\tau_K) \\
+  &amp; = \Phi({\color{blue}\infty} ) - \Phi(\tau_K) \\
+  &amp; = {\color{blue}1} - \Phi(\tau_K).
 \end{align*}
 \]</span></p>
 <p>It might help to visualize this. Consider a case where we have a rating variable with 6 values (<code>1</code> through <code>6</code>), each with equal proportions, <span class="math inline">\(1 / 6 \approx .167.\)</span> Here’s what that could look like mapped onto <span class="math inline">\(\Phi\)</span>.</p>
@@ -249,7 +248,7 @@ p(\text{rating} = k | \{ \tau_k \}) &amp; = \Phi(\tau_k) - \Phi(\tau_{k - 1}) \\
 ## Draws were sampled using sampling(NUTS). For each parameter, Bulk_ESS
 ## and Tail_ESS are effective sample size measures, and Rhat is the potential
 ## scale reduction factor on split chains (at convergence, Rhat = 1).</code></pre>
-<p>As Bürkner explained in his <span class="citation">(<a href="#ref-burknerBayesianItemResponse2020" role="doc-biblioref">2020a</a>)</span> tutorial, the <code>Intercept[k]</code> rows are actually summarizing the <span class="math inline">\(\tau_k\)</span> thresholds, not the <span class="math inline">\(\mu\)</span> intercept for the underlying latent variable. That, recall, is fixed at <span class="math inline">\(0\)</span> for identification purposes. Also, notice that the <code>disc</code> parameter is similarly held constant at <span class="math inline">\(1\)</span> for identification.</p>
+<p>As Bürkner explained in his <span class="citation">(<a href="#ref-burknerBayesianItemResponse2020" role="doc-biblioref">2020</a>)</span> tutorial, the <code>Intercept[k]</code> rows are actually summarizing the <span class="math inline">\(\tau_k\)</span> thresholds, not the <span class="math inline">\(\mu\)</span> intercept for the underlying latent variable. That, recall, is fixed at <span class="math inline">\(0\)</span> for identification purposes. Also, notice that the <code>disc</code> parameter is similarly held constant at <span class="math inline">\(1\)</span> for identification.</p>
 <p>It might help to visualize the thresholds in a plot.</p>
 <pre class="r"><code>tibble(x = seq(from = -3.5, to = 3.5, length.out = 200)) %&gt;% 
   mutate(d = dnorm(x = x)) %&gt;% 
@@ -382,9 +381,9 @@ p(\text{rating} = k | \{ \tau_k \}) &amp; = \Phi(\tau_k) - \Phi(\tau_{k - 1}) \\
 <p>If we would like to add a predictor, the most natural way is probably to explicitly add <span class="math inline">\(\mu\)</span> in the likelihood and then attach a linear model to <span class="math inline">\(\mu_i\)</span>. This would look like</p>
 <p><span class="math display">\[
 \begin{align*}
-p(\text{rating} = k | \{ \tau_k \}, \color{blue}{\mu_i} \color{black}{)} &amp; = \Phi(\tau_k \color{blue}{- \mu_i} \color{black}{) - \Phi(\tau_{k - 1}} \color{blue}{- \mu_i} \color{black}) \\
-\color{blue}{\mu_i} &amp; = \color{blue}{\beta_0 + \sum_1^l \beta_l x_l} \\
-\color{blue}{\beta_0} &amp; = \color{blue}0 \color{black}{,}
+p(\text{rating} = k | \{ \tau_k \}, {\color{blue}{\mu_i}} ) &amp; = \Phi(\tau_k {\color{blue}{- \mu_i}} ) - \Phi(\tau_{k - 1} {\color{blue}{- \mu_i}} ) \\
+{\color{blue}{\mu_i}} &amp; = {\color{blue}{\beta_0 + \sum_1^l \beta_l x_l}} \\
+{\color{blue}{\beta_0}} &amp; = {\color{blue}0} ,
 \end{align*}
 \]</span></p>
 <p>where <span class="math inline">\(\beta_0\)</span> is the intercept for the latent mean and <span class="math inline">\(\sum_1^l \beta_l x_l\)</span> is the additive effect of the full set of <span class="math inline">\(l\)</span> predictor variables and their <span class="math inline">\(\beta_l\)</span> coefficients. Now <span class="math inline">\(\beta_0\)</span> is the parameter we set to zero for identification purposes. As before, the <span class="math inline">\(\sigma\)</span> parameter will remain set to <span class="math inline">\(1\)</span>.</p>
@@ -398,7 +397,7 @@ p(\text{rating} = k | \{ \tau_k \}, \color{blue}{\mu_i} \color{black}{)} &amp; =
 <p><span class="math display">\[
 \begin{align*}
 p(\text{rating} = k | \{ \tau_k \}, \mu_i) &amp; = \Phi(\tau_k - \mu_i) - \Phi(\tau_{k - 1} - \mu_i) \\
-\mu_i &amp; = \beta_1 \text{male}_i \\ 
+\mu_i &amp; = \beta_1 \text{male}_i \\
 \tau_1 &amp; \sim \mathcal N(-0.97, 1) \\
 \tau_2 &amp; \sim \mathcal N(-0.43, 1) \\
 \tau_3 &amp; \sim \mathcal N(0, 1) \\
@@ -537,11 +536,11 @@ n_male   &lt;- d %&gt;% filter(male == 1)   %&gt;% summarise(n = n()) %&gt;% pul
 <p>If we have reason to presume differences in latent standard deviations, we can explicitly add <span class="math inline">\(\sigma\)</span> in the likelihood and then attach a linear model to <span class="math inline">\(\log(\sigma_i)\)</span>. As in other contexts, it’s generally a good idea to model <span class="math inline">\(\log(\sigma_i)\)</span> instead of <span class="math inline">\(\sigma_i\)</span> because the former will ensure the model will only predict positive values. This would look like</p>
 <p><span class="math display">\[
 \begin{align*}
-p(\text{rating} = k | \{ \tau_k \}, \mu_i, \color{blue}{\sigma_i} \color{black}{)} &amp; = \color{black}{\Phi([\tau_k - \mu_i]} \color{blue}{/ \sigma_i} \color{black}{) - \Phi([\tau_{k - 1} - \mu_i]} \color{blue}{/ \sigma_i} \color{black}{)} \\
+p(\text{rating} = k | \{ \tau_k \}, \mu_i, {\color{blue}{\sigma_i}} ) &amp; = \Phi([\tau_k - \mu_i] {\color{blue}{/ \sigma_i}} ) - \Phi([\tau_{k - 1} - \mu_i] {\color{blue}{/ \sigma_i}} ) \\
 \mu_i &amp; = \beta_0 + \sum_1^l \beta_l x_l \\
-\color{blue}{\log(\sigma_i)} &amp; = \color{blue}{\eta_0 + \sum_1^m \eta_m x_m} \\
+{\color{blue}{\log(\sigma_i)}} &amp; = {\color{blue}{\eta_0 + \sum_1^m \eta_m x_m}} \\
 \beta_0 &amp; = 0 \\
-\color{blue}{\eta_0} &amp; = \color{blue}0 \color{black}{,}
+{\color{blue}{\eta_0}} &amp; = {\color{blue}0} ,
 \end{align*}
 \]</span></p>
 <p>where <span class="math inline">\(\eta_0\)</span> is the intercept for the logged latent standard deviation and <span class="math inline">\(\sum_1^m \eta_m x_m\)</span> is the additive effect of the full set of <span class="math inline">\(m\)</span> predictor variables and their <span class="math inline">\(\eta_m\)</span> coefficients. Now <span class="math inline">\(\eta_0\)</span> is set to zero for identification purposes. Recall that <span class="math inline">\(\exp(0) = 1\)</span>, which means that the default is still that <span class="math inline">\(\sigma_i = 1\)</span> when all predictors are set to zero. With this model, it is possible the <span class="math inline">\(l\)</span> and <span class="math inline">\(m\)</span> predictor sets are the same. Here we differentiate between them just to make clear that they can differ, as needed.</p>
@@ -559,9 +558,9 @@ p(\text{rating} = k | \{ \tau_k \}, \mu_i, \color{blue}{\sigma_i} \color{black}{
 <p>However, things become more complicated when you want to model <span class="math inline">\(\alpha\)</span>. First, here’s the updated likelihood:</p>
 <p><span class="math display">\[
 \begin{align*}
-p(\text{rating} = k | \{ \tau_k \}, \mu_i, \color{blue}{\alpha_i} \color{black}{)} &amp; = \Phi(\color{blue}{\alpha_i} \color{black}{[\tau_k - \mu_i]) - \Phi( }\color{blue}{\alpha_i} \color{black}{[\tau_{k - 1} - \mu_i])} \\
+p(\text{rating} = k | \{ \tau_k \}, \mu_i, {\color{blue}{\alpha_i}} ) &amp; = \Phi({\color{blue}{\alpha_i}} [\tau_k - \mu_i]) - \Phi( {\color{blue}{\alpha_i}} [\tau_{k - 1} - \mu_i]) \\
 \mu_i &amp; = \beta_0 + \sum_1^l \beta_l x_l \\
-\log(\color{blue}{\alpha_i} \color{black}{)} &amp; = \eta_0 + \sum_1^m \eta_m x_m \\
+{\color{blue}{\log(\alpha_i)}} &amp; = {\color{blue}{\eta_0 + \sum_1^m \eta_m x_m}} \\
 \beta_0 &amp; = 0 \\
 \eta_0 &amp; = 0.
 \end{align*}
@@ -634,7 +633,7 @@ tibble(prior = rnorm(n = 1e5, mean = 0, sd = log(2) / 2)) %&gt;%
 <p><span class="math display">\[
 \begin{align*}
 p(\text{rating} = k | \{ \tau_k \}, \mu_i, \alpha_i) &amp; = \Phi(\alpha_i[\tau_k - \mu_i]) - \Phi(\alpha_i[\tau_{k - 1} - \mu_i]) \\
-\mu_i          &amp; = \beta_1 \text{male}_i \\ 
+\mu_i          &amp; = \beta_1 \text{male}_i \\
 \log(\alpha_i) &amp; = \eta_1 \text{male}_i\\
 \tau_1 &amp; \sim \mathcal N(-0.97, 1) \\
 \tau_2 &amp; \sim \mathcal N(-0.43, 1) \\
@@ -666,7 +665,7 @@ fit3 &lt;- brm(
   seed = 1,
   init_r = 0.2
 )</code></pre>
-<p>Note how we used the <code>0 + ...</code> syntax in the first line in the <code>lf()</code> function and that set we set <code>cmc = FALSE</code> in the second line. As Bürkner noted in his <span class="citation">(<a href="#ref-burknerBayesianItemResponse2020" role="doc-biblioref">2020a</a>)</span> tutorial, it’s critical that you do this when attaching a model to <span class="math inline">\(\log(\alpha_i)\)</span>. If you leave these bits out, you might find that you are no longer keeping the reference category for <span class="math inline">\(\log(\alpha_i)\)</span> set to <span class="math inline">\(0\)</span>, which can wreak havoc on the model.</p>
+<p>Note how we used the <code>0 + ...</code> syntax in the first line in the <code>lf()</code> function and that set we set <code>cmc = FALSE</code> in the second line. As Bürkner noted in his <span class="citation">(<a href="#ref-burknerBayesianItemResponse2020" role="doc-biblioref">2020</a>)</span> tutorial, it’s critical that you do this when attaching a model to <span class="math inline">\(\log(\alpha_i)\)</span>. If you leave these bits out, you might find that you are no longer keeping the reference category for <span class="math inline">\(\log(\alpha_i)\)</span> set to <span class="math inline">\(0\)</span>, which can wreak havoc on the model.</p>
 <p>Anyway, check the summary.</p>
 <pre class="r"><code>print(fit3)</code></pre>
 <pre><code>##  Family: cumulative 
@@ -787,17 +786,17 @@ fit3 &lt;- brm(
 <p><span class="math display">\[
 \begin{align*}
 p(\text{rating} = k | \{ \tau_k \}, \mu_i) &amp; = \Phi(\tau_k - \mu_i) - \Phi(\tau_{k - 1} - \mu_i) \\
-\mu_i          &amp; = 0 \color{blue}+ \color{blue}{u_i} \\ 
-\color{blue}{u_i} &amp; \sim \color{blue}{\mathcal N(0, \sigma_u)} \\
+\mu_i          &amp; = 0 + {\color{blue}{u_i}} \\
+{\color{blue}{u_i}} &amp; \sim {\color{blue}{\mathcal N(0, \sigma_u)}} \\
 \tau_1 &amp; \sim \mathcal N(-0.97, 1) \\
 \tau_2 &amp; \sim \mathcal N(-0.43, 1) \\
 \tau_3 &amp; \sim \mathcal N(0, 1) \\
 \tau_4 &amp; \sim \mathcal N(0.43, 1) \\
 \tau_5 &amp; \sim \mathcal N(0.97, 1) \\
-\color{blue}{\sigma_u} &amp; \sim \color{blue}{\operatorname{Exponential}(1)} \color{black}{,}
+{\color{blue}{\sigma_u}} &amp; \sim {\color{blue}{\operatorname{Exponential}(1)}},
 \end{align*}
 \]</span></p>
-<p>where we’ve dropped the <code>male</code> predictor and the entire linear model for <span class="math inline">\(\log(\alpha_i)\)</span> for the sake of simplicity. They’ll come back in a bit. Given the baseline fixed-effects portion of the model is still on the standardized-normal metric, the good old <span class="math inline">\(\operatorname{Exponential}(1)\)</span> prior is a good choice for the level-2 standard deviation <span class="math inline">\(\sigma_u\)</span>. For more on the <span class="math inline">\(\operatorname{Exponential}(1)\)</span> prior, see <span class="citation"><a href="#ref-mcelreathStatisticalRethinkingBayesian2020" role="doc-biblioref">McElreath</a> (<a href="#ref-mcelreathStatisticalRethinkingBayesian2020" role="doc-biblioref">2020</a>)</span>.</p>
+<p>where we’ve dropped the <code>male</code> predictor and the entire linear model for <span class="math inline">\(\log(\alpha_i)\)</span> for the sake of simplicity. They’ll come back in a bit. Given the baseline fixed-effects portion of the model is still on the standardized-normal metric, the good old <span class="math inline">\(\operatorname{Exponential}(1)\)</span> prior is a good choice for the level-2 standard deviation <span class="math inline">\(\sigma_u\)</span>. For more on the <span class="math inline">\(\operatorname{Exponential}(1)\)</span> prior, see <span class="citation">McElreath (<a href="#ref-mcelreathStatisticalRethinkingBayesian2020" role="doc-biblioref">2020</a>)</span>.</p>
 <p>Here’s how to fit the model with <strong>brms</strong>.</p>
 <pre class="r"><code># 49.94408 secs
 fit4 &lt;- brm(
@@ -856,19 +855,19 @@ fit4 &lt;- brm(
 <p><span class="math display">\[
 \begin{align*}
 p(\text{rating} = k | \{ \tau_k \}, \mu_{i\color{blue}j}) &amp; = \Phi(\tau_k - \mu_{i\color{blue}j}) - \Phi(\tau_{k - 1} - \mu_{i\color{blue}j}) \\
-\mu_{i\color{blue}j} &amp; = 0 + u_i \color{blue}{ + } \color{blue}{v_j} \\ 
+\mu_{i\color{blue}j} &amp; = 0 + u_i \color{blue}{ + } \color{blue}{v_j} \\
 u_i               &amp; \sim \mathcal N(0, \sigma_u) \\
-\color{blue}{v_j} &amp; \sim \color{blue}{\mathcal N(0, \sigma_v)} \\
+{\color{blue}{v_j}} &amp; \sim {\color{blue}{\mathcal N(0, \sigma_v)}} \\
 \tau_1 &amp; \sim \mathcal N(-0.97, 1) \\
 \tau_2 &amp; \sim \mathcal N(-0.43, 1) \\
 \tau_3 &amp; \sim \mathcal N(0, 1) \\
 \tau_4 &amp; \sim \mathcal N(0.43, 1) \\
 \tau_5 &amp; \sim \mathcal N(0.97, 1) \\
 \sigma_u               &amp; \sim \operatorname{Exponential}(1) \\
-\color{blue}{\sigma_v} &amp; \sim \color{blue}{\operatorname{Exponential}(1)} \color{black}{.}
+{\color{blue}{\sigma_v}} &amp; \sim {\color{blue}{\operatorname{Exponential}(1)}}.
 \end{align*}
 \]</span></p>
-<p>At this point, we’re now fitting a Bayesian IRT model along the lines Bürkner showcased in his <span class="citation">(<a href="#ref-burknerBayesianItemResponse2020" role="doc-biblioref">2020a</a>)</span> tutorial. We have person-level parameters in <span class="math inline">\(u_i\)</span> and item-level parameters in <span class="math inline">\(v_j\)</span>.</p>
+<p>At this point, we’re now fitting a Bayesian IRT model along the lines Bürkner showcased in his <span class="citation">(<a href="#ref-burknerBayesianItemResponse2020" role="doc-biblioref">2020</a>)</span> tutorial. We have person-level parameters in <span class="math inline">\(u_i\)</span> and item-level parameters in <span class="math inline">\(v_j\)</span>.</p>
 <p>Fit the model.</p>
 <pre class="r"><code># 1.278795 secs
 fit5 &lt;- brm(
@@ -923,7 +922,7 @@ fit5 &lt;- brm(
 <p><span class="math display">\[
 \begin{align*}
 p(\text{rating} = k | \{ \tau_{k\color{blue}j} \}, \mu_{ij}) &amp; = \Phi(\tau_{k\color{blue}j} - \mu_{ij}) - \Phi(\tau_{k - 1,\color{blue}j} - \mu_{ij}) \\
-\mu_{ij} &amp; = 0 + u_i + v_j \\ 
+\mu_{ij} &amp; = 0 + u_i + v_j \\
 u_i &amp; \sim \mathcal N(0, \sigma_u) \\
 v_j &amp; \sim \mathcal N(0, \sigma_v) \\
 \tau_{1\color{blue}j} &amp; \sim \mathcal N(-0.97, 1) \\
@@ -1068,15 +1067,13 @@ pp_check(fit6, type = &quot;bars_grouped&quot;, group = &quot;item&quot;,
 <h3>Randomly-varying latent standard deviations.</h3>
 <p>If the latent means can vary randomly, the latent dispersion parameters can vary randomly, too. Now <span class="math inline">\(\log(\alpha_{ij})\)</span> will vary across <span class="math inline">\(i\)</span> persons and <span class="math inline">\(j\)</span> questions with the Bayesian ordinal IRT model</p>
 <p><span class="math display">\[\begin{align*}
-\small{p(\text{rating} = k | \{ \tau_{kj} \}, \mu_{ij}, \color{blue}{\alpha_{ij}} \color{black}{)}} &amp; = \small{\Phi(\color{blue}{\alpha_{ij}} \color{black}{[\tau_{kj} - \mu_{ij}]) - \Phi(} \color{blue}{\alpha_{ij}} \color{black}{[\tau_{k - 1,j} - \mu_{ij}])}} \\
-\mu_{ij} &amp; = 0 + u_i + v_j \\ 
-\color{blue}{\log(\alpha_{ij})} &amp; = \color{blue}{0 + w_i + x_j} \\
+\small{p(\text{rating} = k | \{ \tau_{kj} \}, \mu_{ij}, {\color{blue}{\alpha_{ij}}})} &amp; = \small{\Phi({\color{blue}{\alpha_{ij}}} [\tau_{kj} - \mu_{ij}]) - \Phi( {\color{blue}{\alpha_{ij}}} [\tau_{k - 1,j} - \mu_{ij}])} \\
+\mu_{ij} &amp; = 0 + u_i + v_j \\
+{\color{blue}{\log(\alpha_{ij})}} &amp; = {\color{blue}{0 + w_i + x_j}} \\
 u_i &amp; \sim \mathcal N(0, \sigma_u) \\
 v_j &amp; \sim \mathcal N(0, \sigma_v) \\
-
-\color{blue}{w_i} &amp; \sim \color{blue}{\mathcal N(0, \sigma_w)} \\
-\color{blue}{x_j} &amp; \sim \color{blue}{\mathcal N(0, \sigma_x)} \\
-
+{\color{blue}{w_i}} &amp; \sim {\color{blue}{\mathcal N(0, \sigma_w)}} \\
+{\color{blue}{x_j}} &amp; \sim {\color{blue}{\mathcal N(0, \sigma_x)}} \\
 \tau_{1j} &amp; \sim \mathcal N(-0.97, 1) \\
 \tau_{2j} &amp; \sim \mathcal N(-0.43, 1) \\
 \tau_{3j} &amp; \sim \mathcal N(0, 1) \\
@@ -1084,8 +1081,8 @@ v_j &amp; \sim \mathcal N(0, \sigma_v) \\
 \tau_{5j} &amp; \sim \mathcal N(0.97, 1) \\
 \sigma_u &amp; \sim \operatorname{Exponential}(1) \\
 \sigma_v &amp; \sim \operatorname{Exponential}(1) \\
-\color{blue}{\sigma_w} &amp; \sim \color{blue}{\operatorname{Exponential}(1)} \\
-\color{blue}{\sigma_x} &amp; \sim \color{blue}{\operatorname{Exponential}(1)} \color{black}{.}
+{\color{blue}{\sigma_w}} &amp; \sim {\color{blue}{\operatorname{Exponential}(1)}} \\
+{\color{blue}{\sigma_x}} &amp; \sim {\color{blue}{\operatorname{Exponential}(1)}} .
 \end{align*}\]</span></p>
 <p>Though the <span class="math inline">\(\operatorname{Exponential}(1)\)</span> prior might be a good place to start with our new <span class="math inline">\(\sigma_w\)</span> and <span class="math inline">\(\sigma_x\)</span>, let’s ponder this a bit. Recall these are for the distribution of logged discrimination parameters. Since I’m no statistician or psychometrician, I’m not even sure what that means, which makes it hard to intuit whether the <span class="math inline">\(\operatorname{Exponential}(1)\)</span> prior makes sense for my data. A plot might help. Here we’ll simulate <span class="math inline">\(100{,}000\)</span> draws from the <span class="math inline">\(\operatorname{Exponential}(1)\)</span> prior, use those draws to simulate <span class="math inline">\(w_i\)</span> values from <span class="math inline">\(\mathcal N(0, \sigma_w)\)</span>, and then plot that distribution in the <span class="math inline">\(w_i\)</span>, <span class="math inline">\(\exp(w_i)\)</span> and <span class="math inline">\(1/\exp(w_i)\)</span> metrics.</p>
 <pre class="r"><code>set.seed(1)
@@ -1133,14 +1130,12 @@ tibble(sigma_w = rexp(n = 1e5, rate = 1 / 0.463)) %&gt;%
 <p>With that as our prior, our updated model formula will be</p>
 <p><span class="math display">\[\begin{align*}
 \small{p(\text{rating} = k | \{ \tau_{kj} \}, \mu_{ij}, \alpha_{ij})} &amp; = \small{\Phi(\alpha_{ij}[\tau_{kj} - \mu_{ij}]) - \Phi(\alpha_{ij}[\tau_{k - 1,j} - \mu_{ij}])} \\
-\mu_{ij} &amp; = 0 + u_i + v_j \\ 
+\mu_{ij} &amp; = 0 + u_i + v_j \\
 \log(\alpha_{ij}) &amp; = 0 + w_i + x_j \\
 u_i &amp; \sim \mathcal N(0, \sigma_u) \\
 v_j &amp; \sim \mathcal N(0, \sigma_v) \\
-
 w_i &amp; \sim \mathcal N(0, \sigma_w) \\
 x_j &amp; \sim \mathcal N(0, \sigma_x) \\
-
 \tau_{1j} &amp; \sim \mathcal N(-0.97, 1) \\
 \tau_{2j} &amp; \sim \mathcal N(-0.43, 1) \\
 \tau_{3j} &amp; \sim \mathcal N(0, 1) \\
@@ -1148,8 +1143,8 @@ x_j &amp; \sim \mathcal N(0, \sigma_x) \\
 \tau_{5j} &amp; \sim \mathcal N(0.97, 1) \\
 \sigma_u &amp; \sim \operatorname{Exponential}(1) \\
 \sigma_v &amp; \sim \operatorname{Exponential}(1) \\
-\sigma_w &amp; \sim \operatorname{Exponential}(\color{blue}{1 / 0.463} \color{black}{)} \\
-\sigma_x &amp; \sim \operatorname{Exponential}(\color{blue}{1 / 0.463} \color{black}{).}
+\sigma_w &amp; \sim \operatorname{Exponential}({\color{blue}{1 / 0.463}} ) \\
+\sigma_x &amp; \sim \operatorname{Exponential}({\color{blue}{1 / 0.463}} ).
 \end{align*}\]</span></p>
 <p>Put those new priors to work and fit the model.</p>
 <pre class="r"><code># 5.223564 mins
@@ -1376,17 +1371,14 @@ m_sum_score</code></pre>
 <p>Now if you wanted to, you could expand this model further to include correlations between <span class="math inline">\(u_i\)</span> and <span class="math inline">\(w_i\)</span> and between <span class="math inline">\(v_j\)</span> and <span class="math inline">\(x_j\)</span>. That would change the model formula to something like</p>
 <p><span class="math display">\[\begin{align*}
 \small{p(\text{rating} = k | \{ \tau_{kj} \}, \mu_{ij}, \alpha_{ij})} &amp; = \small{\Phi(\alpha_{ij}[\tau_{kj} - \mu_{ij}]) - \Phi(\alpha_{ij}[\tau_{k - 1,j} - \mu_{ij}])} \\
-\mu_{ij} &amp; = 0 + u_i + v_j \\ 
+\mu_{ij} &amp; = 0 + u_i + v_j \\
 \log(\alpha_{ij}) &amp; = 0 + w_i + x_j \\
-
-\begin{bmatrix} u_i \\ w_i \end{bmatrix} &amp; \sim \mathcal{MVN}(\mathbf 0, \mathbf{S_a \color{blue}{R_a} \color{black}{S_a}}) \\
-\begin{bmatrix} v_j \\ x_j \end{bmatrix} &amp; \sim \mathcal{MVN}(\mathbf 0, \mathbf{S_b \color{blue}{R_b} \color{black}{S_b}}) \\
-
+\begin{bmatrix} u_i \\ w_i \end{bmatrix} &amp; \sim \mathcal{MVN}(\mathbf 0, \mathbf{S_a {\color{blue}{R_a}} S_a}) \\
+\begin{bmatrix} v_j \\ x_j \end{bmatrix} &amp; \sim \mathcal{MVN}(\mathbf 0, \mathbf{S_b {\color{blue}{R_b}} S_b}) \\
 \mathbf{S_a} &amp; = \begin{bmatrix} \sigma_u &amp; 0 \\ 0 &amp; \sigma_w \end{bmatrix} \\
 \mathbf{S_b} &amp; = \begin{bmatrix} \sigma_v &amp; 0 \\ 0 &amp; \sigma_x \end{bmatrix} \\
-\color{blue}{\mathbf{R_a}} &amp; = \color{blue}{\begin{bmatrix} 1 &amp; \rho_a \\ \rho_a &amp; 1 \end{bmatrix}} \\
-\color{blue}{\mathbf{R_b}} &amp; = \color{blue}{\begin{bmatrix} 1 &amp; \rho_b \\ \rho_b &amp; 1 \end{bmatrix}} \\
-
+{\color{blue}{\mathbf{R_a}}} &amp; = {\color{blue}{\begin{bmatrix} 1 &amp; \rho_a \\ \rho_a &amp; 1 \end{bmatrix}}} \\
+{\color{blue}{\mathbf{R_b}}} &amp; = {\color{blue}{\begin{bmatrix} 1 &amp; \rho_b \\ \rho_b &amp; 1 \end{bmatrix}}} \\
 \tau_{1j} &amp; \sim \mathcal N(-0.97, 1) \\
 \tau_{2j} &amp; \sim \mathcal N(-0.43, 1) \\
 \tau_{3j} &amp; \sim \mathcal N(0, 1) \\
@@ -1396,19 +1388,18 @@ m_sum_score</code></pre>
 \sigma_v &amp; \sim \operatorname{Exponential}(1) \\
 \sigma_w &amp; \sim \operatorname{Exponential}(1 / 0.463) \\
 \sigma_x &amp; \sim \operatorname{Exponential}(1 / 0.463) \\
-\color{blue}{\rho_a} &amp; \sim \color{blue}{\operatorname{LKJ}(2)} \\
-\color{blue}{\rho_b} &amp; \sim \color{blue}{\operatorname{LKJ}(2)} \color{black}{,}
+{\color{blue}{\rho_a}} &amp; \sim {\color{blue}{\operatorname{LKJ}(2)}} \\
+{\color{blue}{\rho_b}} &amp; \sim {\color{blue}{\operatorname{LKJ}(2)}},
 \end{align*}\]</span></p>
 <p>where though our four random parameters are now modeled as two bivariate-normal pairs, there really are only two new parameters: <span class="math inline">\(\rho_a\)</span> and <span class="math inline">\(\rho_b\)</span>. The LKJ priors for our two new parameters would be weakly regularizing. In my experience, so far, adding those two level-2 correlations can make for notably longer fitting times and they often result in computational complications like the need to further adjust <code>adapt_delta</code> and so on. So in the interest of space, I’m not going to fit this model. But it’s always a possibility to consider.</p>
 </div>
 <div id="full-conditional-distributional-model." class="section level3">
 <h3>Full conditional distributional model.</h3>
 <p>A while back, we put our level-1 predictor <code>male</code> to the side while we focused on expanding the random components. Now’s time to bring that predictor back and fit the full conditional distributional model</p>
-<p><span class="math display">\[
-\begin{align*}
+<p><span class="math display">\[\begin{align*}
 \small{p(\text{rating} = k | \{ \tau_{kj} \}, \mu_{ij}, \alpha_{ij})} &amp; = \small{\Phi(\alpha_{ij}[\tau_{kj} - \mu_{ij}]) - \Phi(\alpha_{ij}[\tau_{k - 1,j} - \mu_{ij}])} \\
-\mu_{ij}          &amp; = \color{blue}{\beta_1 \text{male}_i} \color{black}{ + u_i + v_j} \\ 
-\log(\alpha_{ij}) &amp; = \color{blue}{\eta_1 \text{male}_i} \color{black}{ + w_i + x_j} \\
+\mu_{ij}          &amp; = {\color{blue}{\beta_1 \text{male}_i}} + u_i + v_j \\
+\log(\alpha_{ij}) &amp; = {\color{blue}{\eta_1 \text{male}_i}} + w_i + x_j \\
 u_i &amp; \sim \mathcal N(0, \sigma_u) \\
 v_j &amp; \sim \mathcal N(0, \sigma_v) \\
 w_i &amp; \sim \mathcal N(0, \sigma_w) \\
@@ -1418,14 +1409,13 @@ x_j &amp; \sim \mathcal N(0, \sigma_x) \\
 \tau_{3j} &amp; \sim \mathcal N(0, 1) \\
 \tau_{4j} &amp; \sim \mathcal N(0.43, 1) \\
 \tau_{5j} &amp; \sim \mathcal N(0.97, 1) \\
-\color{blue}{\beta_1} &amp; \sim \color{blue}{\mathcal N(0, 1)} \\
-\color{blue}{\eta_1}  &amp; \sim \color{blue}{\mathcal N(0, 0.347)} \\
+{\color{blue}{\beta_1}} &amp; \sim {\color{blue}{\mathcal N(0, 1)}} \\
+{\color{blue}{\eta_1}}  &amp; \sim {\color{blue}{\mathcal N(0, 0.347)}} \\
 \sigma_u &amp; \sim \operatorname{Exponential}(1) \\
 \sigma_v &amp; \sim \operatorname{Exponential}(1) \\
 \sigma_w &amp; \sim \operatorname{Exponential}(1 / 0.463) \\
 \sigma_x &amp; \sim \operatorname{Exponential}(1 / 0.463).
-\end{align*}
-\]</span></p>
+\end{align*}\]</span></p>
 <p>At this point, the change to the <strong>brms</strong> code is trivial.</p>
 <pre class="r"><code># 5.223564 mins
 fit8 &lt;- brm(
@@ -1649,7 +1639,7 @@ fit8 &lt;- brm(
 ## 4 N4    3.2 (1.6) 3.3 (1.5)
 ## 5 N5    2.3 (1.4) 3.4 (1.6)</code></pre>
 <p>I believe this apparent mismatch is because of how the cumulative probit model uses thresholds and the normal CDF to describe relative probabilities among the ordinal categories. The latent means and standard deviations have very different meanings from the sample statistics. So it goes…</p>
-<p>From an IRT perspective, we can think of the <span class="math inline">\(\mu_j\)</span> and <span class="math inline">\(\alpha_j\)</span> parameters as item difficulty and discrimination parameters. Here we display them in a coefficient plot in the same way seen in Figure <span class="math inline">\(10\)</span> in Bürkner’s IRT <span class="citation">(<a href="#ref-burknerBayesianItemResponse2020" role="doc-biblioref">2020a</a>)</span> tutorial.</p>
+<p>From an IRT perspective, we can think of the <span class="math inline">\(\mu_j\)</span> and <span class="math inline">\(\alpha_j\)</span> parameters as item difficulty and discrimination parameters. Here we display them in a coefficient plot in the same way seen in Figure <span class="math inline">\(10\)</span> in Bürkner’s IRT <span class="citation">(<a href="#ref-burknerBayesianItemResponse2020" role="doc-biblioref">2020</a>)</span> tutorial.</p>
 <pre class="r"><code>rbind(ranef(fit8)$item[, , &quot;Intercept&quot;],
       ranef(fit8)$item[, , &quot;disc_Intercept&quot;] %&gt;% exp()) %&gt;% 
   data.frame() %&gt;% 
@@ -1670,13 +1660,13 @@ fit8 &lt;- brm(
 <div id="session-info" class="section level2">
 <h2>Session info</h2>
 <pre class="r"><code>sessionInfo()</code></pre>
-<pre><code>## R version 4.1.1 (2021-08-10)
+<pre><code>## R version 4.2.0 (2022-04-22)
 ## Platform: x86_64-apple-darwin17.0 (64-bit)
-## Running under: macOS Catalina 10.15.7
+## Running under: macOS Big Sur/Monterey 10.16
 ## 
 ## Matrix products: default
-## BLAS:   /Library/Frameworks/R.framework/Versions/4.1/Resources/lib/libRblas.0.dylib
-## LAPACK: /Library/Frameworks/R.framework/Versions/4.1/Resources/lib/libRlapack.dylib
+## BLAS:   /Library/Frameworks/R.framework/Versions/4.2/Resources/lib/libRblas.0.dylib
+## LAPACK: /Library/Frameworks/R.framework/Versions/4.2/Resources/lib/libRlapack.dylib
 ## 
 ## locale:
 ## [1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
@@ -1685,44 +1675,45 @@ fit8 &lt;- brm(
 ## [1] stats     graphics  grDevices utils     datasets  methods   base     
 ## 
 ## other attached packages:
-##  [1] tidybayes_3.0.1 brms_2.16.2     Rcpp_1.0.7      forcats_0.5.1   stringr_1.4.0   dplyr_1.0.7     purrr_0.3.4    
-##  [8] readr_2.0.1     tidyr_1.1.3     tibble_3.1.6    ggplot2_3.3.5   tidyverse_1.3.1
+##  [1] tidybayes_3.0.2      brms_2.17.3          Rcpp_1.0.9           forcats_0.5.1        stringr_1.4.0       
+##  [6] dplyr_1.0.9          purrr_0.3.4          readr_2.1.2          tidyr_1.2.0          tibble_3.1.7        
+## [11] ggplot2_3.3.6        tidyverse_1.3.1.9000
 ## 
 ## loaded via a namespace (and not attached):
-##   [1] readxl_1.3.1         backports_1.3.0      plyr_1.8.6           igraph_1.2.6         svUnit_1.0.6        
-##   [6] splines_4.1.1        crosstalk_1.1.1      TH.data_1.0-10       rstantools_2.1.1     inline_0.3.19       
-##  [11] digest_0.6.28        htmltools_0.5.2      viridis_0.6.1        rsconnect_0.8.24     fansi_0.5.0         
-##  [16] magrittr_2.0.1       checkmate_2.0.0      tzdb_0.1.2           modelr_0.1.8         RcppParallel_5.1.4  
-##  [21] matrixStats_0.61.0   xts_0.12.1           sandwich_3.0-1       prettyunits_1.1.1    colorspace_2.0-2    
-##  [26] rvest_1.0.1          ggdist_3.0.0         haven_2.4.3          xfun_0.25            callr_3.7.0         
-##  [31] crayon_1.4.2         jsonlite_1.7.2       lme4_1.1-27.1        survival_3.2-11      zoo_1.8-9           
-##  [36] glue_1.5.0           gtable_0.3.0         emmeans_1.7.1-1      V8_3.4.2             distributional_0.2.2
-##  [41] pkgbuild_1.2.0       rstan_2.26.3         abind_1.4-5          scales_1.1.1         mvtnorm_1.1-2       
-##  [46] DBI_1.1.1            miniUI_0.1.1.1       viridisLite_0.4.0    xtable_1.8-4         tmvnsim_1.0-2       
-##  [51] diffobj_0.3.4        stats4_4.1.1         StanHeaders_2.26.3   DT_0.19              htmlwidgets_1.5.3   
-##  [56] httr_1.4.2           threejs_0.3.3        arrayhelpers_1.1-0   posterior_1.1.0.9000 ellipsis_0.3.2      
-##  [61] pkgconfig_2.0.3      loo_2.4.1            farver_2.1.0         sass_0.4.0           dbplyr_2.1.1        
-##  [66] utf8_1.2.2           labeling_0.4.2       tidyselect_1.1.1     rlang_0.4.12         reshape2_1.4.4      
-##  [71] later_1.3.0          cellranger_1.1.0     munsell_0.5.0        tools_4.1.1          cli_3.1.0           
-##  [76] generics_0.1.1       broom_0.7.9          ggridges_0.5.3       evaluate_0.14        fastmap_1.1.0       
-##  [81] yaml_2.2.1           fs_1.5.0             processx_3.5.2       knitr_1.33           nlme_3.1-152        
-##  [86] mime_0.11            projpred_2.0.2       xml2_1.3.2           compiler_4.1.1       bayesplot_1.8.1     
-##  [91] shinythemes_1.2.0    rstudioapi_0.13      curl_4.3.2           gamm4_0.2-6          reprex_2.0.1        
-##  [96] bslib_0.3.0          stringi_1.7.4        highr_0.9            ps_1.6.0             blogdown_1.5        
-## [101] Brobdingnag_1.2-6    lattice_0.20-44      Matrix_1.3-4         psych_2.1.6          nloptr_1.2.2.2      
-## [106] markdown_1.1         shinyjs_2.0.0        tensorA_0.36.2       vctrs_0.3.8          pillar_1.6.4        
-## [111] lifecycle_1.0.1      jquerylib_0.1.4      bridgesampling_1.1-2 estimability_1.3     httpuv_1.6.2        
-## [116] R6_2.5.1             bookdown_0.23        promises_1.2.0.1     gridExtra_2.3        codetools_0.2-18    
-## [121] boot_1.3-28          colourpicker_1.1.0   MASS_7.3-54          gtools_3.9.2         assertthat_0.2.1    
-## [126] withr_2.4.2          mnormt_2.0.2         shinystan_2.5.0      multcomp_1.4-17      mgcv_1.8-36         
-## [131] parallel_4.1.1       hms_1.1.0            grid_4.1.1           coda_0.19-4          minqa_1.2.4         
-## [136] rmarkdown_2.10       shiny_1.6.0          lubridate_1.7.10     base64enc_0.1-3      dygraphs_1.1.1.6</code></pre>
+##   [1] readxl_1.4.0         backports_1.4.1      plyr_1.8.7           igraph_1.3.1         svUnit_1.0.6        
+##   [6] splines_4.2.0        crosstalk_1.2.0      TH.data_1.1-1        rstantools_2.2.0     inline_0.3.19       
+##  [11] digest_0.6.29        htmltools_0.5.2      viridis_0.6.2        fansi_1.0.3          magrittr_2.0.3      
+##  [16] checkmate_2.1.0      googlesheets4_1.0.0  tzdb_0.3.0           modelr_0.1.8         dtplyr_1.2.1        
+##  [21] RcppParallel_5.1.5   matrixStats_0.62.0   xts_0.12.1           sandwich_3.0-1       prettyunits_1.1.1   
+##  [26] colorspace_2.0-3     rvest_1.0.2          ggdist_3.1.1         haven_2.5.0          xfun_0.31           
+##  [31] callr_3.7.0          crayon_1.5.1         jsonlite_1.8.0       survival_3.3-1       zoo_1.8-10          
+##  [36] glue_1.6.2           gtable_0.3.0         gargle_1.2.0         emmeans_1.7.3        V8_4.1.0            
+##  [41] distributional_0.3.0 pkgbuild_1.3.1       rstan_2.26.11        abind_1.4-5          scales_1.2.0        
+##  [46] mvtnorm_1.1-3        DBI_1.1.2            miniUI_0.1.1.1       viridisLite_0.4.0    xtable_1.8-4        
+##  [51] tmvnsim_1.0-2        diffobj_0.3.5        stats4_4.2.0         StanHeaders_2.26.11  DT_0.22             
+##  [56] htmlwidgets_1.5.4    httr_1.4.3           threejs_0.3.3        arrayhelpers_1.1-0   posterior_1.2.1     
+##  [61] ellipsis_0.3.2       pkgconfig_2.0.3      loo_2.5.1            farver_2.1.1         sass_0.4.2          
+##  [66] dbplyr_2.1.1.9000    utf8_1.2.2           labeling_0.4.2       tidyselect_1.1.2     rlang_1.0.4         
+##  [71] reshape2_1.4.4       later_1.3.0          munsell_0.5.0        cellranger_1.1.0     tools_4.2.0         
+##  [76] cachem_1.0.6         cli_3.3.0            generics_0.1.2       broom_0.8.0          ggridges_0.5.3      
+##  [81] evaluate_0.15        fastmap_1.1.0        yaml_2.3.5           processx_3.5.3       knitr_1.39          
+##  [86] fs_1.5.2             nlme_3.1-157         mime_0.12            xml2_1.3.3           compiler_4.2.0      
+##  [91] bayesplot_1.9.0      shinythemes_1.2.0    rstudioapi_0.13      curl_4.3.2           reprex_2.0.1        
+##  [96] bslib_0.4.0          stringi_1.7.6        highr_0.9            ps_1.7.0             blogdown_1.10       
+## [101] Brobdingnag_1.2-8    lattice_0.20-45      Matrix_1.4-1         psych_2.2.5          markdown_1.1        
+## [106] shinyjs_2.1.0        tensorA_0.36.2       vctrs_0.4.1          pillar_1.8.0         lifecycle_1.0.1     
+## [111] jquerylib_0.1.4      bridgesampling_1.1-2 estimability_1.3     data.table_1.14.2    httpuv_1.6.5        
+## [116] R6_2.5.1             bookdown_0.26        promises_1.2.0.1     gridExtra_2.3        codetools_0.2-18    
+## [121] colourpicker_1.1.1   MASS_7.3-56          gtools_3.9.2         assertthat_0.2.1     withr_2.5.0         
+## [126] mnormt_2.0.2         shinystan_2.6.0      multcomp_1.4-19      parallel_4.2.0       hms_1.1.1           
+## [131] grid_4.2.0           coda_0.19-4          rmarkdown_2.14       googledrive_2.0.0    shiny_1.7.2         
+## [136] lubridate_1.8.0      base64enc_0.1-3      dygraphs_1.1.1.6</code></pre>
 </div>
 <div id="references" class="section level2 unnumbered">
 <h2>References</h2>
 <div id="refs" class="references csl-bib-body hanging-indent" line-spacing="2">
 <div id="ref-burknerBayesianItemResponse2020" class="csl-entry">
-Bürkner, P.-C. (2020a). Bayesian item response modeling in <span>R</span> with brms and <span>Stan</span>. <em>arXiv:1905.09501 [Stat]</em>. <a href="http://arxiv.org/abs/1905.09501">http://arxiv.org/abs/1905.09501</a>
+Bürkner, P.-C. (2020). <em>Bayesian item response modeling in <span>R</span> with brms and <span>Stan</span></em>. <a href="http://arxiv.org/abs/1905.09501">http://arxiv.org/abs/1905.09501</a>
 </div>
 <div id="ref-burknerBrmsPackageBayesian2017" class="csl-entry">
 Bürkner, P.-C. (2017). <span class="nocase">brms</span>: <span>An R</span> package for <span>Bayesian</span> multilevel models using <span>Stan</span>. <em>Journal of Statistical Software</em>, <em>80</em>(1), 1–28. <a href="https://doi.org/10.18637/jss.v080.i01">https://doi.org/10.18637/jss.v080.i01</a>
@@ -1731,7 +1722,7 @@ Bürkner, P.-C. (2017). <span class="nocase">brms</span>: <span>An R</span> pack
 Bürkner, P.-C. (2018). Advanced <span>Bayesian</span> multilevel modeling with the <span>R</span> package brms. <em>The R Journal</em>, <em>10</em>(1), 395–411. <a href="https://doi.org/10.32614/RJ-2018-017">https://doi.org/10.32614/RJ-2018-017</a>
 </div>
 <div id="ref-R-brms" class="csl-entry">
-Bürkner, P.-C. (2020b). <em><span class="nocase">brms</span>: <span>Bayesian</span> regression models using ’<span>Stan</span>’</em>. <a href="https://CRAN.R-project.org/package=brms">https://CRAN.R-project.org/package=brms</a>
+Bürkner, P.-C. (2022). <em><span class="nocase">brms</span>: <span>Bayesian</span> regression models using ’<span>Stan</span>’</em>. <a href="https://CRAN.R-project.org/package=brms">https://CRAN.R-project.org/package=brms</a>
 </div>
 <div id="ref-efronSteinParadoxStatistics1977" class="csl-entry">
 Efron, B., &amp; Morris, C. (1977). Stein’s paradox in statistics. <em>Scientific American</em>, <em>236</em>(5), 119–127. <a href="https://doi.org/10.1038/scientificamerican0577-119">https://doi.org/10.1038/scientificamerican0577-119</a>
@@ -1758,16 +1749,16 @@ McElreath, R. (2020). <em>Statistical rethinking: <span>A Bayesian</span> course
 McElreath, R. (2015). <em>Statistical rethinking: <span>A Bayesian</span> course with examples in <span>R</span> and <span>Stan</span></em>. <span>CRC press</span>. <a href="https://xcelab.net/rm/statistical-rethinking/">https://xcelab.net/rm/statistical-rethinking/</a>
 </div>
 <div id="ref-R-base" class="csl-entry">
-R Core Team. (2020). <em>R: <span>A</span> language and environment for statistical computing</em>. <span>R Foundation for Statistical Computing</span>. <a href="https://www.R-project.org/">https://www.R-project.org/</a>
+R Core Team. (2021). <em>R: <span>A</span> language and environment for statistical computing</em>. <span>R Foundation for Statistical Computing</span>. <a href="https://www.R-project.org/">https://www.R-project.org/</a>
 </div>
 <div id="ref-R-psych" class="csl-entry">
-Revelle, W. (2021). <em><span class="nocase">psych</span>: <span>Procedures</span> for psychological, psychometric, and personality research</em>. <a href="https://CRAN.R-project.org/package=psych">https://CRAN.R-project.org/package=psych</a>
+Revelle, W. (2022). <em><span class="nocase">psych</span>: <span>Procedures</span> for psychological, psychometric, and personality research</em>. <a href="https://CRAN.R-project.org/package=psych">https://CRAN.R-project.org/package=psych</a>
 </div>
 <div id="ref-revelle2010individual" class="csl-entry">
 Revelle, W., Wilt, J., &amp; Rosenthal, A. (2010). Individual differences in cognition: <span>New</span> methods for examining the personality-cognition link. In A. Gruszka, G. Matthews, &amp; B. Szymura (Eds.), <em>Handbook of individual differences in cognition: <span>Attention</span>, memory and executive control</em> (pp. 27–49). <span>Springer</span>.
 </div>
 <div id="ref-R-tidyverse" class="csl-entry">
-Wickham, H. (2019). <em><span class="nocase">tidyverse</span>: <span>Easily</span> install and load the ’tidyverse’</em>. <a href="https://CRAN.R-project.org/package=tidyverse">https://CRAN.R-project.org/package=tidyverse</a>
+Wickham, H. (2021). <em><span class="nocase">tidyverse</span>: <span>Easily</span> install and load the ’tidyverse’</em>. <a href="https://CRAN.R-project.org/package=tidyverse">https://CRAN.R-project.org/package=tidyverse</a>
 </div>
 <div id="ref-wickhamWelcomeTidyverse2019" class="csl-entry">
 Wickham, H., Averick, M., Bryan, J., Chang, W., McGowan, L. D., François, R., Grolemund, G., Hayes, A., Henry, L., Hester, J., Kuhn, M., Pedersen, T. L., Miller, E., Bache, S. M., Müller, K., Ooms, J., Robinson, D., Seidel, D. P., Spinu, V., … Yutani, H. (2019). Welcome to the tidyverse. <em>Journal of Open Source Software</em>, <em>4</em>(43), 1686. <a href="https://doi.org/10.21105/joss.01686">https://doi.org/10.21105/joss.01686</a>

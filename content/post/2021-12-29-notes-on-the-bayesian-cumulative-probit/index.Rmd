@@ -136,8 +136,8 @@ Anyway, the thing to understand is that the area under the normal curve to the l
 
 $$
 \begin{align*}
-p(\text{rating} = k | \{ \tau_k \}) & = \Phi(\tau_1) - \Phi(\color{blue}{\tau_0} \color{black}{)} \\
-  & = \Phi(\tau_1) - \Phi(\color{blue}{-\infty} \color{black}{)} \\
+p(\text{rating} = k | \{ \tau_k \}) & = \Phi(\tau_1) - \Phi({\color{blue}{\tau_0}}) \\
+  & = \Phi(\tau_1) - \Phi({\color{blue}{-\infty}} ) \\
   & = \Phi(\tau_1) - \color{blue}0 \\
   & = \Phi(\tau_1).
 \end{align*}
@@ -147,9 +147,9 @@ In a similar way, for the last rating we have
 
 $$
 \begin{align*}
-p(\text{rating} = k | \{ \tau_k \}) & = \Phi(\color{blue}{\tau_{K + 1}} \color{black}{) - \Phi(\tau_K)} \\
-  & = \Phi(\color{blue}\infty \color{black}{) - \Phi(\tau_K)} \\
-  & = \color{blue}1 \color{black}{-} \color{black}{\Phi(\tau_K)}.
+p(\text{rating} = k | \{ \tau_k \}) & = \Phi({\color{blue}{\tau_{K + 1}}} ) - \Phi(\tau_K) \\
+  & = \Phi({\color{blue}\infty} ) - \Phi(\tau_K) \\
+  & = {\color{blue}1} - \Phi(\tau_K).
 \end{align*}
 $$
 
@@ -439,9 +439,9 @@ If we would like to add a predictor, the most natural way is probably to explici
 
 $$
 \begin{align*}
-p(\text{rating} = k | \{ \tau_k \}, \color{blue}{\mu_i} \color{black}{)} & = \Phi(\tau_k \color{blue}{- \mu_i} \color{black}{) - \Phi(\tau_{k - 1}} \color{blue}{- \mu_i} \color{black}) \\
-\color{blue}{\mu_i} & = \color{blue}{\beta_0 + \sum_1^l \beta_l x_l} \\
-\color{blue}{\beta_0} & = \color{blue}0 \color{black}{,}
+p(\text{rating} = k | \{ \tau_k \}, {\color{blue}{\mu_i}} ) & = \Phi(\tau_k {\color{blue}{- \mu_i}} ) - \Phi(\tau_{k - 1} {\color{blue}{- \mu_i}} ) \\
+{\color{blue}{\mu_i}} & = {\color{blue}{\beta_0 + \sum_1^l \beta_l x_l}} \\
+{\color{blue}{\beta_0}} & = {\color{blue}0} ,
 \end{align*}
 $$
 
@@ -604,11 +604,11 @@ If we have reason to presume differences in latent standard deviations, we can e
 
 $$
 \begin{align*}
-p(\text{rating} = k | \{ \tau_k \}, \mu_i, \color{blue}{\sigma_i} \color{black}{)} & = \color{black}{\Phi([\tau_k - \mu_i]} \color{blue}{/ \sigma_i} \color{black}{) - \Phi([\tau_{k - 1} - \mu_i]} \color{blue}{/ \sigma_i} \color{black}{)} \\
+p(\text{rating} = k | \{ \tau_k \}, \mu_i, {\color{blue}{\sigma_i}} ) & = \Phi([\tau_k - \mu_i] {\color{blue}{/ \sigma_i}} ) - \Phi([\tau_{k - 1} - \mu_i] {\color{blue}{/ \sigma_i}} ) \\
 \mu_i & = \beta_0 + \sum_1^l \beta_l x_l \\
-\color{blue}{\log(\sigma_i)} & = \color{blue}{\eta_0 + \sum_1^m \eta_m x_m} \\
+{\color{blue}{\log(\sigma_i)}} & = {\color{blue}{\eta_0 + \sum_1^m \eta_m x_m}} \\
 \beta_0 & = 0 \\
-\color{blue}{\eta_0} & = \color{blue}0 \color{black}{,}
+{\color{blue}{\eta_0}} & = {\color{blue}0} ,
 \end{align*}
 $$
 
@@ -633,9 +633,9 @@ However, things become more complicated when you want to model $\alpha$. First, 
 
 $$
 \begin{align*}
-p(\text{rating} = k | \{ \tau_k \}, \mu_i, \color{blue}{\alpha_i} \color{black}{)} & = \Phi(\color{blue}{\alpha_i} \color{black}{[\tau_k - \mu_i]) - \Phi( }\color{blue}{\alpha_i} \color{black}{[\tau_{k - 1} - \mu_i])} \\
+p(\text{rating} = k | \{ \tau_k \}, \mu_i, {\color{blue}{\alpha_i}} ) & = \Phi({\color{blue}{\alpha_i}} [\tau_k - \mu_i]) - \Phi( {\color{blue}{\alpha_i}} [\tau_{k - 1} - \mu_i]) \\
 \mu_i & = \beta_0 + \sum_1^l \beta_l x_l \\
-\log(\color{blue}{\alpha_i} \color{black}{)} & = \eta_0 + \sum_1^m \eta_m x_m \\
+{\color{blue}{\log(\alpha_i)}} & = {\color{blue}{\eta_0 + \sum_1^m \eta_m x_m}} \\
 \beta_0 & = 0 \\
 \eta_0 & = 0.
 \end{align*}
@@ -884,14 +884,14 @@ Starting slow, we'll first just add random intercepts for the persons with the m
 $$
 \begin{align*}
 p(\text{rating} = k | \{ \tau_k \}, \mu_i) & = \Phi(\tau_k - \mu_i) - \Phi(\tau_{k - 1} - \mu_i) \\
-\mu_i          & = 0 \color{blue}+ \color{blue}{u_i} \\ 
-\color{blue}{u_i} & \sim \color{blue}{\mathcal N(0, \sigma_u)} \\
+\mu_i          & = 0 + {\color{blue}{u_i}} \\ 
+{\color{blue}{u_i}} & \sim {\color{blue}{\mathcal N(0, \sigma_u)}} \\
 \tau_1 & \sim \mathcal N(-0.97, 1) \\
 \tau_2 & \sim \mathcal N(-0.43, 1) \\
 \tau_3 & \sim \mathcal N(0, 1) \\
 \tau_4 & \sim \mathcal N(0.43, 1) \\
 \tau_5 & \sim \mathcal N(0.97, 1) \\
-\color{blue}{\sigma_u} & \sim \color{blue}{\operatorname{Exponential}(1)} \color{black}{,}
+{\color{blue}{\sigma_u}} & \sim {\color{blue}{\operatorname{Exponential}(1)}},
 \end{align*}
 $$
 
@@ -942,14 +942,14 @@ $$
 p(\text{rating} = k | \{ \tau_k \}, \mu_{i\color{blue}j}) & = \Phi(\tau_k - \mu_{i\color{blue}j}) - \Phi(\tau_{k - 1} - \mu_{i\color{blue}j}) \\
 \mu_{i\color{blue}j} & = 0 + u_i \color{blue}{ + } \color{blue}{v_j} \\ 
 u_i               & \sim \mathcal N(0, \sigma_u) \\
-\color{blue}{v_j} & \sim \color{blue}{\mathcal N(0, \sigma_v)} \\
+{\color{blue}{v_j}} & \sim {\color{blue}{\mathcal N(0, \sigma_v)}} \\
 \tau_1 & \sim \mathcal N(-0.97, 1) \\
 \tau_2 & \sim \mathcal N(-0.43, 1) \\
 \tau_3 & \sim \mathcal N(0, 1) \\
 \tau_4 & \sim \mathcal N(0.43, 1) \\
 \tau_5 & \sim \mathcal N(0.97, 1) \\
 \sigma_u               & \sim \operatorname{Exponential}(1) \\
-\color{blue}{\sigma_v} & \sim \color{blue}{\operatorname{Exponential}(1)} \color{black}{.}
+{\color{blue}{\sigma_v}} & \sim {\color{blue}{\operatorname{Exponential}(1)}}.
 \end{align*}
 $$
 
@@ -1099,15 +1099,13 @@ Well okay, maybe I do lose something by letting the thresholds vary across quest
 If the latent means can vary randomly, the latent dispersion parameters can vary randomly, too. Now $\log(\alpha_{ij})$ will vary across $i$ persons and $j$ questions with the Bayesian ordinal IRT model
 
 \begin{align*}
-\small{p(\text{rating} = k | \{ \tau_{kj} \}, \mu_{ij}, \color{blue}{\alpha_{ij}} \color{black}{)}} & = \small{\Phi(\color{blue}{\alpha_{ij}} \color{black}{[\tau_{kj} - \mu_{ij}]) - \Phi(} \color{blue}{\alpha_{ij}} \color{black}{[\tau_{k - 1,j} - \mu_{ij}])}} \\
+\small{p(\text{rating} = k | \{ \tau_{kj} \}, \mu_{ij}, {\color{blue}{\alpha_{ij}}})} & = \small{\Phi({\color{blue}{\alpha_{ij}}} [\tau_{kj} - \mu_{ij}]) - \Phi( {\color{blue}{\alpha_{ij}}} [\tau_{k - 1,j} - \mu_{ij}])} \\
 \mu_{ij} & = 0 + u_i + v_j \\ 
-\color{blue}{\log(\alpha_{ij})} & = \color{blue}{0 + w_i + x_j} \\
+{\color{blue}{\log(\alpha_{ij})}} & = {\color{blue}{0 + w_i + x_j}} \\
 u_i & \sim \mathcal N(0, \sigma_u) \\
 v_j & \sim \mathcal N(0, \sigma_v) \\
-
-\color{blue}{w_i} & \sim \color{blue}{\mathcal N(0, \sigma_w)} \\
-\color{blue}{x_j} & \sim \color{blue}{\mathcal N(0, \sigma_x)} \\
-
+{\color{blue}{w_i}} & \sim {\color{blue}{\mathcal N(0, \sigma_w)}} \\
+{\color{blue}{x_j}} & \sim {\color{blue}{\mathcal N(0, \sigma_x)}} \\
 \tau_{1j} & \sim \mathcal N(-0.97, 1) \\
 \tau_{2j} & \sim \mathcal N(-0.43, 1) \\
 \tau_{3j} & \sim \mathcal N(0, 1) \\
@@ -1115,8 +1113,8 @@ v_j & \sim \mathcal N(0, \sigma_v) \\
 \tau_{5j} & \sim \mathcal N(0.97, 1) \\
 \sigma_u & \sim \operatorname{Exponential}(1) \\
 \sigma_v & \sim \operatorname{Exponential}(1) \\
-\color{blue}{\sigma_w} & \sim \color{blue}{\operatorname{Exponential}(1)} \\
-\color{blue}{\sigma_x} & \sim \color{blue}{\operatorname{Exponential}(1)} \color{black}{.}
+{\color{blue}{\sigma_w}} & \sim {\color{blue}{\operatorname{Exponential}(1)}} \\
+{\color{blue}{\sigma_x}} & \sim {\color{blue}{\operatorname{Exponential}(1)}} .
 \end{align*}
 
 Though the $\operatorname{Exponential}(1)$ prior might be a good place to start with our new $\sigma_w$ and $\sigma_x$, let's ponder this a bit. Recall these are for the distribution of logged discrimination parameters. Since I'm no statistician or psychometrician, I'm not even sure what that means, which makes it hard to intuit whether the $\operatorname{Exponential}(1)$ prior makes sense for my data. A plot might help. Here we'll simulate $100{,}000$ draws from the $\operatorname{Exponential}(1)$ prior, use those draws to simulate $w_i$ values from $\mathcal N(0, \sigma_w)$, and then plot that distribution in the $w_i$, $\exp(w_i)$ and $1/\exp(w_i)$ metrics.
@@ -1220,10 +1218,8 @@ With that as our prior, our updated model formula will be
 \log(\alpha_{ij}) & = 0 + w_i + x_j \\
 u_i & \sim \mathcal N(0, \sigma_u) \\
 v_j & \sim \mathcal N(0, \sigma_v) \\
-
 w_i & \sim \mathcal N(0, \sigma_w) \\
 x_j & \sim \mathcal N(0, \sigma_x) \\
-
 \tau_{1j} & \sim \mathcal N(-0.97, 1) \\
 \tau_{2j} & \sim \mathcal N(-0.43, 1) \\
 \tau_{3j} & \sim \mathcal N(0, 1) \\
@@ -1231,8 +1227,8 @@ x_j & \sim \mathcal N(0, \sigma_x) \\
 \tau_{5j} & \sim \mathcal N(0.97, 1) \\
 \sigma_u & \sim \operatorname{Exponential}(1) \\
 \sigma_v & \sim \operatorname{Exponential}(1) \\
-\sigma_w & \sim \operatorname{Exponential}(\color{blue}{1 / 0.463} \color{black}{)} \\
-\sigma_x & \sim \operatorname{Exponential}(\color{blue}{1 / 0.463} \color{black}{).}
+\sigma_w & \sim \operatorname{Exponential}({\color{blue}{1 / 0.463}} ) \\
+\sigma_x & \sim \operatorname{Exponential}({\color{blue}{1 / 0.463}} ).
 \end{align*}
 
 Put those new priors to work and fit the model.
@@ -1442,15 +1438,12 @@ Now if you wanted to, you could expand this model further to include correlation
 \small{p(\text{rating} = k | \{ \tau_{kj} \}, \mu_{ij}, \alpha_{ij})} & = \small{\Phi(\alpha_{ij}[\tau_{kj} - \mu_{ij}]) - \Phi(\alpha_{ij}[\tau_{k - 1,j} - \mu_{ij}])} \\
 \mu_{ij} & = 0 + u_i + v_j \\ 
 \log(\alpha_{ij}) & = 0 + w_i + x_j \\
-
-\begin{bmatrix} u_i \\ w_i \end{bmatrix} & \sim \mathcal{MVN}(\mathbf 0, \mathbf{S_a \color{blue}{R_a} \color{black}{S_a}}) \\
-\begin{bmatrix} v_j \\ x_j \end{bmatrix} & \sim \mathcal{MVN}(\mathbf 0, \mathbf{S_b \color{blue}{R_b} \color{black}{S_b}}) \\
-
+\begin{bmatrix} u_i \\ w_i \end{bmatrix} & \sim \mathcal{MVN}(\mathbf 0, \mathbf{S_a {\color{blue}{R_a}} S_a}) \\
+\begin{bmatrix} v_j \\ x_j \end{bmatrix} & \sim \mathcal{MVN}(\mathbf 0, \mathbf{S_b {\color{blue}{R_b}} S_b}) \\
 \mathbf{S_a} & = \begin{bmatrix} \sigma_u & 0 \\ 0 & \sigma_w \end{bmatrix} \\
 \mathbf{S_b} & = \begin{bmatrix} \sigma_v & 0 \\ 0 & \sigma_x \end{bmatrix} \\
-\color{blue}{\mathbf{R_a}} & = \color{blue}{\begin{bmatrix} 1 & \rho_a \\ \rho_a & 1 \end{bmatrix}} \\
-\color{blue}{\mathbf{R_b}} & = \color{blue}{\begin{bmatrix} 1 & \rho_b \\ \rho_b & 1 \end{bmatrix}} \\
-
+{\color{blue}{\mathbf{R_a}}} & = {\color{blue}{\begin{bmatrix} 1 & \rho_a \\ \rho_a & 1 \end{bmatrix}}} \\
+{\color{blue}{\mathbf{R_b}}} & = {\color{blue}{\begin{bmatrix} 1 & \rho_b \\ \rho_b & 1 \end{bmatrix}}} \\
 \tau_{1j} & \sim \mathcal N(-0.97, 1) \\
 \tau_{2j} & \sim \mathcal N(-0.43, 1) \\
 \tau_{3j} & \sim \mathcal N(0, 1) \\
@@ -1460,8 +1453,8 @@ Now if you wanted to, you could expand this model further to include correlation
 \sigma_v & \sim \operatorname{Exponential}(1) \\
 \sigma_w & \sim \operatorname{Exponential}(1 / 0.463) \\
 \sigma_x & \sim \operatorname{Exponential}(1 / 0.463) \\
-\color{blue}{\rho_a} & \sim \color{blue}{\operatorname{LKJ}(2)} \\
-\color{blue}{\rho_b} & \sim \color{blue}{\operatorname{LKJ}(2)} \color{black}{,}
+{\color{blue}{\rho_a}} & \sim {\color{blue}{\operatorname{LKJ}(2)}} \\
+{\color{blue}{\rho_b}} & \sim {\color{blue}{\operatorname{LKJ}(2)}},
 \end{align*}
 
 where though our four random parameters are now modeled as two bivariate-normal pairs, there really are only two new parameters: $\rho_a$ and $\rho_b$. The LKJ priors for our two new parameters would be weakly regularizing. In my experience, so far, adding those two level-2 correlations can make for notably longer fitting times and they often result in computational complications like the need to further adjust `adapt_delta` and so on. So in the interest of space, I'm not going to fit this model. But it's always a possibility to consider.
@@ -1470,11 +1463,10 @@ where though our four random parameters are now modeled as two bivariate-normal 
 
 A while back, we put our level-1 predictor `male` to the side while we focused on expanding the random components. Now's time to bring that predictor back and fit the full conditional distributional model
 
-$$
 \begin{align*}
 \small{p(\text{rating} = k | \{ \tau_{kj} \}, \mu_{ij}, \alpha_{ij})} & = \small{\Phi(\alpha_{ij}[\tau_{kj} - \mu_{ij}]) - \Phi(\alpha_{ij}[\tau_{k - 1,j} - \mu_{ij}])} \\
-\mu_{ij}          & = \color{blue}{\beta_1 \text{male}_i} \color{black}{ + u_i + v_j} \\ 
-\log(\alpha_{ij}) & = \color{blue}{\eta_1 \text{male}_i} \color{black}{ + w_i + x_j} \\
+\mu_{ij}          & = {\color{blue}{\beta_1 \text{male}_i}} + u_i + v_j \\ 
+\log(\alpha_{ij}) & = {\color{blue}{\eta_1 \text{male}_i}} + w_i + x_j \\
 u_i & \sim \mathcal N(0, \sigma_u) \\
 v_j & \sim \mathcal N(0, \sigma_v) \\
 w_i & \sim \mathcal N(0, \sigma_w) \\
@@ -1484,14 +1476,13 @@ x_j & \sim \mathcal N(0, \sigma_x) \\
 \tau_{3j} & \sim \mathcal N(0, 1) \\
 \tau_{4j} & \sim \mathcal N(0.43, 1) \\
 \tau_{5j} & \sim \mathcal N(0.97, 1) \\
-\color{blue}{\beta_1} & \sim \color{blue}{\mathcal N(0, 1)} \\
-\color{blue}{\eta_1}  & \sim \color{blue}{\mathcal N(0, 0.347)} \\
+{\color{blue}{\beta_1}} & \sim {\color{blue}{\mathcal N(0, 1)}} \\
+{\color{blue}{\eta_1}}  & \sim {\color{blue}{\mathcal N(0, 0.347)}} \\
 \sigma_u & \sim \operatorname{Exponential}(1) \\
 \sigma_v & \sim \operatorname{Exponential}(1) \\
 \sigma_w & \sim \operatorname{Exponential}(1 / 0.463) \\
 \sigma_x & \sim \operatorname{Exponential}(1 / 0.463).
 \end{align*}
-$$
 
 At this point, the change to the **brms** code is trivial.
 
