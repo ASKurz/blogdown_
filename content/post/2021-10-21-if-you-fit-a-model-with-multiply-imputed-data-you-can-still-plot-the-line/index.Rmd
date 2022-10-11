@@ -28,6 +28,10 @@ csl: /Users/solomonkurz/Dropbox/blogdown/content/post/apa.csl
 link-citations: yes
 ---
 
+## Version 1.1.0
+
+Edited on October 9, 2022. Doctoral candidate Reinier van Linschoten kindly pointed out a mistake in my **R** code for $V_B$, the between imputation variance. The blog post now includes the corrected workflow.
+
 ## What?
 
 If you're in the know, you know there are three major ways to handle missing data:
@@ -44,7 +48,7 @@ For this post, I'm presuming some background knowledge:
 
 * You should be familiar with regression. For frequentist introductions, I recommend Roback and Legler's [-@roback2021beyond] online text or James, Witten, Hastie, and Tibshirani's [-@james2021AnIntroduction] online text. For Bayesian introductions, I recommend either edition of McElreath's text [-@mcelreathStatisticalRethinkingBayesian2015; -@mcelreathStatisticalRethinkingBayesian2020]; Kruschke's [-@kruschkeDoingBayesianData2015] text; or Gelman, Hill, and Vehtari's [-@gelmanRegressionOtherStories2020] text.
 
-* You should be familiar with contemporary missing data theory. You can find brief overviews in the texts by McElreath and Gelman et al, above. For a deeper dive, I recommend @enders2010applied, @little2019statistical, or @vanbuurenFlexibleImputationMissing2018. Also, heads up: [word on the street](https://twitter.com/AmandaKMontoya/status/1341936335301406722) is Enders is working on the second edition of his book.
+* You should be familiar with contemporary missing data theory. You can find brief overviews in the texts by McElreath and Gelman et al, above. For a deeper dive, I recommend @enders2022applied, @little2019statistical, or @vanbuurenFlexibleImputationMissing2018.
 
 * All code is in **R**. Data wrangling and plotting were done with help from the **tidyverse** [@R-tidyverse; @wickhamWelcomeTidyverse2019] and **GGally** [@R-GGally]. The data and multiple-imputation workflow are from the [**mice** package](https://CRAN.R-project.org/package=mice).
 
@@ -75,7 +79,9 @@ glimpse(b_small)
 Here are our three variables.
 
 ```{r, warning = F, message = F}
-ggpairs(b_small)
+ggpairs(b_small,
+        diag = list(continuous = wrap("barDiag", bins = 10)),
+        upper = list(continuous = wrap("cor", stars = FALSE)))
 ```
 
 We'll be focusing on the relation between socioeconomic status (`ses`) and verbal IQ (`iqv`) and performance IQ (`iqp`) will be a missing data covariate. 
@@ -299,7 +305,7 @@ fitted_lines %>%
   group_by(ses) %>% 
   summarise(fit_bar = mean(fit),
             v_w     = mean(se.fit^2),
-            v_b     = sum(fit - fit_bar)^2 / (m - 1))
+            v_b     = sum((fit - fit_bar)^2) / (m - 1))
 ```
 
 We can define the total variance of the prediction $V_{\bar p}$ as 
@@ -313,7 +319,7 @@ fitted_lines %>%
   group_by(ses) %>% 
   summarise(fit_bar = mean(fit),
             v_w     = mean(se.fit^2),
-            v_b     = sum(fit - fit_bar)^2 / (m - 1),
+            v_b     = sum((fit - fit_bar)^2) / (m - 1),
             v_p     = v_w + v_b * (1 + (1 / m)),
             se_p    = sqrt(v_p))
 ```
@@ -326,7 +332,7 @@ fitted_lines <- fitted_lines %>%
   group_by(ses) %>% 
   summarise(fit_bar = mean(fit),
             v_w     = mean(se.fit^2),
-            v_b     = sum(fit - fit_bar)^2 / (m - 1),
+            v_b     = sum((fit - fit_bar)^2) / (m - 1),
             v_p     = v_w + v_b * (1 + (1 / m)),
             se_p    = sqrt(v_p)) %>% 
   # use the _p suffix to indicate these are pooled

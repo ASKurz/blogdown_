@@ -28,9 +28,12 @@ csl: /Users/solomonkurz/Dropbox/blogdown/content/post/apa.csl
 link-citations: yes
 ---
 
-<script src="{{< blogdown/postref >}}index_files/header-attrs/header-attrs.js"></script>
 
 
+<div id="version-1.1.0" class="section level2">
+<h2>Version 1.1.0</h2>
+<p>Edited on October 9, 2022. Doctoral candidate Reinier van Linschoten kindly pointed out a mistake in my <strong>R</strong> code for <span class="math inline">\(V_B\)</span>, the between imputation variance. The blog post now includes the corrected workflow.</p>
+</div>
 <div id="what" class="section level2">
 <h2>What?</h2>
 <p>If you’re in the know, you know there are three major ways to handle missing data:</p>
@@ -39,14 +42,14 @@ link-citations: yes
 <li>multiple imputation, and</li>
 <li>one-step full-luxury<a href="#fn1" class="footnote-ref" id="fnref1"><sup>1</sup></a> Bayesian imputation.</li>
 </ul>
-<p>If you’re a frequentist, you only have the first two options. If you’re an <strong>R</strong> <span class="citation">(<a href="#ref-R-base" role="doc-biblioref">R Core Team, 2020</a>)</span> user and like multiple imputation, you probably know all about the <strong>mice</strong> package <span class="citation">(<a href="#ref-mice2011" role="doc-biblioref">van Buuren &amp; Groothuis-Oudshoorn, 2011</a>, <a href="#ref-R-mice" role="doc-biblioref">2021</a>)</span>, which generally works great. The bummer is there are no built-in ways to plot the fitted lines from models fit from multiply-imputed data using van Buuren’s <strong>mice</strong>-oriented workflow (see <a href="https://github.com/amices/mice/issues/82">GitHub issue #82</a>). However, there is a way to plot your fitted lines by hand and in this blog post I’ll show you how.</p>
+<p>If you’re a frequentist, you only have the first two options. If you’re an <strong>R</strong> <span class="citation">(<a href="#ref-R-base" role="doc-biblioref">R Core Team, 2022</a>)</span> user and like multiple imputation, you probably know all about the <strong>mice</strong> package <span class="citation">(<a href="#ref-mice2011" role="doc-biblioref">van Buuren &amp; Groothuis-Oudshoorn, 2011</a>, <a href="#ref-R-mice" role="doc-biblioref">2021</a>)</span>, which generally works great. The bummer is there are no built-in ways to plot the fitted lines from models fit from multiply-imputed data using van Buuren’s <strong>mice</strong>-oriented workflow (see <a href="https://github.com/amices/mice/issues/82">GitHub issue #82</a>). However, there is a way to plot your fitted lines by hand and in this blog post I’ll show you how.</p>
 <div id="i-make-assumptions." class="section level3">
 <h3>I make assumptions.</h3>
 <p>For this post, I’m presuming some background knowledge:</p>
 <ul>
 <li><p>You should be familiar with regression. For frequentist introductions, I recommend Roback and Legler’s <span class="citation">(<a href="#ref-roback2021beyond" role="doc-biblioref">2021</a>)</span> online text or James, Witten, Hastie, and Tibshirani’s <span class="citation">(<a href="#ref-james2021AnIntroduction" role="doc-biblioref">2021</a>)</span> online text. For Bayesian introductions, I recommend either edition of McElreath’s text <span class="citation">(<a href="#ref-mcelreathStatisticalRethinkingBayesian2020" role="doc-biblioref">2020</a>, <a href="#ref-mcelreathStatisticalRethinkingBayesian2015" role="doc-biblioref">2015</a>)</span>; Kruschke’s <span class="citation">(<a href="#ref-kruschkeDoingBayesianData2015" role="doc-biblioref">2015</a>)</span> text; or Gelman, Hill, and Vehtari’s <span class="citation">(<a href="#ref-gelmanRegressionOtherStories2020" role="doc-biblioref">2020</a>)</span> text.</p></li>
-<li><p>You should be familiar with contemporary missing data theory. You can find brief overviews in the texts by McElreath and Gelman et al, above. For a deeper dive, I recommend <span class="citation"><a href="#ref-enders2010applied" role="doc-biblioref">Enders</a> (<a href="#ref-enders2010applied" role="doc-biblioref">2010</a>)</span>, <span class="citation"><a href="#ref-little2019statistical" role="doc-biblioref">Little &amp; Rubin</a> (<a href="#ref-little2019statistical" role="doc-biblioref">2019</a>)</span>, or <span class="citation"><a href="#ref-vanbuurenFlexibleImputationMissing2018" role="doc-biblioref">van Buuren</a> (<a href="#ref-vanbuurenFlexibleImputationMissing2018" role="doc-biblioref">2018</a>)</span>. Also, heads up: <a href="https://twitter.com/AmandaKMontoya/status/1341936335301406722">word on the street</a> is Enders is working on the second edition of his book.</p></li>
-<li><p>All code is in <strong>R</strong>. Data wrangling and plotting were done with help from the <strong>tidyverse</strong> <span class="citation">(<a href="#ref-R-tidyverse" role="doc-biblioref">Wickham, 2019</a>; <a href="#ref-wickhamWelcomeTidyverse2019" role="doc-biblioref">Wickham et al., 2019</a>)</span> and <strong>GGally</strong> <span class="citation">(<a href="#ref-R-GGally" role="doc-biblioref">Schloerke et al., 2021</a>)</span>. The data and multiple-imputation workflow are from the <a href="https://CRAN.R-project.org/package=mice"><strong>mice</strong> package</a>.</p></li>
+<li><p>You should be familiar with contemporary missing data theory. You can find brief overviews in the texts by McElreath and Gelman et al, above. For a deeper dive, I recommend <span class="citation">Enders (<a href="#ref-enders2022applied" role="doc-biblioref">2022</a>)</span>, <span class="citation">Little &amp; Rubin (<a href="#ref-little2019statistical" role="doc-biblioref">2019</a>)</span>, or <span class="citation">van Buuren (<a href="#ref-vanbuurenFlexibleImputationMissing2018" role="doc-biblioref">2018</a>)</span>.</p></li>
+<li><p>All code is in <strong>R</strong>. Data wrangling and plotting were done with help from the <strong>tidyverse</strong> <span class="citation">(<a href="#ref-wickhamWelcomeTidyverse2019" role="doc-biblioref">Wickham et al., 2019</a>; <a href="#ref-R-tidyverse" role="doc-biblioref">Wickham, 2022</a>)</span> and <strong>GGally</strong> <span class="citation">(<a href="#ref-R-GGally" role="doc-biblioref">Schloerke et al., 2021</a>)</span>. The data and multiple-imputation workflow are from the <a href="https://CRAN.R-project.org/package=mice"><strong>mice</strong> package</a>.</p></li>
 </ul>
 <p>Here we load our primary <strong>R</strong> packages.</p>
 <pre class="r"><code>library(tidyverse)
@@ -71,7 +74,9 @@ glimpse(b_small)</code></pre>
 ## $ iqv &lt;dbl&gt; NA, -0.8535094, -0.3535094, 1.1464906, 1.1464906, -0.3535094, -0.3…
 ## $ iqp &lt;dbl&gt; -1.72274979, -4.05608313, 2.61058354, 3.94391687, 1.61058354, -1.3…</code></pre>
 <p>Here are our three variables.</p>
-<pre class="r"><code>ggpairs(b_small)</code></pre>
+<pre class="r"><code>ggpairs(b_small,
+        diag = list(continuous = wrap(&quot;barDiag&quot;, bins = 10)),
+        upper = list(continuous = wrap(&quot;cor&quot;, stars = FALSE)))</code></pre>
 <p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-3-1.png" width="672" /></p>
 <p>We’ll be focusing on the relation between socioeconomic status (<code>ses</code>) and verbal IQ (<code>iqv</code>) and performance IQ (<code>iqp</code>) will be a missing data covariate.</p>
 <p>Here’s what the missing data patterns look like.</p>
@@ -136,7 +141,7 @@ glimpse(b_small)</code></pre>
 <pre class="r"><code>predict(fit)</code></pre>
 <p>If you try executing that line, you’ll get a nasty error message reading:</p>
 <blockquote>
-<p>Error in UseMethod(“predict”) : no applicable method for ‘predict’ applied to an object of class “c(‘mira,’ ‘matrix’)”</p>
+<p>Error in UseMethod(“predict”) : no applicable method for ‘predict’ applied to an object of class “c(‘mira’, ‘matrix’)”</p>
 </blockquote>
 <p>Our <code>fit</code> object is not a regular fit object. It’s an object of class <code>"mira"</code> and <code>"matrix"</code>, which means it’s fancy and temperamental.</p>
 <pre class="r"><code>class(fit)</code></pre>
@@ -324,20 +329,20 @@ fitted_lines %&gt;%
   group_by(ses) %&gt;% 
   summarise(fit_bar = mean(fit),
             v_w     = mean(se.fit^2),
-            v_b     = sum(fit - fit_bar)^2 / (m - 1))</code></pre>
+            v_b     = sum((fit - fit_bar)^2) / (m - 1))</code></pre>
 <pre><code>## # A tibble: 30 × 4
-##       ses fit_bar    v_w      v_b
-##     &lt;dbl&gt;   &lt;dbl&gt;  &lt;dbl&gt;    &lt;dbl&gt;
-##  1 -16.7   -2.07  0.260  2.68e-31
-##  2 -15.4   -1.91  0.232  8.77e-32
-##  3 -14.2   -1.76  0.206  4.93e-32
-##  4 -12.9   -1.60  0.182  8.77e-32
-##  5 -11.7   -1.45  0.161  4.93e-32
-##  6 -10.5   -1.30  0.142  1.37e-33
-##  7  -9.22  -1.14  0.126  0       
-##  8  -7.98  -0.989 0.112  1.23e-32
-##  9  -6.74  -0.835 0.100  3.42e-32
-## 10  -5.49  -0.681 0.0908 5.48e-33
+##       ses fit_bar    v_w    v_b
+##     &lt;dbl&gt;   &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt;
+##  1 -16.7   -2.07  0.260  0.0833
+##  2 -15.4   -1.91  0.232  0.0742
+##  3 -14.2   -1.76  0.206  0.0657
+##  4 -12.9   -1.60  0.182  0.0579
+##  5 -11.7   -1.45  0.161  0.0508
+##  6 -10.5   -1.30  0.142  0.0444
+##  7  -9.22  -1.14  0.126  0.0387
+##  8  -7.98  -0.989 0.112  0.0336
+##  9  -6.74  -0.835 0.100  0.0293
+## 10  -5.49  -0.681 0.0908 0.0256
 ## # … with 20 more rows</code></pre>
 <p>We can define the total variance of the prediction <span class="math inline">\(V_{\bar p}\)</span> as</p>
 <p><span class="math display">\[V_{\bar p} = V_W + V_B \left ( 1 + \frac{1}{m} \right ),\]</span></p>
@@ -346,22 +351,22 @@ fitted_lines %&gt;%
   group_by(ses) %&gt;% 
   summarise(fit_bar = mean(fit),
             v_w     = mean(se.fit^2),
-            v_b     = sum(fit - fit_bar)^2 / (m - 1),
+            v_b     = sum((fit - fit_bar)^2) / (m - 1),
             v_p     = v_w + v_b * (1 + (1 / m)),
             se_p    = sqrt(v_p))</code></pre>
 <pre><code>## # A tibble: 30 × 6
-##       ses fit_bar    v_w      v_b    v_p  se_p
-##     &lt;dbl&gt;   &lt;dbl&gt;  &lt;dbl&gt;    &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt;
-##  1 -16.7   -2.07  0.260  2.68e-31 0.260  0.510
-##  2 -15.4   -1.91  0.232  8.77e-32 0.232  0.481
-##  3 -14.2   -1.76  0.206  4.93e-32 0.206  0.453
-##  4 -12.9   -1.60  0.182  8.77e-32 0.182  0.427
-##  5 -11.7   -1.45  0.161  4.93e-32 0.161  0.401
-##  6 -10.5   -1.30  0.142  1.37e-33 0.142  0.377
-##  7  -9.22  -1.14  0.126  0        0.126  0.354
-##  8  -7.98  -0.989 0.112  1.23e-32 0.112  0.334
-##  9  -6.74  -0.835 0.100  3.42e-32 0.100  0.316
-## 10  -5.49  -0.681 0.0908 5.48e-33 0.0908 0.301
+##       ses fit_bar    v_w    v_b   v_p  se_p
+##     &lt;dbl&gt;   &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;
+##  1 -16.7   -2.07  0.260  0.0833 0.352 0.593
+##  2 -15.4   -1.91  0.232  0.0742 0.313 0.560
+##  3 -14.2   -1.76  0.206  0.0657 0.278 0.527
+##  4 -12.9   -1.60  0.182  0.0579 0.246 0.496
+##  5 -11.7   -1.45  0.161  0.0508 0.217 0.465
+##  6 -10.5   -1.30  0.142  0.0444 0.191 0.437
+##  7  -9.22  -1.14  0.126  0.0387 0.168 0.410
+##  8  -7.98  -0.989 0.112  0.0336 0.149 0.385
+##  9  -6.74  -0.835 0.100  0.0293 0.132 0.364
+## 10  -5.49  -0.681 0.0908 0.0256 0.119 0.345
 ## # … with 20 more rows</code></pre>
 <p>Now we finally have both <span class="math inline">\(\bar p\)</span> and <span class="math inline">\(V_{\bar p}\)</span> for each desired level of <code>ses</code>, we can use the conventional normal-theory approach to compute the pooled 95% confidence intervals.</p>
 <pre class="r"><code># this time we&#39;ll save the results
@@ -369,7 +374,7 @@ fitted_lines &lt;- fitted_lines %&gt;%
   group_by(ses) %&gt;% 
   summarise(fit_bar = mean(fit),
             v_w     = mean(se.fit^2),
-            v_b     = sum(fit - fit_bar)^2 / (m - 1),
+            v_b     = sum((fit - fit_bar)^2) / (m - 1),
             v_p     = v_w + v_b * (1 + (1 / m)),
             se_p    = sqrt(v_p)) %&gt;% 
   # use the _p suffix to indicate these are pooled
@@ -383,11 +388,11 @@ glimpse(fitted_lines)</code></pre>
 ## $ ses     &lt;dbl&gt; -16.6666667, -15.4252874, -14.1839080, -12.9425287, -11.701149…
 ## $ fit_bar &lt;dbl&gt; -2.06663732, -1.91265660, -1.75867587, -1.60469515, -1.4507144…
 ## $ v_w     &lt;dbl&gt; 0.25989881, 0.23153126, 0.20555857, 0.18198075, 0.16079779, 0.…
-## $ v_b     &lt;dbl&gt; 2.684318e-31, 8.765121e-32, 4.930381e-32, 8.765121e-32, 4.9303…
-## $ v_p     &lt;dbl&gt; 0.25989881, 0.23153126, 0.20555857, 0.18198075, 0.16079779, 0.…
-## $ se_p    &lt;dbl&gt; 0.5098027, 0.4811770, 0.4533857, 0.4265920, 0.4009960, 0.37684…
-## $ lwr_p   &lt;dbl&gt; -3.06585065, -2.85576342, -2.64731180, -2.44081550, -2.2366665…
-## $ upr_p   &lt;dbl&gt; -1.06742400, -0.96954978, -0.87003995, -0.76857480, -0.6647622…</code></pre>
+## $ v_b     &lt;dbl&gt; 0.08332943, 0.07416123, 0.06568224, 0.05789246, 0.05079188, 0.…
+## $ v_p     &lt;dbl&gt; 0.35156118, 0.31310861, 0.27780903, 0.24566245, 0.21666886, 0.…
+## $ se_p    &lt;dbl&gt; 0.5929259, 0.5595611, 0.5270759, 0.4956435, 0.4654770, 0.43683…
+## $ lwr_p   &lt;dbl&gt; -3.22877218, -3.00939633, -2.79174469, -2.57615635, -2.3630493…
+## $ upr_p   &lt;dbl&gt; -0.904502468, -0.815916869, -0.725607057, -0.633233949, -0.538…</code></pre>
 </div>
 <div id="third-plot." class="section level4">
 <h4>Third: plot.</h4>
@@ -412,13 +417,13 @@ glimpse(fitted_lines)</code></pre>
 <div id="session-info" class="section level2">
 <h2>Session info</h2>
 <pre class="r"><code>sessionInfo()</code></pre>
-<pre><code>## R version 4.1.1 (2021-08-10)
+<pre><code>## R version 4.2.0 (2022-04-22)
 ## Platform: x86_64-apple-darwin17.0 (64-bit)
-## Running under: macOS Catalina 10.15.7
+## Running under: macOS Big Sur/Monterey 10.16
 ## 
 ## Matrix products: default
-## BLAS:   /Library/Frameworks/R.framework/Versions/4.1/Resources/lib/libRblas.0.dylib
-## LAPACK: /Library/Frameworks/R.framework/Versions/4.1/Resources/lib/libRlapack.dylib
+## BLAS:   /Library/Frameworks/R.framework/Versions/4.2/Resources/lib/libRblas.0.dylib
+## LAPACK: /Library/Frameworks/R.framework/Versions/4.2/Resources/lib/libRlapack.dylib
 ## 
 ## locale:
 ## [1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
@@ -427,28 +432,34 @@ glimpse(fitted_lines)</code></pre>
 ## [1] stats     graphics  grDevices utils     datasets  methods   base     
 ## 
 ## other attached packages:
-##  [1] mice_3.13.0     GGally_2.1.2    forcats_0.5.1   stringr_1.4.0  
-##  [5] dplyr_1.0.7     purrr_0.3.4     readr_2.0.1     tidyr_1.1.3    
-##  [9] tibble_3.1.5    ggplot2_3.3.5   tidyverse_1.3.1
+##  [1] mice_3.14.0     GGally_2.1.2    forcats_0.5.1   stringr_1.4.1  
+##  [5] dplyr_1.0.10    purrr_0.3.4     readr_2.1.2     tidyr_1.2.1    
+##  [9] tibble_3.1.8    ggplot2_3.3.6   tidyverse_1.3.2
 ## 
 ## loaded via a namespace (and not attached):
-##  [1] Rcpp_1.0.7         lattice_0.20-44    lubridate_1.7.10   assertthat_0.2.1  
-##  [5] digest_0.6.28      utf8_1.2.2         R6_2.5.1           cellranger_1.1.0  
-##  [9] plyr_1.8.6         backports_1.2.1    reprex_2.0.1       evaluate_0.14     
-## [13] highr_0.9          httr_1.4.2         blogdown_1.5       pillar_1.6.3      
-## [17] rlang_0.4.11       readxl_1.3.1       rstudioapi_0.13    jquerylib_0.1.4   
-## [21] rmarkdown_2.10     labeling_0.4.2     munsell_0.5.0      broom_0.7.9       
-## [25] compiler_4.1.1     modelr_0.1.8       xfun_0.25          pkgconfig_2.0.3   
-## [29] htmltools_0.5.2    tidyselect_1.1.1   bookdown_0.23      emo_0.0.0.9000    
-## [33] reshape_0.8.8      fansi_0.5.0        crayon_1.4.1       tzdb_0.1.2        
-## [37] dbplyr_2.1.1       withr_2.4.2        grid_4.1.1         jsonlite_1.7.2    
-## [41] gtable_0.3.0       lifecycle_1.0.1    DBI_1.1.1          magrittr_2.0.1    
-## [45] scales_1.1.1       cli_3.0.1          stringi_1.7.4      farver_2.1.0      
-## [49] fs_1.5.0           xml2_1.3.2         bslib_0.3.0        ellipsis_0.3.2    
-## [53] generics_0.1.0     vctrs_0.3.8        RColorBrewer_1.1-2 tools_4.1.1       
-## [57] glue_1.4.2         hms_1.1.0          fastmap_1.1.0      yaml_2.2.1        
-## [61] colorspace_2.0-2   rvest_1.0.1        knitr_1.33         haven_2.4.3       
-## [65] sass_0.4.0</code></pre>
+##  [1] Rcpp_1.0.9          lattice_0.20-45     lubridate_1.8.0    
+##  [4] assertthat_0.2.1    digest_0.6.29       utf8_1.2.2         
+##  [7] plyr_1.8.7          R6_2.5.1            cellranger_1.1.0   
+## [10] backports_1.4.1     reprex_2.0.2        evaluate_0.16      
+## [13] highr_0.9           httr_1.4.4          blogdown_1.11      
+## [16] pillar_1.8.1        rlang_1.0.6         googlesheets4_1.0.1
+## [19] readxl_1.4.1        rstudioapi_0.13     jquerylib_0.1.4    
+## [22] rmarkdown_2.16      labeling_0.4.2      googledrive_2.0.0  
+## [25] munsell_0.5.0       broom_1.0.1         compiler_4.2.0     
+## [28] modelr_0.1.8        xfun_0.33           pkgconfig_2.0.3    
+## [31] htmltools_0.5.3     tidyselect_1.1.2    bookdown_0.28      
+## [34] emo_0.0.0.9000      reshape_0.8.9       fansi_1.0.3        
+## [37] crayon_1.5.1        tzdb_0.3.0          dbplyr_2.2.1       
+## [40] withr_2.5.0         grid_4.2.0          jsonlite_1.8.0     
+## [43] gtable_0.3.1        lifecycle_1.0.2     DBI_1.1.3          
+## [46] magrittr_2.0.3      scales_1.2.1        cli_3.4.0          
+## [49] stringi_1.7.8       cachem_1.0.6        farver_2.1.1       
+## [52] fs_1.5.2            xml2_1.3.3          bslib_0.4.0        
+## [55] ellipsis_0.3.2      generics_0.1.3      vctrs_0.4.1        
+## [58] RColorBrewer_1.1-3  tools_4.2.0         glue_1.6.2         
+## [61] hms_1.1.1           fastmap_1.1.0       yaml_2.3.5         
+## [64] colorspace_2.0-3    gargle_1.2.0        rvest_1.0.2        
+## [67] knitr_1.40          haven_2.5.1         sass_0.4.2</code></pre>
 </div>
 <div id="references" class="section level2 unnumbered">
 <h2>References</h2>
@@ -456,8 +467,8 @@ glimpse(fitted_lines)</code></pre>
 <div id="ref-brandsma1989effects" class="csl-entry">
 Brandsma, H., &amp; Knuver, J. (1989). Effects of school and classroom characteristics on pupil progress in language and arithmetic. <em>International Journal of Educational Research</em>, <em>13</em>(7), 777–788. <a href="https://doi.org/10.1016/0883-0355(89)90028-1">https://doi.org/10.1016/0883-0355(89)90028-1</a>
 </div>
-<div id="ref-enders2010applied" class="csl-entry">
-Enders, C. K. (2010). <em>Applied missing data analysis</em>. <span>Guilford press</span>. <a href="http://www.appliedmissingdata.com/">http://www.appliedmissingdata.com/</a>
+<div id="ref-enders2022applied" class="csl-entry">
+Enders, C. K. (2022). <em>Applied missing data analysis</em> (Second Edition). <span>Guilford Press</span>. <a href="http://www.appliedmissingdata.com/">http://www.appliedmissingdata.com/</a>
 </div>
 <div id="ref-gelmanRegressionOtherStories2020" class="csl-entry">
 Gelman, A., Hill, J., &amp; Vehtari, A. (2020). <em>Regression and other stories</em>. <span>Cambridge University Press</span>. <a href="https://doi.org/10.1017/9781139161879">https://doi.org/10.1017/9781139161879</a>
@@ -481,7 +492,7 @@ McElreath, R. (2015). <em>Statistical rethinking: <span>A Bayesian</span> course
 Miles, A. (2016). Obtaining predictions from models fit to multiply imputed data. <em>Sociological Methods &amp; Research</em>, <em>45</em>(1), 175–185. <a href="https://doi.org/10.1177/0049124115610345">https://doi.org/10.1177/0049124115610345</a>
 </div>
 <div id="ref-R-base" class="csl-entry">
-R Core Team. (2020). <em>R: <span>A</span> language and environment for statistical computing</em>. <span>R Foundation for Statistical Computing</span>. <a href="https://www.R-project.org/">https://www.R-project.org/</a>
+R Core Team. (2022). <em>R: <span>A</span> language and environment for statistical computing</em>. <span>R Foundation for Statistical Computing</span>. <a href="https://www.R-project.org/">https://www.R-project.org/</a>
 </div>
 <div id="ref-roback2021beyond" class="csl-entry">
 Roback, P., &amp; Legler, J. (2021). <em>Beyond multiple linear regression: <span>Applied</span> generalized linear models and multilevel models in <span>R</span></em>. <span>CRC Press</span>. <a href="https://bookdown.org/roback/bookdown-BeyondMLR/">https://bookdown.org/roback/bookdown-BeyondMLR/</a>
@@ -499,14 +510,14 @@ van Buuren, S., &amp; Groothuis-Oudshoorn, K. (2011). <span class="nocase">mice<
 van Buuren, S., &amp; Groothuis-Oudshoorn, K. (2021). <em><span class="nocase">mice</span>: <span>Multivariate</span> imputation by chained equations</em> [Manual]. <a href="https://CRAN.R-project.org/package=mice">https://CRAN.R-project.org/package=mice</a>
 </div>
 <div id="ref-R-tidyverse" class="csl-entry">
-Wickham, H. (2019). <em><span class="nocase">tidyverse</span>: <span>Easily</span> install and load the ’tidyverse’</em>. <a href="https://CRAN.R-project.org/package=tidyverse">https://CRAN.R-project.org/package=tidyverse</a>
+Wickham, H. (2022). <em><span class="nocase">tidyverse</span>: <span>Easily</span> install and load the ’tidyverse’</em>. <a href="https://CRAN.R-project.org/package=tidyverse">https://CRAN.R-project.org/package=tidyverse</a>
 </div>
 <div id="ref-wickhamWelcomeTidyverse2019" class="csl-entry">
 Wickham, H., Averick, M., Bryan, J., Chang, W., McGowan, L. D., François, R., Grolemund, G., Hayes, A., Henry, L., Hester, J., Kuhn, M., Pedersen, T. L., Miller, E., Bache, S. M., Müller, K., Ooms, J., Robinson, D., Seidel, D. P., Spinu, V., … Yutani, H. (2019). Welcome to the tidyverse. <em>Journal of Open Source Software</em>, <em>4</em>(43), 1686. <a href="https://doi.org/10.21105/joss.01686">https://doi.org/10.21105/joss.01686</a>
 </div>
 </div>
 </div>
-<div class="footnotes">
+<div class="footnotes footnotes-end-of-document">
 <hr />
 <ol>
 <li id="fn1"><p>Be warned that “full-luxury Bayesian …” isn’t a real term. Rather, it’s a playful descriptor coined by the great Richard McElreath. To hear him use it in action, check out his <a href="https://www.youtube.com/watch?v=KNPYUVmY3NM">nifty talk</a> on causal inference. One-step Bayesian imputation is a real thing, though. McElreath covered it in both editions of his text and I’ve even blogged about it <a href="https://solomonkurz.netlify.app/post/2021-07-27-one-step-bayesian-imputation-when-you-have-dropout-in-your-rct/">here</a>.<a href="#fnref1" class="footnote-back">↩︎</a></p></li>
