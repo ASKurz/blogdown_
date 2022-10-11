@@ -87,7 +87,7 @@ nhanes %>%
   md.pattern()
 ```
 
-We're missing nine cased in `bmi` and missing 10 cases in `chl`.
+We're missing nine cases in `bmi` and missing 10 cases in `chl`.
 
 ## Impute
 
@@ -101,7 +101,7 @@ imp <- nhanes %>%
 
 ## Model
 
-Our basic model we'll be
+Our basic model will be
 
 $$
 \begin{align*}
@@ -116,7 +116,7 @@ where `bmi` is the sole predictor of `chl`. Here's how we use the `with()` funct
 fit1 <- with(imp, lm(chl ~ 1 + bmi))
 ```
 
-We use the `pool()` function to pool the results on the 100 data sets according to Ruben's rules.
+We use the `pool()` function to pool the results from the 100 MI data sets according to Ruben's rules.
 
 ```{r}
 pooled1 <- pool(fit1)
@@ -166,7 +166,7 @@ summary(pooled2, conf.int = T)
 
 The standardized regression coefficient for `bmi` is $0.33$, $95\% \text{CI}$ $[-0.21, 0.86]$. As we only have one predictor, the standardized coefficient is in a correlation metric, which makes it easy to interpret the point estimate.
 
-Just for kicks, here's how you might plot the pooled fitted line and it's pooled 95% interval using the method from an [earlier post](https://solomonkurz.netlify.app/post/2021-10-21-if-you-fit-a-model-with-multiply-imputed-data-you-can-still-plot-the-line/).
+Just for kicks, here's how you might plot the pooled fitted line and its pooled 95% interval using the method from an [earlier post](https://solomonkurz.netlify.app/post/2021-10-21-if-you-fit-a-model-with-multiply-imputed-data-you-can-still-plot-the-line/).
 
 ```{r, warning = F, fig.width = 4, fig.height = 4}
 # define the total number of imputations

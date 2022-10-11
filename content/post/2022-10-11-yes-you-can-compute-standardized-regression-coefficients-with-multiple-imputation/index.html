@@ -79,7 +79,7 @@ library(mice)</code></pre>
 ## 2    0   1  1
 ## 7    0   0  2
 ##      9  10 19</code></pre>
-<p>We’re missing nine cased in <code>bmi</code> and missing 10 cases in <code>chl</code>.</p>
+<p>We’re missing nine cases in <code>bmi</code> and missing 10 cases in <code>chl</code>.</p>
 </div>
 </div>
 <div id="impute" class="section level2">
@@ -91,7 +91,7 @@ library(mice)</code></pre>
 </div>
 <div id="model" class="section level2">
 <h2>Model</h2>
-<p>Our basic model we’ll be</p>
+<p>Our basic model will be</p>
 <p><span class="math display">\[
 \begin{align*}
 \text{chl}_i &amp; \sim \operatorname{Gaussian}(\mu_i, \sigma) \\
@@ -100,7 +100,7 @@ library(mice)</code></pre>
 \]</span></p>
 <p>where <code>bmi</code> is the sole predictor of <code>chl</code>. Here’s how we use the <code>with()</code> function to fit that model to each of the 100 imputed data sets.</p>
 <pre class="r"><code>fit1 &lt;- with(imp, lm(chl ~ 1 + bmi))</code></pre>
-<p>We use the <code>pool()</code> function to pool the results on the 100 data sets according to Ruben’s rules.</p>
+<p>We use the <code>pool()</code> function to pool the results from the 100 MI data sets according to Ruben’s rules.</p>
 <pre class="r"><code>pooled1 &lt;- pool(fit1)</code></pre>
 <p>Now we can summarize the results.</p>
 <pre class="r"><code>summary(pooled1, conf.int = T)</code></pre>
@@ -132,7 +132,7 @@ library(mice)</code></pre>
 ## 1 -0.3959603 0.3959603
 ## 2 -0.2080493 0.8631187</code></pre>
 <p>The standardized regression coefficient for <code>bmi</code> is <span class="math inline">\(0.33\)</span>, <span class="math inline">\(95\% \text{CI}\)</span> <span class="math inline">\([-0.21, 0.86]\)</span>. As we only have one predictor, the standardized coefficient is in a correlation metric, which makes it easy to interpret the point estimate.</p>
-<p>Just for kicks, here’s how you might plot the pooled fitted line and it’s pooled 95% interval using the method from an <a href="https://solomonkurz.netlify.app/post/2021-10-21-if-you-fit-a-model-with-multiply-imputed-data-you-can-still-plot-the-line/">earlier post</a>.</p>
+<p>Just for kicks, here’s how you might plot the pooled fitted line and its pooled 95% interval using the method from an <a href="https://solomonkurz.netlify.app/post/2021-10-21-if-you-fit-a-model-with-multiply-imputed-data-you-can-still-plot-the-line/">earlier post</a>.</p>
 <pre class="r"><code># define the total number of imputations
 m &lt;- 100
 
