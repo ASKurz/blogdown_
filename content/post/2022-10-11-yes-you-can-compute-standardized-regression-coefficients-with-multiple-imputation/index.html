@@ -1,0 +1,295 @@
+---
+title: Yes, you can compute standardized regression coefficients with multiple imputation
+author: A. Solomon Kurz
+date: '2022-10-11'
+slug: ''
+categories: []
+tags:
+  - effect size
+  - mice
+  - missing data
+  - multiple imputation
+  - R
+  - tidyverse
+  - tutorial
+subtitle: ''
+summary: ''
+authors: []
+lastmod: '2022-10-11T11:13:04-05:00'
+featured: no
+image:
+  caption: ''
+  focal_point: ''
+  preview_only: no
+projects: []
+bibliography: /Users/solomonkurz/Dropbox/blogdown/content/post/my_blog.bib
+biblio-style: apalike
+csl: /Users/solomonkurz/Dropbox/blogdown/content/post/apa.csl  
+link-citations: yes
+---
+
+
+
+<div id="what" class="section level2">
+<h2>What?</h2>
+<p>All the players know there are three major ways to handle missing data:</p>
+<ul>
+<li>full-information maximum likelihood,</li>
+<li>multiple imputation, and</li>
+<li>one-step full-luxury<a href="#fn1" class="footnote-ref" id="fnref1"><sup>1</sup></a> Bayesian imputation.</li>
+</ul>
+<p>In an <a href="https://solomonkurz.netlify.app/post/2021-10-21-if-you-fit-a-model-with-multiply-imputed-data-you-can-still-plot-the-line/">earlier post</a>, we walked through method for plotting the fitted lines from models fit with multiply-imputed data. In this post, we’ll discuss another neglected topic: <em>How might one compute</em> <strong>standardized regression coefficients</strong> <em>from models fit with multiply-imputed data?</em></p>
+<div id="i-make-assumptions." class="section level3">
+<h3>I make assumptions.</h3>
+<p>For this post, I’m presuming some background knowledge:</p>
+<ul>
+<li><p>You should be familiar with regression. For frequentist introductions, I recommend Roback and Legler’s <span class="citation">(<a href="#ref-roback2021beyond" role="doc-biblioref">2021</a>)</span> online text or James, Witten, Hastie, and Tibshirani’s <span class="citation">(<a href="#ref-james2021AnIntroduction" role="doc-biblioref">2021</a>)</span> online text. For Bayesian introductions, I recommend either edition of McElreath’s text <span class="citation">(<a href="#ref-mcelreathStatisticalRethinkingBayesian2020" role="doc-biblioref">2020</a>, <a href="#ref-mcelreathStatisticalRethinkingBayesian2015" role="doc-biblioref">2015</a>)</span>; Kruschke’s <span class="citation">(<a href="#ref-kruschkeDoingBayesianData2015" role="doc-biblioref">2015</a>)</span> text; or Gelman, Hill, and Vehtari’s <span class="citation">(<a href="#ref-gelmanRegressionOtherStories2020" role="doc-biblioref">2020</a>)</span> text.</p></li>
+<li><p>You should be familiar with contemporary missing data theory. You can find brief overviews in the texts by McElreath and Gelman et al, above. For a deeper dive, I recommend <span class="citation">Enders (<a href="#ref-enders2022applied" role="doc-biblioref">2022</a>)</span>, <span class="citation">Little &amp; Rubin (<a href="#ref-little2019statistical" role="doc-biblioref">2019</a>)</span>, or <span class="citation">van Buuren (<a href="#ref-vanbuurenFlexibleImputationMissing2018" role="doc-biblioref">2018</a>)</span>.</p></li>
+<li><p>All code is in <strong>R</strong>. Data wrangling and plotting were done with help from the <strong>tidyverse</strong> <span class="citation">(<a href="#ref-wickhamWelcomeTidyverse2019" role="doc-biblioref">Wickham et al., 2019</a>; <a href="#ref-R-tidyverse" role="doc-biblioref">Wickham, 2022</a>)</span> and <strong>ggside</strong> <span class="citation">(<a href="#ref-R-ggside" role="doc-biblioref">Landis, 2022</a>)</span>. The data and multiple-imputation workflow are from the <a href="https://CRAN.R-project.org/package=mice"><strong>mice</strong> package</a> <span class="citation">(<a href="#ref-mice2011" role="doc-biblioref">van Buuren &amp; Groothuis-Oudshoorn, 2011</a>, <a href="#ref-R-mice" role="doc-biblioref">2021</a>)</span>.</p></li>
+</ul>
+<p>Here we load our primary <strong>R</strong> packages.</p>
+<pre class="r"><code>library(tidyverse)
+library(ggside)
+library(mice)</code></pre>
+</div>
+<div id="we-need-data." class="section level3">
+<h3>We need data.</h3>
+<p>In this post we’ll use the <code>nhanes</code> data set <span class="citation">(<a href="#ref-schafer1997analysis" role="doc-biblioref">Schafer, 1997</a>)</span>.</p>
+<pre class="r"><code>data(nhanes, package = &quot;mice&quot;)</code></pre>
+<p>We’ll be focusing on the two variables, <code>bmi</code> and <code>chl</code>. Here’s a look at their univarite and bivariate distributions.</p>
+<pre class="r"><code>nhanes %&gt;% 
+  ggplot(aes(x = bmi, y = chl)) +
+  geom_point() +
+  geom_xsidehistogram(bins = 20) +
+  geom_ysidehistogram(bins = 20) +
+  scale_xsidey_continuous(breaks = NULL) +
+  scale_ysidex_continuous(breaks = NULL) +
+  theme(axis.title = element_text(hjust = 1/3),
+        ggside.panel.scale = 0.5,
+        panel.grid = element_blank())</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-3-1.png" width="384" /></p>
+<p>We can use <code>mice::md.pattern()</code> to reveal their four distinct missing data patterns.</p>
+<pre class="r"><code>nhanes %&gt;% 
+  select(bmi, chl) %&gt;% 
+  md.pattern()</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-4-1.png" width="672" /></p>
+<pre><code>##    bmi chl   
+## 13   1   1  0
+## 3    1   0  1
+## 2    0   1  1
+## 7    0   0  2
+##      9  10 19</code></pre>
+<p>We’re missing nine cased in <code>bmi</code> and missing 10 cases in <code>chl</code>.</p>
+</div>
+</div>
+<div id="impute" class="section level2">
+<h2>Impute</h2>
+<p>We’ll use the <code>mice()</code> function to impute. By setting <code>m = 100</code>, we’ll get back 100 multiply-imputed data sets. By setting <code>method = "norm"</code>, we will be using Bayesian linear regression with the Gaussian likelihood to compute the imputed values. The <code>seed</code> argument makes our results reproducible.</p>
+<pre class="r"><code>imp &lt;- nhanes %&gt;% 
+  select(bmi, chl) %&gt;% 
+  mice(seed = 1, m = 100, method = &quot;norm&quot;, print = FALSE)</code></pre>
+</div>
+<div id="model" class="section level2">
+<h2>Model</h2>
+<p>Our basic model we’ll be</p>
+<p><span class="math display">\[
+\begin{align*}
+\text{chl}_i &amp; \sim \operatorname{Gaussian}(\mu_i, \sigma) \\
+\mu_i &amp; = \beta_0 + \beta_1 \text{bmi}_i,
+\end{align*}
+\]</span></p>
+<p>where <code>bmi</code> is the sole predictor of <code>chl</code>. Here’s how we use the <code>with()</code> function to fit that model to each of the 100 imputed data sets.</p>
+<pre class="r"><code>fit1 &lt;- with(imp, lm(chl ~ 1 + bmi))</code></pre>
+<p>We use the <code>pool()</code> function to pool the results on the 100 data sets according to Ruben’s rules.</p>
+<pre class="r"><code>pooled1 &lt;- pool(fit1)</code></pre>
+<p>Now we can summarize the results.</p>
+<pre class="r"><code>summary(pooled1, conf.int = T)</code></pre>
+<pre><code>##          term  estimate std.error statistic       df   p.value      2.5 %
+## 1 (Intercept) 97.798132 74.951754  1.304814 12.36661 0.2157149 -64.972384
+## 2         bmi  3.558074  2.765967  1.286376 12.63050 0.2213919  -2.435254
+##       97.5 %
+## 1 260.568649
+## 2   9.551402</code></pre>
+<p>Since I’m not an expert in the <code>nhanes</code> data, it’s hard to know how impressed I should be with the 3.6 estimate for <code>bmi</code>. An effect size could help.</p>
+</div>
+<div id="standadrdized-coefficients-with-van-ginkels-proposal" class="section level2">
+<h2>Standadrdized coefficients with van Ginkel’s proposal</h2>
+<p>In his <span class="citation">(<a href="#ref-vanGinkel2020standardized" role="doc-biblioref">2020</a>)</span> paper, <em>Standardized regression coefficients and newly proposed estimators for</em> <span class="math inline">\(R^2\)</span> <em>in multiply imputed data</em>, <a href="https://www.universiteitleiden.nl/en/staffmembers/joost-van-ginkel#tab-1">Joost van Ginkel</a> presented two methods for computing standardized regression coefficients from multiply imputed data. van Ginkel called these two methods <span class="math inline">\(\bar{\hat\beta}_\text{PS}\)</span>, which stands for <em>Pooling before Standardization</em>, and <span class="math inline">\(\bar{\hat\beta}_\text{SP}\)</span>, which stands for <em>Standardization before Pooling</em>. In the paper, he showed both methods are pretty good in terms of bias and coverage. I find the SP approach intuitive and easy to use, so that’s the one we’ll be using in this post.</p>
+<p>For the SP method, we don’t need to change our <code>mice()</code>-based imputation step from above. The big change is how we fit the model with <code>lm()</code> and <code>with()</code>. As van Ginkel covered in the paper, one of the ways you might compute standardized regression coefficients is by fitting the model to standardized predictors. Instead of messing with the <code>imp</code> data, we can simply standardize the variables directly in the model formula within <code>lm()</code> by way of the base-<strong>R</strong> <code>scale()</code> function.</p>
+<pre class="r"><code>fit2 &lt;- with(imp, lm(scale(chl) ~ 1 + scale(bmi)))</code></pre>
+<p>I should note it was Mattan S. Ben-Shachar who came up with the <code>scale()</code> insight for our <code>with()</code> implementation.</p>
+{{% tweet "1578447175998373893" %}}
+<p>While I’m at it, it was Isabella R. Ghement who directed me to the van Ginkel paper.</p>
+{{% tweet "1578557862733045760" %}}
+<p>Anyway, now we’ve fit the standardized model, we can pool as normal.</p>
+<pre class="r"><code>pooled2 &lt;- pool(fit2)</code></pre>
+<p>Here are the results.</p>
+<pre class="r"><code>summary(pooled2, conf.int = T)</code></pre>
+<pre><code>##          term      estimate std.error     statistic       df   p.value
+## 1 (Intercept) -5.043931e-19 0.1905258 -2.647375e-18 21.22865 1.0000000
+## 2  scale(bmi)  3.275347e-01 0.2476081  1.322795e+00 12.84446 0.2089718
+##        2.5 %    97.5 %
+## 1 -0.3959603 0.3959603
+## 2 -0.2080493 0.8631187</code></pre>
+<p>The standardized regression coefficient for <code>bmi</code> is <span class="math inline">\(0.33\)</span>, <span class="math inline">\(95\% \text{CI}\)</span> <span class="math inline">\([-0.21, 0.86]\)</span>. As we only have one predictor, the standardized coefficient is in a correlation metric, which makes it easy to interpret the point estimate.</p>
+<p>Just for kicks, here’s how you might plot the pooled fitted line and it’s pooled 95% interval using the method from an <a href="https://solomonkurz.netlify.app/post/2021-10-21-if-you-fit-a-model-with-multiply-imputed-data-you-can-still-plot-the-line/">earlier post</a>.</p>
+<pre class="r"><code># define the total number of imputations
+m &lt;- 100
+
+# define the new data
+nd &lt;- tibble(bmi = seq(from = min(nhanes$bmi, na.rm = T), to = max(nhanes$bmi, na.rm = T), length.out = 30))
+
+# compute the fitted values, by imputation
+tibble(.imp = 1:100) %&gt;% 
+  mutate(p = map(.imp, ~ predict(fit1$analyses[[.]], 
+                                 newdata = nd, 
+                                 se.fit = TRUE) %&gt;% 
+                   data.frame())
+         ) %&gt;% 
+  unnest(p) %&gt;%
+  # add in the nd predictor data
+  bind_cols(
+    bind_rows(replicate(100, nd, simplify = FALSE))
+    ) %&gt;% 
+  # drop two unneeded columns
+  select(-df, -residual.scale) %&gt;% 
+  group_by(bmi) %&gt;% 
+  # compute the pooled fitted values and the pooled standard errors
+  summarise(fit_bar = mean(fit),
+            v_w     = mean(se.fit^2),
+            v_b     = sum((fit - fit_bar)^2) / (m - 1),
+            v_p     = v_w + v_b * (1 + (1 / m)),
+            se_p    = sqrt(v_p)) %&gt;% 
+  # compute the pooled 95% intervals
+  mutate(lwr_p = fit_bar - se_p * 1.96,
+         upr_p = fit_bar + se_p * 1.96) %&gt;%
+  
+  # plot!
+  ggplot(aes(x = bmi)) +
+  geom_ribbon(aes(ymin = lwr_p, ymax = upr_p),
+              alpha = 1/2) +
+  geom_line(aes(y = fit_bar), 
+            size = 1/2) +
+  geom_point(data = nhanes,
+             aes(y = chl)) +
+  labs(y = &quot;chl&quot;) +
+  theme(panel.grid = element_blank())</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-14-1.png" width="384" /></p>
+</div>
+<div id="limitation" class="section level2">
+<h2>Limitation</h2>
+<p>To my knowledge, <span class="citation">van Ginkel (<a href="#ref-vanGinkel2020standardized" role="doc-biblioref">2020</a>)</span> is the first and only methodological paper to discuss standardized regression coefficients with multiply imputed data. In the abstract, for example, van Ginkel reported: “No combination rules for standardized regression coefficients and their confidence intervals seem to have been developed at all.” Though this initial method has its strengths, it has one major limitation: The <span class="math inline">\(t\)</span>-tests will tend to differ between the standardized and unstandardized models. To give a sense, let’s compare the results from our unstandardized and standardized models.</p>
+<pre class="r"><code># unstandardized t-test
+summary(pooled1, conf.int = T)[2, &quot;statistic&quot;]</code></pre>
+<pre><code>## [1] 1.286376</code></pre>
+<pre class="r"><code># standardized t-test
+summary(pooled2, conf.int = T)[2, &quot;statistic&quot;]</code></pre>
+<pre><code>## [1] 1.322795</code></pre>
+<p>Yep, they’re a little different. van Ginkel covered this issue in his Discussion section, the details of which I’ll leave to the interested reader. This limitation notwithstanding, van Ginkel ultimately preferred the SP method. 🤷 We can’t have it all, friends.</p>
+<p>Happy modeling!</p>
+</div>
+<div id="session-info" class="section level2">
+<h2>Session info</h2>
+<pre class="r"><code>sessionInfo()</code></pre>
+<pre><code>## R version 4.2.0 (2022-04-22)
+## Platform: x86_64-apple-darwin17.0 (64-bit)
+## Running under: macOS Big Sur/Monterey 10.16
+## 
+## Matrix products: default
+## BLAS:   /Library/Frameworks/R.framework/Versions/4.2/Resources/lib/libRblas.0.dylib
+## LAPACK: /Library/Frameworks/R.framework/Versions/4.2/Resources/lib/libRlapack.dylib
+## 
+## locale:
+## [1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+## 
+## attached base packages:
+## [1] stats     graphics  grDevices utils     datasets  methods   base     
+## 
+## other attached packages:
+##  [1] mice_3.14.0     ggside_0.2.1    forcats_0.5.1   stringr_1.4.1  
+##  [5] dplyr_1.0.10    purrr_0.3.4     readr_2.1.2     tidyr_1.2.1    
+##  [9] tibble_3.1.8    ggplot2_3.3.6   tidyverse_1.3.2
+## 
+## loaded via a namespace (and not attached):
+##  [1] Rcpp_1.0.9          lattice_0.20-45     lubridate_1.8.0    
+##  [4] assertthat_0.2.1    digest_0.6.29       utf8_1.2.2         
+##  [7] R6_2.5.1            cellranger_1.1.0    backports_1.4.1    
+## [10] reprex_2.0.2        evaluate_0.16       highr_0.9          
+## [13] httr_1.4.4          blogdown_1.11       pillar_1.8.1       
+## [16] rlang_1.0.6         googlesheets4_1.0.1 readxl_1.4.1       
+## [19] rstudioapi_0.13     jquerylib_0.1.4     rmarkdown_2.16     
+## [22] labeling_0.4.2      googledrive_2.0.0   munsell_0.5.0      
+## [25] broom_1.0.1         compiler_4.2.0      modelr_0.1.8       
+## [28] xfun_0.33           pkgconfig_2.0.3     htmltools_0.5.3    
+## [31] tidyselect_1.1.2    bookdown_0.28       emo_0.0.0.9000     
+## [34] fansi_1.0.3         crayon_1.5.1        tzdb_0.3.0         
+## [37] dbplyr_2.2.1        withr_2.5.0         grid_4.2.0         
+## [40] jsonlite_1.8.0      gtable_0.3.1        lifecycle_1.0.2    
+## [43] DBI_1.1.3           magrittr_2.0.3      scales_1.2.1       
+## [46] cli_3.4.0           stringi_1.7.8       cachem_1.0.6       
+## [49] farver_2.1.1        fs_1.5.2            xml2_1.3.3         
+## [52] bslib_0.4.0         ellipsis_0.3.2      generics_0.1.3     
+## [55] vctrs_0.4.1         tools_4.2.0         glue_1.6.2         
+## [58] hms_1.1.1           fastmap_1.1.0       yaml_2.3.5         
+## [61] colorspace_2.0-3    gargle_1.2.0        rvest_1.0.2        
+## [64] knitr_1.40          haven_2.5.1         sass_0.4.2</code></pre>
+</div>
+<div id="references" class="section level2 unnumbered">
+<h2>References</h2>
+<div id="refs" class="references csl-bib-body hanging-indent" line-spacing="2">
+<div id="ref-enders2022applied" class="csl-entry">
+Enders, C. K. (2022). <em>Applied missing data analysis</em> (Second Edition). <span>Guilford Press</span>. <a href="http://www.appliedmissingdata.com/">http://www.appliedmissingdata.com/</a>
+</div>
+<div id="ref-gelmanRegressionOtherStories2020" class="csl-entry">
+Gelman, A., Hill, J., &amp; Vehtari, A. (2020). <em>Regression and other stories</em>. <span>Cambridge University Press</span>. <a href="https://doi.org/10.1017/9781139161879">https://doi.org/10.1017/9781139161879</a>
+</div>
+<div id="ref-james2021AnIntroduction" class="csl-entry">
+James, G., Witten, D., Hastie, T., &amp; Tibshirani, R. (2021). <em>An introduction to statistical learning with applications in <span>R</span></em> (Second Edition). <span>Springer</span>. <a href="https://web.stanford.edu/~hastie/ISLRv2_website.pdf">https://web.stanford.edu/~hastie/ISLRv2_website.pdf</a>
+</div>
+<div id="ref-kruschkeDoingBayesianData2015" class="csl-entry">
+Kruschke, J. K. (2015). <em>Doing <span>Bayesian</span> data analysis: <span>A</span> tutorial with <span>R</span>, <span>JAGS</span>, and <span>Stan</span></em>. <span>Academic Press</span>. <a href="https://sites.google.com/site/doingbayesiandataanalysis/">https://sites.google.com/site/doingbayesiandataanalysis/</a>
+</div>
+<div id="ref-R-ggside" class="csl-entry">
+Landis, J. (2022). <em><span class="nocase">ggside</span>: <span>Side</span> grammar graphics</em> [Manual]. <a href="https://github.com/jtlandis/ggside">https://github.com/jtlandis/ggside</a>
+</div>
+<div id="ref-little2019statistical" class="csl-entry">
+Little, R. J., &amp; Rubin, D. B. (2019). <em>Statistical analysis with missing data</em> (third, Vol. 793). <span>John Wiley &amp; Sons</span>. <a href="https://www.wiley.com/en-us/Statistical+Analysis+with+Missing+Data%2C+3rd+Edition-p-9780470526798">https://www.wiley.com/en-us/Statistical+Analysis+with+Missing+Data%2C+3rd+Edition-p-9780470526798</a>
+</div>
+<div id="ref-mcelreathStatisticalRethinkingBayesian2020" class="csl-entry">
+McElreath, R. (2020). <em>Statistical rethinking: <span>A Bayesian</span> course with examples in <span>R</span> and <span>Stan</span></em> (Second Edition). <span>CRC Press</span>. <a href="https://xcelab.net/rm/statistical-rethinking/">https://xcelab.net/rm/statistical-rethinking/</a>
+</div>
+<div id="ref-mcelreathStatisticalRethinkingBayesian2015" class="csl-entry">
+McElreath, R. (2015). <em>Statistical rethinking: <span>A Bayesian</span> course with examples in <span>R</span> and <span>Stan</span></em>. <span>CRC press</span>. <a href="https://xcelab.net/rm/statistical-rethinking/">https://xcelab.net/rm/statistical-rethinking/</a>
+</div>
+<div id="ref-roback2021beyond" class="csl-entry">
+Roback, P., &amp; Legler, J. (2021). <em>Beyond multiple linear regression: <span>Applied</span> generalized linear models and multilevel models in <span>R</span></em>. <span>CRC Press</span>. <a href="https://bookdown.org/roback/bookdown-BeyondMLR/">https://bookdown.org/roback/bookdown-BeyondMLR/</a>
+</div>
+<div id="ref-schafer1997analysis" class="csl-entry">
+Schafer, J. L. (1997). <em>Analysis of incomplete multivariate data</em>. <span>CRC press</span>. <a href="https://www.routledge.com/Analysis-of-Incomplete-Multivariate-Data/Schafer/p/book/9780412040610">https://www.routledge.com/Analysis-of-Incomplete-Multivariate-Data/Schafer/p/book/9780412040610</a>
+</div>
+<div id="ref-vanbuurenFlexibleImputationMissing2018" class="csl-entry">
+van Buuren, S. (2018). <em>Flexible imputation of missing data</em> (Second Edition). <span>CRC Press</span>. <a href="https://stefvanbuuren.name/fimd/">https://stefvanbuuren.name/fimd/</a>
+</div>
+<div id="ref-mice2011" class="csl-entry">
+van Buuren, S., &amp; Groothuis-Oudshoorn, K. (2011). <span class="nocase">mice</span>: <span>Multivariate</span> imputation by chained equations in <span>R</span>. <em>Journal of Statistical Software</em>, <em>45</em>(3), 1–67. <a href="https://www.jstatsoft.org/v45/i03/">https://www.jstatsoft.org/v45/i03/</a>
+</div>
+<div id="ref-R-mice" class="csl-entry">
+van Buuren, S., &amp; Groothuis-Oudshoorn, K. (2021). <em><span class="nocase">mice</span>: <span>Multivariate</span> imputation by chained equations</em> [Manual]. <a href="https://CRAN.R-project.org/package=mice">https://CRAN.R-project.org/package=mice</a>
+</div>
+<div id="ref-vanGinkel2020standardized" class="csl-entry">
+van Ginkel, J. R. (2020). Standardized regression coefficients and newly proposed estimators for <span class="math inline">\(R^2\)</span> in multiply imputed data. <em>Psychometrika</em>, <em>85</em>(1), 185–205. <a href="https://doi.org/10.1007/s11336-020-09696-4">https://doi.org/10.1007/s11336-020-09696-4</a>
+</div>
+<div id="ref-R-tidyverse" class="csl-entry">
+Wickham, H. (2022). <em><span class="nocase">tidyverse</span>: <span>Easily</span> install and load the ’tidyverse’</em>. <a href="https://CRAN.R-project.org/package=tidyverse">https://CRAN.R-project.org/package=tidyverse</a>
+</div>
+<div id="ref-wickhamWelcomeTidyverse2019" class="csl-entry">
+Wickham, H., Averick, M., Bryan, J., Chang, W., McGowan, L. D., François, R., Grolemund, G., Hayes, A., Henry, L., Hester, J., Kuhn, M., Pedersen, T. L., Miller, E., Bache, S. M., Müller, K., Ooms, J., Robinson, D., Seidel, D. P., Spinu, V., … Yutani, H. (2019). Welcome to the tidyverse. <em>Journal of Open Source Software</em>, <em>4</em>(43), 1686. <a href="https://doi.org/10.21105/joss.01686">https://doi.org/10.21105/joss.01686</a>
+</div>
+</div>
+</div>
+<div class="footnotes footnotes-end-of-document">
+<hr />
+<ol>
+<li id="fn1"><p>Be warned that “full-luxury Bayesian …” isn’t a real term. It’s just a playful term Richard McElreath coined a while back. To hear him use it in action, check out his <a href="https://youtu.be/KNPYUVmY3NM">nifty talk</a> on causal inference. One-step Bayesian imputation is a real thing, though. McElreath covered it in both editions of his text and I’ve even blogged about it <a href="https://solomonkurz.netlify.app/post/2021-07-27-one-step-bayesian-imputation-when-you-have-dropout-in-your-rct/">here</a>.<a href="#fnref1" class="footnote-back">↩︎</a></p></li>
+</ol>
+</div>
