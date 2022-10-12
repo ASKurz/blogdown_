@@ -30,7 +30,7 @@ link-citations: yes
 
 ## Version 1.1.0
 
-Edited on October 9, 2022. Doctoral candidate Reinier van Linschoten kindly pointed out a mistake in my **R** code for $V_B$, the between imputation variance. The blog post now includes the corrected workflow.
+Edited on October 9, 2022. Doctoral candidate [Reinier van Linschoten](https://www.linkedin.com/in/reiniervlinschoten/) kindly pointed out a mistake in my **R** code for $V_B$, the between imputation variance. The blog post now includes the corrected workflow.
 
 ## What?
 
