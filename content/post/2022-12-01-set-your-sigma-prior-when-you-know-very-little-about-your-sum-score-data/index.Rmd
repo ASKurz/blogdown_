@@ -290,7 +290,7 @@ Okay, that's enough theory. Let's see how this works in practice.
 
 ### We need data.
 
-In response to a [call on twitter](https://twitter.com/SolomonKurz/status/1597718777797705730), neuroscience graduate student [Sam Zorowitz](https://twitter.com/szorowi1) kindly shared some de-identified PHQ-9 data collected by the good folks in the Niv Lab. I've saved the file on GitHub. Here we'll load the data and save them as `phq9`.
+In response to a [call on twitter](https://twitter.com/SolomonKurz/status/1597718777797705730), neuroscience graduate student [Sam Zorowitz](https://szorowi1.github.io/) kindly shared some de-identified PHQ-9 data collected by the good folks in the Niv Lab. I've saved the file on GitHub. Here we'll load the data and save them as `phq9`.
 
 ```{r, message = F}
 # load
