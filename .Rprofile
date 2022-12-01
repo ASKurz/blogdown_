@@ -18,7 +18,7 @@ options(
   # build .Rmd to .html (via Pandoc); to build to Markdown, set this option to 'markdown'
   blogdown.method = 'html',
   # fix Hugo version
-  blogdown.hugo.version = "0.82.0",
+  blogdown.hugo.version = "0.107.0",
   # These changes are based on Alison Hill's posts:
   # https://alison.rbind.io/post/2019-02-21-hugo-page-bundles/#project-specific-rprofile
   # and 
