@@ -38,7 +38,7 @@ link-citations: yes
 
 <div id="what" class="section level2">
 <h2>What?</h2>
-<p>Psychologists analyze a lot of sum-score data, and even though it’s not the best, we usually use the Gaussian likelihood<a href="#fn1" class="footnote-ref" id="fnref1"><sup>1</sup></a> when doing so. I was recently in a situation were I wanted to model sum-scores from a new questionnaire and there was no good prior research on the distribution of the sum-scores. Like, there wasn’t a single published paper reporting the sample statistics. Crazy, I know… Anyway, I spent some time trying to reason through how I would set a justifiable prior for my <span class="math inline">\(\sigma\)</span> parameter, and in this blog post we’ll cover how I came up with a solution.</p>
+<p>We psychologists analyze a lot of sum-score data. Even though it’s not the best, we usually use the Gaussian likelihood<a href="#fn1" class="footnote-ref" id="fnref1"><sup>1</sup></a> for these analyses. I was recently in a situation were I wanted to model sum-scores from a new questionnaire and there was no good prior research on the distribution of the sum-scores. Like, there wasn’t a single published paper reporting the sample statistics. Crazy, I know… Anyway, I spent some time trying to reason through how I would set a justifiable prior for my <span class="math inline">\(\sigma\)</span> parameter, and in this blog post we’ll cover how I came up with a solution.</p>
 <div id="i-make-assumptions." class="section level3">
 <h3>I make assumptions.</h3>
 <ul>
@@ -533,7 +533,7 @@ sqrt(((n * a * b) * (a + b + n)) / ((a + b)^2 * (a + b + 1)))</code></pre>
 ##  [91] bayesplot_1.9.0      shinythemes_1.2.0    rstudioapi_0.13     
 ##  [94] gamm4_0.2-6          reprex_2.0.2         bslib_0.4.0         
 ##  [97] stringi_1.7.8        highr_0.9            ps_1.7.2            
-## [100] blogdown_1.11        Brobdingnag_1.2-8    lattice_0.20-45     
+## [100] blogdown_1.15        Brobdingnag_1.2-8    lattice_0.20-45     
 ## [103] Matrix_1.4-1         nloptr_2.0.3         markdown_1.1        
 ## [106] shinyjs_2.1.0        tensorA_0.36.2       vctrs_0.5.0         
 ## [109] pillar_1.8.1         lifecycle_1.0.3      jquerylib_0.1.4     

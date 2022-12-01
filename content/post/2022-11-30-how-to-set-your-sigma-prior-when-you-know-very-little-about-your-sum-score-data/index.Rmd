@@ -36,7 +36,7 @@ link-citations: yes
 
 ## What?
 
-Psychologists analyze a lot of sum-score data, and even though it's not the best, we usually use the Gaussian likelihood[^1] when doing so. I was recently in a situation were I wanted to model sum-scores from a new questionnaire and there was no good prior research on the distribution of the sum-scores. Like, there wasn't a single published paper reporting the sample statistics. Crazy, I know... Anyway, I spent some time trying to reason through how I would set a justifiable prior for my $\sigma$ parameter, and in this blog post we'll cover how I came up with a solution.
+We psychologists analyze a lot of sum-score data. Even though it's not the best, we usually use the Gaussian likelihood[^1] for these analyses. I was recently in a situation were I wanted to model sum-scores from a new questionnaire and there was no good prior research on the distribution of the sum-scores. Like, there wasn't a single published paper reporting the sample statistics. Crazy, I know... Anyway, I spent some time trying to reason through how I would set a justifiable prior for my $\sigma$ parameter, and in this blog post we'll cover how I came up with a solution.
 
 ### I make assumptions.
 
