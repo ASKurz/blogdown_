@@ -1,16 +1,21 @@
 # 12-1-22 based on https://github.com/rbind/apreshill/blob/main/netlify.toml
 [build]
-  publish = "public"
-  command = "hugo"
-  
+command = 'hugo'
+publish = 'public'
+
 [build.environment]
-  HUGO_VERSION = "0.107.0"
+HUGO_VERSION = '0.107.0'
+
+[context]
+[context.branch-deploy]
+command = 'hugo -F -b $DEPLOY_PRIME_URL'
 
 [context.deploy-preview]
-  command = "hugo -b $DEPLOY_PRIME_URL --buildFuture"
+command = 'hugo -F -b $DEPLOY_PRIME_URL'
 
-[context.branch-deploy]
-  command = "hugo -b $DEPLOY_PRIME_URL --buildFuture"  
+[context.production]
+[context.production.environment]
+HUGO_ENV = 'production'
   
 
     
